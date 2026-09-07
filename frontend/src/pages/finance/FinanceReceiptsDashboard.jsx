@@ -45,63 +45,6 @@ const printInNewTab = (target, doc, company) => {
   const w = window.open('', '_blank', 'width=900,height=700');
   if (!w) { window.alert('Pop-up blocked — please allow pop-ups for this site.'); return; }
 
-  const buildInvoice = () => {
-    const items = doc.items || [];
-    const vatRate = doc.vatStandardRate || 0.15;
-    const standardItems = items.filter(it => (it.taxTreatment || 'standard') === 'standard');
-    const exemptItems = items.filter(it => it.taxTreatment === 'exempt');
-    const zeroRatedItems = items.filter(it => it.taxTreatment === 'zero-rated');
-    const hasStandard = standardItems.length > 0;
-    const hasExempt = exemptItems.length > 0;
-    const hasZeroRated = zeroRatedItems.length > 0;
-    const subtotal = items.reduce((s, it) => s + Number(it.amount || 0), 0);
-    const vatStandard = standardItems.reduce((s, it) => s + Number(it.vat || 0), 0);
-    const vatExempt = exemptItems.reduce((s, it) => s + Number(it.vat || 0), 0);
-    const total = subtotal;
-
-    const itemRows = items.map((it) => {
-      const treatment = it.taxTreatment || 'standard';
-      const tagClass = treatment === 'exempt' ? 'tag-exempt' : treatment === 'zero-rated' ? 'tag-zero' : 'tag-std';
-      const tagLabel = treatment === 'exempt' ? 'Exempt' : treatment === 'zero-rated' ? 'Zero-rated' : `Std ${Math.round(vatRate * 100)}%`;
-      return `<tr>
-        <td>${it.name}</td>
-        <td class="tc"><span class="tag ${tagClass}">${tagLabel}</span></td>
-        <td class="tr">${it.qty}</td>
-        <td class="tr">${fmtNum(it.unitPrice)}</td>
-        <td class="tr">${fmtNum(it.vat)}</td>
-        <td class="tr">${fmtNum(it.amount)}</td>
-      </tr>`;
-    }).join('');
-
-    const brandSub = [company.address, company.phone, company.tin ? `TIN: ${company.tin}` : '', company.vatReg ? `VAT Reg. No: ${company.vatReg}` : ''].filter(Boolean).join('  |  ');
-
-    let vatLines = '';
-    if (hasStandard) vatLines += `<div class="tr"><span class="tl">VAT ${Math.round(vatRate * 100)}% (Standard-rated items):</span><span class="tv">${fmt(vatStandard)}</span></div>`;
-    if (hasExempt) vatLines += `<div class="tr"><span class="tl">VAT Exempt items:</span><span class="tv">${fmt(vatExempt)}</span></div>`;
-    if (hasZeroRated) vatLines += `<div class="tr"><span class="tl">VAT Zero-rated items:</span><span class="tv">${fmt(vatZeroRated)}</span></div>`;
-
-    const balanceColor = (doc.balance || 0) > 0.001 ? '#DC2626' : '#16A34A';
-
-    return `
-      <div class="brand"><h1>${company.name || 'Company Name'}</h1><p class="sub">${brandSub || 'Address  |  Phone  |  TIN  |  VAT Registration No.'}</p></div>
-      <div class="title">SALES INVOICE</div>
-      <div class="meta"><div>Invoice No: <span class="dot-w">${doc.invoiceNo || '-'}</span></div><div class="mr">Date: <span class="dot">${fmtDate(doc.date)}</span></div></div>
-      <div class="meta"><div>Customer: <span class="dot-w">${doc.customer || 'Walk-in Customer'}</span></div><div class="mr">Customer TIN: <span class="dot">${doc.customerTin || '__________'}</span></div></div>
-      <div class="linkage"><span><span class="ll">Sale</span> <span class="li">${doc.saleId || '—'}</span></span><span class="la">→</span><span><span class="ll">Invoice</span> <span class="li">${doc.invoiceNo || '—'}</span></span><span class="la">→</span><span><span class="ll">Payment</span> <span class="li">${doc.paymentId || '—'}</span></span><span class="la">→</span><span><span class="ll">Receipt</span> <span class="li">${doc.receiptNo || '—'}</span></span></div>
-      <table class="tbl"><thead><tr><th>Item</th><th>Tax Treatment</th><th class="tr">Qty</th><th class="tr">Unit Price</th><th class="tr">VAT</th><th class="tr">Amount</th></tr></thead><tbody>${itemRows || '<tr><td colspan="6" class="tc" style="color:#9CA3AF;padding:16px">No line items</td></tr>'}</tbody></table>
-      <div class="totals">
-        <div class="tr"><span class="tl">Subtotal:</span><span class="tv">${fmt(subtotal)}</span></div>
-        ${vatLines}
-        <div class="grand"><span class="gl">TOTAL:</span><span class="gv">${fmt(total)}</span></div>
-      </div>
-      <hr class="hr"/>
-      <div class="paybox">
-        <div class="pr"><span class="pl">Payment Method:</span><span class="pv">${doc.paymentMethod || 'Cash / Bank / Other'}</span></div>
-        <div class="pr" style="margin-top:6px;padding-top:6px;border-top:1px dashed #E5E7EB"><span class="pl">Amount Paid:</span><span class="pv">${fmt(doc.amountPaid)}</span><span class="pv" style="color:#DC2626;margin-left:24px">Balance: ${fmt(doc.balance)}</span></div>
-      </div>
-      <div class="sigs"><div class="sig"><span class="sigline">${doc.seller || ''}</span><span class="sigcap">Seller (Authorized Signatory)</span></div><div class="sig"><span class="sigline">${doc.customer || ''}</span><span class="sigcap">Customer</span></div></div>`;
-  };
-
   const buildReceipt = () => {
     const items = doc.items || [];
     const totalVat = items.reduce((s, it) => s + Number(it.vat || 0), 0);
@@ -148,12 +91,10 @@ const printInNewTab = (target, doc, company) => {
       <p class="note">This receipt confirms payment received against Invoice ${doc.invoiceNo || '—'}. It does not constitute a new sale.</p>`;
   };
 
-  const invoiceHTML = target === 'receipt' ? '' : buildInvoice();
-  const receiptHTML = target === 'invoice' ? '' : buildReceipt();
-  const pageBreak = target === 'both' ? '<div style="page-break-before:always;break-before:page"></div>' : '';
+  const receiptHTML = buildReceipt();
 
   w.document.write(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><title>${target === 'invoice' ? 'Sales Invoice' : target === 'receipt' ? 'Sales Receipt' : 'Invoice & Receipt'} — ${doc.invoiceNo || ''}</title>
+<html lang="en"><head><meta charset="UTF-8"/><title>Sales Receipt — ${doc.invoiceNo || ''}</title>
 <style>
   @page{size:A4;margin:15mm 18mm}
   *{box-sizing:border-box}
@@ -194,7 +135,7 @@ const printInNewTab = (target, doc, company) => {
   .note{font-size:11px;color:#9CA3AF;font-style:italic;margin-top:8px}
   @media print{.tbl tr{page-break-inside:avoid}}
 </style></head><body>
-${invoiceHTML}${pageBreak}${receiptHTML}
+${receiptHTML}
 </body></html>`);
   w.document.close();
   setTimeout(() => { w.focus(); w.print(); }, 400);
@@ -252,164 +193,9 @@ const S = {
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SALES INVOICE
-   Legal, tax-bearing document with per-item tax treatment breakdown.
-   ═══════════════════════════════════════════════════════════════════════════ */
-const SalesInvoiceForm = ({ doc, company }) => {
-  const items = doc.items || [];
-  const vatRate = doc.vatStandardRate || 0.15;
-
-  const standardItems = items.filter(it => (it.taxTreatment || 'standard') === 'standard');
-  const exemptItems = items.filter(it => it.taxTreatment === 'exempt');
-  const zeroRatedItems = items.filter(it => it.taxTreatment === 'zero-rated');
-
-  const hasStandard = standardItems.length > 0;
-  const hasExempt = exemptItems.length > 0;
-  const hasZeroRated = zeroRatedItems.length > 0;
-
-  const subtotal = items.reduce((s, it) => s + Number(it.amount || 0), 0);
-  const vatStandard = standardItems.reduce((s, it) => s + Number(it.vat || 0), 0);
-  const vatExempt = exemptItems.reduce((s, it) => s + Number(it.vat || 0), 0);
-  const vatZeroRated = zeroRatedItems.reduce((s, it) => s + Number(it.vat || 0), 0);
-  const total = subtotal;
-
-  return (
-    <div className="invoice-sheet print-sheet" style={S.sheet}>
-      {/* ── Company Header ── */}
-      <div style={S.brand}>
-        <h2 style={S.brandName}>{company.name || 'Company Name'}</h2>
-        <p style={S.brandSub}>
-          {[company.address, company.phone, company.tin ? `TIN: ${company.tin}` : '', company.vatReg ? `VAT Reg. No: ${company.vatReg}` : '']
-            .filter(Boolean).join('  |  ') || 'Address  |  Phone  |  TIN  |  VAT Registration No.'}
-        </p>
-      </div>
-
-      <div style={S.title}>SALES INVOICE</div>
-
-      {/* ── Invoice Meta ── */}
-      <div style={S.metaRow}>
-        <div style={S.metaLeft}>Invoice No: <span style={S.dottedWide}>{doc.invoiceNo || '-'}</span></div>
-        <div style={S.metaRight}>Date: <span style={S.dotted}>{fmtDate(doc.date)}</span></div>
-      </div>
-      <div style={S.metaRow}>
-        <div style={S.metaLeft}>Customer: <span style={S.dottedWide}>{doc.customer || 'Walk-in Customer'}</span></div>
-        <div style={S.metaRight}>Customer TIN: <span style={S.dotted}>{doc.customerTin || '__________'}</span></div>
-      </div>
-
-      {/* ── Linkage Chain ── */}
-      <div style={S.linkageRow}>
-        <span><span style={S.linkageLabel}>Sale</span> <span style={S.linkageId}>{doc.saleId || '—'}</span></span>
-        <span style={S.linkageArrow}>→</span>
-        <span><span style={S.linkageLabel}>Invoice</span> <span style={S.linkageId}>{doc.invoiceNo || '—'}</span></span>
-        <span style={S.linkageArrow}>→</span>
-        <span><span style={S.linkageLabel}>Payment</span> <span style={S.linkageId}>{doc.paymentId || '—'}</span></span>
-        <span style={S.linkageArrow}>→</span>
-        <span><span style={S.linkageLabel}>Receipt</span> <span style={S.linkageId}>{doc.receiptNo || '—'}</span></span>
-      </div>
-
-      {/* ── Line Items Table ── */}
-      <table style={S.table}>
-        <thead>
-          <tr>
-            <th style={{ ...S.th, width: 36 }}>#</th>
-            <th style={S.th}>Item</th>
-            <th style={S.th}>Tax Treatment</th>
-            <th style={S.thR}>Qty</th>
-            <th style={S.thR}>Unit Price</th>
-            <th style={S.thR}>VAT</th>
-            <th style={S.thR}>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((it, i) => {
-            const treatment = it.taxTreatment || 'standard';
-            const tagStyle = treatment === 'exempt' ? S.vatExempt : treatment === 'zero-rated' ? S.vatZero : S.vatStandard;
-            const tagLabel = treatment === 'exempt' ? 'Exempt' : treatment === 'zero-rated' ? 'Zero-rated' : `Std ${Math.round(vatRate * 100)}%`;
-            return (
-              <tr key={i}>
-                <td style={{ ...S.tdC, color: '#9CA3AF', fontSize: 12 }}>{i + 1}</td>
-                <td style={S.td}>{it.name}</td>
-                <td style={{ ...S.tdC, fontSize: 11 }}>
-                  <span style={{ ...S.vatTag, ...tagStyle }}>{tagLabel}</span>
-                </td>
-                <td style={S.tdR}>{it.qty}</td>
-                <td style={S.tdR}>{fmtNum(it.unitPrice)}</td>
-                <td style={S.tdR}>{fmtNum(it.vat)}</td>
-                <td style={S.tdR}>{fmtNum(it.amount)}</td>
-              </tr>
-            );
-          })}
-          {items.length === 0 && (
-            <tr><td colSpan={7} style={{ ...S.td, textAlign: 'center', color: '#9CA3AF', padding: 16 }}>No line items</td></tr>
-          )}
-        </tbody>
-      </table>
-
-      {/* ── VAT Breakdown — only show applicable treatments ── */}
-      <div style={S.totals}>
-        <div style={S.totalRow}>
-          <span style={S.totalLabel}>Subtotal:</span>
-          <span style={S.totalVal}>{fmt(subtotal)}</span>
-        </div>
-
-        {hasStandard && (
-          <div style={S.totalRow}>
-            <span style={S.totalLabel}>VAT {Math.round(vatRate * 100)}% (Standard-rated items):</span>
-            <span style={S.totalVal}>{fmt(vatStandard)}</span>
-          </div>
-        )}
-        {hasExempt && (
-          <div style={S.totalRow}>
-            <span style={S.totalLabel}>VAT Exempt items:</span>
-            <span style={S.totalVal}>{fmt(vatExempt)}</span>
-          </div>
-        )}
-        {hasZeroRated && (
-          <div style={S.totalRow}>
-            <span style={S.totalLabel}>VAT Zero-rated items:</span>
-            <span style={S.totalVal}>{fmt(vatZeroRated)}</span>
-          </div>
-        )}
-
-        <div style={S.grandRow}>
-          <span style={S.grandLabel}>TOTAL:</span>
-          <span style={S.grandVal}>{fmt(total)}</span>
-        </div>
-      </div>
-
-      {/* ── Payment Summary ── */}
-      <hr style={S.line} />
-      <div style={S.paymentBox}>
-        <div style={S.paymentRow}>
-          <span style={S.paymentLabel}>Payment Method:</span>
-          <span style={S.paymentVal}>{doc.paymentMethod || 'Cash / Bank / Other'}</span>
-        </div>
-        <div style={{ ...S.paymentRow, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #E5E7EB' }}>
-          <span style={S.paymentLabel}>Amount Paid:</span>
-          <span style={S.paymentVal}>{fmt(doc.amountPaid)}</span>
-          <span style={{ ...S.paymentVal, color: '#DC2626', marginLeft: 24 }}>Balance: {fmt(doc.balance)}</span>
-        </div>
-      </div>
-
-      {/* ── Signatures ── */}
-      <div style={S.sigRow}>
-        <div style={S.sigBlock}>
-          <span style={S.sigLine}>{doc.seller || ''}</span>
-          <span style={S.sigCaption}>Seller (Authorized Signatory)</span>
-        </div>
-        <div style={S.sigBlock}>
-          <span style={S.sigLine}>{doc.customer || ''}</span>
-          <span style={S.sigCaption}>Customer</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
    SALES RECEIPT
    Proof of payment received. Does NOT recalculate the sale — confirms
-   money received against an existing invoice.
+   money received against an existing receipt.
    ═══════════════════════════════════════════════════════════════════════════ */
 const SalesReceiptForm = ({ doc, company }) => {
   const items = doc.items || [];
@@ -552,11 +338,9 @@ const SalesReceiptForm = ({ doc, company }) => {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    DOCUMENT MODAL
-   Tabs: Sales Invoice / Sales Receipt + Print buttons
+   Tabs: Sales Receipt + Print buttons
    ═══════════════════════════════════════════════════════════════════════════ */
 const DocumentModal = ({ doc, company, onClose }) => {
-  const [tab, setTab] = useState('invoice');
-
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -568,34 +352,18 @@ const DocumentModal = ({ doc, company, onClose }) => {
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <div>
-            <h3 className={styles.modalTitle}>{doc.sourceLabel} · {doc.invoiceNo}</h3>
-            <p className={styles.modalSub}>Sale → Invoice → Payment → Receipt (linked end-to-end)</p>
+            <h3 className={styles.modalTitle}>{doc.sourceLabel} · Receipt {doc.receiptNo || doc.invoiceNo}</h3>
+            <p className={styles.modalSub}>Sale → Receipt (linked end-to-end)</p>
           </div>
           <div className={styles.modalActions}>
-            <button className={styles.tabBtn} onClick={() => setTab('invoice')} style={tab === 'invoice' ? { background: '#2563EB', color: '#fff', borderColor: '#2563EB' } : {}}>
-              Sales Invoice
-            </button>
-            <button className={styles.tabBtn} onClick={() => setTab('receipt')} style={tab === 'receipt' ? { background: '#16A34A', color: '#fff', borderColor: '#16A34A' } : {}}>
-              Sales Receipt
-            </button>
-            <span style={{ width: 1, height: 20, background: '#E5E7EB', flexShrink: 0 }} />
-            <button className={styles.printBtn} onClick={() => printInNewTab('invoice', doc, company)} title="Print Sales Invoice only">
-              Print Invoice
-            </button>
-            <button className={styles.printBtnGreen} onClick={() => printInNewTab('receipt', doc, company)} title="Print Sales Receipt only">
+            <button className={styles.printBtnGreen} onClick={() => printInNewTab('receipt', doc, company)} title="Print Sales Receipt">
               Print Receipt
-            </button>
-            <button className={styles.printBtnBoth} onClick={() => printInNewTab('both', doc, company)} title="Print both Invoice and Receipt">
-              Print Both
             </button>
             <button className={styles.closeBtn} onClick={onClose}>✕</button>
           </div>
         </div>
         <div className={styles.modalBody}>
           <div className={styles.printArea}>
-            <SalesInvoiceForm doc={doc} company={company} />
-          </div>
-          <div className={styles.printArea} style={{ marginTop: 20 }}>
             <SalesReceiptForm doc={doc} company={company} />
           </div>
         </div>
@@ -750,7 +518,7 @@ const FinanceReceiptsDashboard = () => {
 
   const receivableValue = receivableDocs.reduce((s, d) => s + Math.abs(d.balance), 0);
   const paidValue = paidDocs.reduce((s, d) => s + d.total, 0);
-  const owedTotal = receivableDocs.reduce((s, d) => s + Math.abs(d.balance), 0);
+  const owedTotal = receivableValue;
   const vatTotal = paidDocs.reduce((s, d) => s + (d.vat || 0), 0);
 
   return (
@@ -758,11 +526,11 @@ const FinanceReceiptsDashboard = () => {
       {/* ── HEADER ── */}
       <div className={styles.header}>
         <div className={styles.titleBlock}>
-          <h1 className={styles.pageTitle}>
-            Invoices & Receipts <span className={styles.welcomeEmoji}>🧾</span>
-          </h1>
-          <p className={styles.pageSubtitle}>
-            Auto-generated: Order → Invoice → Payment → Receipt · All modules + 2 tenders · No manual form filling
+          <h2 className={styles.welcomeTitle}>
+            Receipts <span className={styles.welcomeEmoji}>🧾</span>
+          </h2>
+          <p className={styles.welcomeSub}>
+            Auto-generated: Order → Payment → Receipt · All modules + 2 tenders · No manual form filling
           </p>
         </div>
         <button onClick={load} className={styles.syncBtn} disabled={refreshing}>
@@ -777,7 +545,7 @@ const FinanceReceiptsDashboard = () => {
       <div className={styles.kpiGrid}>
         <div className={`${styles.kpiCard} ${activeTab === 'receivable' ? styles.kpiCardActive : ''}`}>
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Receivable Invoices</span>
+            <span className={styles.kpiLabel}>Receivables</span>
             <span className={styles.kpiIcon} style={{ background: '#FEF3C7' }}><Icon.file /></span>
           </div>
           <div className={styles.kpiValue} style={{ color: '#B45309' }}>{receivableDocs.length}</div>
@@ -825,7 +593,7 @@ const FinanceReceiptsDashboard = () => {
           className={`${styles.tabBtn} ${activeTab === 'receivable' ? styles.tabBtnActive : ''}`}
           onClick={() => { setActiveTab('receivable'); setPage(1); }}
         >
-          <Icon.file /> Receivable Invoices
+          <Icon.file /> Receivables
           <span className={styles.tabBadge} style={{ background: '#FEF3C7', color: '#92400E' }}>{receivableDocs.length}</span>
         </button>
         <button
@@ -847,7 +615,7 @@ const FinanceReceiptsDashboard = () => {
       <div className={styles.card}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitleIcon}><Icon.building /></span>
-          <h3 className={styles.cardTitle}>Company Profile (Invoice / Receipt header)</h3>
+          <h3 className={styles.cardTitle}>Company Profile (Receipt header)</h3>
           <span className={styles.cardSub}>Saved to settings — used on all documents</span>
         </div>
         <div className={styles.companyGrid}>
@@ -895,7 +663,7 @@ const FinanceReceiptsDashboard = () => {
             <div className={styles.cardHeader}>
               <span className={styles.cardTitleIcon}><Icon.barChart /></span>
               <h3 className={styles.cardTitle}>VAT & Profit Report</h3>
-              <span className={styles.cardSub}>Live data — Output VAT from invoices · Input VAT from purchases/expenses · HR costs from payroll · Profit = Revenue - Cost - HR</span>
+              <span className={styles.cardSub}>Live data — Output VAT from sales · Input VAT from purchases/expenses · HR costs from payroll · Profit = Revenue - Cost - HR</span>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '12px 20px', flexWrap: 'wrap' }}>
               {[
@@ -925,7 +693,7 @@ const FinanceReceiptsDashboard = () => {
               </button>
               {vatReport?.period && (
                 <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>
-                  {vatReport.period.from} to {vatReport.period.to} · {vatReport.summary?.invoiceCount || 0} invoices
+                  {vatReport.period.from} to {vatReport.period.to} · {vatReport.summary?.invoiceCount || 0} receipts
                 </span>
               )}
             </div>
@@ -1169,8 +937,8 @@ const FinanceReceiptsDashboard = () => {
             )}
 
             <div className={styles.note}>
-              <strong>How data flows:</strong> Every sale in every department (Printing, Car Rental, Pharmacy, Sales, etc.) auto-generates a Sales Invoice → Sales Receipt. This page aggregates all those receipts:
-              &nbsp;<strong>Total Revenue</strong> = sum of all invoice amounts across departments ·
+              <strong>How data flows:</strong> Every sale in every department (Printing, Car Rental, Pharmacy, Sales, etc.) auto-generates a Sales Receipt. This page aggregates all those receipts:
+              &nbsp;<strong>Total Revenue</strong> = sum of all receipt amounts across departments ·
               &nbsp;<strong>COGS</strong> = sum of item cost prices × qty ·
               &nbsp;<strong>Output VAT</strong> = VAT collected from customers ·
               &nbsp;<strong>Input VAT</strong> = VAT paid to suppliers on purchases ·
@@ -1186,7 +954,7 @@ const FinanceReceiptsDashboard = () => {
         <div className={styles.cardHeader}>
           <span className={styles.cardTitleIcon}>{activeTab === 'receivable' ? <Icon.file /> : <Icon.check />}</span>
           <h3 className={styles.cardTitle}>
-            {activeTab === 'receivable' ? 'Receivable Invoices — awaiting full payment' : 'Receipts — payment confirmed'}
+            {activeTab === 'receivable' ? 'Receivables — awaiting full payment' : 'Receipts — payment confirmed'}
           </h3>
           <span className={styles.cardSub}>{activeDocs.length} documents · click row to view</span>
         </div>
@@ -1195,7 +963,6 @@ const FinanceReceiptsDashboard = () => {
           <div className={styles.tHead}>
             <span>#</span>
             <span>Module</span>
-            <span style={{ textAlign: 'center' }}>Invoice No</span>
             <span style={{ textAlign: 'center' }}>Receipt No</span>
             <span style={{ textAlign: 'center' }}>Date</span>
             {activeTab === 'receipts' && <span style={{ textAlign: 'right' }}>VAT</span>}
@@ -1207,7 +974,7 @@ const FinanceReceiptsDashboard = () => {
           {pagedDocs.length === 0 ? (
             <div className={styles.empty}>
               {activeTab === 'receivable'
-                ? 'No outstanding invoices — all orders fully paid!'
+                ? 'No outstanding receivables — all orders fully paid!'
                 : 'No confirmed receipts yet — payments will appear here once orders are paid.'}
             </div>
           ) : pagedDocs.map((d, i) => (
@@ -1217,7 +984,6 @@ const FinanceReceiptsDashboard = () => {
                 <span className={styles.moduleIcon} style={{ background: (d.color || G.darkGray) + '1A', color: d.color }}>{d.icon}</span>
                 <span className={styles.moduleLabel}>{d.sourceLabel}</span>
               </span>
-              <span className={styles.num} style={{ textAlign: 'center' }}>{d.invoiceNo}</span>
               <span className={styles.num} style={{ textAlign: 'center' }}>{d.receiptNo}</span>
               <span className={styles.num} style={{ textAlign: 'center' }}>{fmtDate(d.date)}</span>
               {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED', fontWeight: 600 }}>{fmt(d.vat || 0)}</span>}
@@ -1267,8 +1033,8 @@ const FinanceReceiptsDashboard = () => {
 
         <div className={styles.note}>
           {activeTab === 'receivable'
-            ? 'Every order placed in any module auto-generates a Sales Invoice. The invoice shows per-item tax treatment (Standard / Exempt / Zero-rated) from the CEO-configured tax mappings. Once payment is confirmed, the invoice moves to Receipts and the balance becomes zero.'
-            : 'Every payment received auto-generates a linked Sales Receipt: Sale ID → Invoice ID → Payment ID → Receipt ID — no double counting. The receipt confirms money received against the invoice; it never recalculates the sale.'}
+            ? 'Every order placed in any module auto-generates a Sales Receipt upon payment. The receipt shows per-item tax treatment (Standard / Exempt / Zero-rated). Once payment is confirmed, the receipt moves to Paid Receipts.'
+            : 'Every payment received auto-generates a linked Sales Receipt: Sale ID → Payment ID → Receipt ID — no double counting. The receipt confirms money received against the sale; it never recalculates the sale.'}
         </div>
       </div>
       )}
