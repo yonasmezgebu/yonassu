@@ -1862,6 +1862,11 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
 
   // Poll total unread chat messages and fire browser notifications
   useEffect(() => {
+    // Only staff with chat access should hit this endpoint — customers/other
+    // roles would otherwise produce 403s on every page load.
+    const isChatUser = user && Array.isArray(user.roles) && user.roles.some(r => r.toLowerCase() !== 'customer');
+    if (!isChatUser) return;
+
     const pollChat = async () => {
       try {
         const res = await apiClient.get('/manager-chat/unread-counts');
@@ -1889,7 +1894,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       } catch (_) {}
     };
     pollChat();
-  }, [showToast]);
+  }, [showToast, user]);
 
   useEffect(() => {
     let socket = null;
