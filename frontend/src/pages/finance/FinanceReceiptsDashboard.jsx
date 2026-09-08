@@ -48,7 +48,10 @@ const printInNewTab = (target, doc, company) => {
   const buildReceipt = () => {
     const items = doc.items || [];
     const totalVat = items.reduce((s, it) => s + Number(it.vat || 0), 0);
-    const subtotal = items.reduce((s, it) => s + Number(it.amount || 0), 0);
+    // Subtotal = sum of NET (pre-VAT) line amounts (unitPrice × qty). The
+    // stored `amount` field is gross (already includes VAT), so summing it here
+    // would double-count VAT and make Subtotal equal TOTAL.
+    const subtotal = items.reduce((s, it) => s + (Number(it.unitPrice || 0) * Number(it.qty || 0)), 0);
     const brandSub = [company.address, company.phone, company.tin ? `TIN: ${company.tin}` : ''].filter(Boolean).join('  |  ');
     const balanceColor = (doc.balance || 0) > 0.001 ? '#DC2626' : '#16A34A';
 
@@ -58,7 +61,7 @@ const printInNewTab = (target, doc, company) => {
       <td class="tr">${it.qty}</td>
       <td class="tr">${fmtNum(it.unitPrice)}</td>
       <td class="tr">${fmtNum(it.vat)}</td>
-      <td class="tr">${fmtNum(it.amount)}</td>
+      <td class="tr">${fmtNum(Number(it.unitPrice || 0) * Number(it.qty || 0))}</td>
     </tr>`).join('');
 
     const itemsTable = items.length > 0 ? `
@@ -200,6 +203,10 @@ const S = {
 const SalesReceiptForm = ({ doc, company }) => {
   const items = doc.items || [];
   const totalVat = items.reduce((s, it) => s + Number(it.vat || 0), 0);
+  // Subtotal = sum of NET (pre-VAT) line amounts (unitPrice × qty). The stored
+  // `amount` field is gross (already includes VAT), so summing it here would
+  // double-count VAT and make Subtotal equal TOTAL.
+  const subtotal = items.reduce((s, it) => s + (Number(it.unitPrice || 0) * Number(it.qty || 0)), 0);
 
   return (
   <div className="receipt-sheet print-sheet" style={S.sheet}>
@@ -262,7 +269,7 @@ const SalesReceiptForm = ({ doc, company }) => {
                 <td style={S.tdR}>{it.qty}</td>
                 <td style={S.tdR}>{fmtNum(it.unitPrice)}</td>
                 <td style={S.tdR}>{fmtNum(it.vat)}</td>
-                <td style={S.tdR}>{fmtNum(it.amount)}</td>
+                <td style={S.tdR}>{fmtNum(Number(it.unitPrice || 0) * Number(it.qty || 0))}</td>
               </tr>
             ))}
           </tbody>
@@ -270,7 +277,7 @@ const SalesReceiptForm = ({ doc, company }) => {
         <div style={S.totals}>
           <div style={S.totalRow}>
             <span style={S.totalLabel}>Subtotal:</span>
-            <span style={S.totalVal}>{fmt(items.reduce((s, it) => s + Number(it.amount || 0), 0))}</span>
+            <span style={S.totalVal}>{fmt(subtotal)}</span>
           </div>
           <div style={S.totalRow}>
             <span style={S.totalLabel}>Total VAT:</span>
@@ -519,7 +526,11 @@ const FinanceReceiptsDashboard = () => {
   const receivableValue = receivableDocs.reduce((s, d) => s + Math.abs(d.balance), 0);
   const paidValue = paidDocs.reduce((s, d) => s + d.total, 0);
   const owedTotal = receivableValue;
-  const vatTotal = paidDocs.reduce((s, d) => s + (d.vat || 0), 0);
+  // vatTotal = sum of Output VAT on all paid receipts (correct field is vatTotal from invoiceDocument.service)
+  const vatTotal = paidDocs.reduce((s, d) => s + (d.vatTotal || 0), 0);
+  // inputVatTotal and payableVat from the VAT report (company-wide, from purchases + expenses)
+  const inputVatTotal = parseFloat(vatReport?.summary?.inputVat || 0);
+  const payableVatTotal = Math.max(0, vatTotal - inputVatTotal);
 
   return (
     <div className={styles.page}>
@@ -890,45 +901,63 @@ const FinanceReceiptsDashboard = () => {
                   <span className={styles.cardSub}>{vatReport.bySource.length} source{vatReport.bySource.length !== 1 ? 's' : ''} · each department's sales recorded separately</span>
                 </div>
                 <div className={styles.table}>
-                  <div className={styles.tHead} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
+                  <div className={styles.tHead} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr' }}>
                     <span>Department</span>
                     <span style={{ textAlign: 'right' }}>Revenue</span>
                     <span style={{ textAlign: 'right' }}>COGS</span>
                     <span style={{ textAlign: 'right' }}>Gross Profit</span>
                     <span style={{ textAlign: 'right' }}>Margin</span>
-                    <span style={{ textAlign: 'right' }}>Output VAT</span>
+                    <span style={{ textAlign: 'right', color: '#059669' }}>Output VAT</span>
+                    <span style={{ textAlign: 'right', color: '#DC2626' }}>Input VAT</span>
+                    <span style={{ textAlign: 'right', color: '#2563EB' }}>Payable VAT</span>
                   </div>
-                  {vatReport.bySource.map((src, i) => {
-                    const dRev  = parseFloat(src.revenue || 0);
-                    const dCost = parseFloat(src.cost || 0);
-                    const dProf = dRev - dCost;
-                    const dMgn  = dRev > 0 ? ((dProf / dRev) * 100).toFixed(1) : '0.0';
-                    return (
-                      <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
-                        <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{src.label || src.source}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#059669' }}>{fmt(dRev)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(dCost)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: dProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(dProf)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right' }}>{dMgn}%</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED' }}>{fmt(src.outputVat || 0)}</span>
-                      </div>
-                    );
-                  })}
+                  {(() => {
+                    // Distribute total input VAT proportionally by each department's output VAT share
+                    const totalOutVat = vatReport.bySource.reduce((s, r) => s + parseFloat(r.outputVat || 0), 0);
+                    const totalInVat  = parseFloat(vatReport.summary?.inputVat || 0);
+                    return vatReport.bySource.map((src, i) => {
+                      const dRev     = parseFloat(src.revenue || 0);
+                      const dCost    = parseFloat(src.cost || 0);
+                      const dProf    = dRev - dCost;
+                      const dMgn     = dRev > 0 ? ((dProf / dRev) * 100).toFixed(1) : '0.0';
+                      const dOutVat  = parseFloat(src.outputVat || 0);
+                      // Input VAT share proportional to this dept's output VAT vs total output VAT
+                      const share    = totalOutVat > 0 ? dOutVat / totalOutVat : 0;
+                      const dInVat   = Math.round(totalInVat * share * 100) / 100;
+                      const dPayable = Math.round((dOutVat - dInVat) * 100) / 100;
+                      return (
+                        <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr' }}>
+                          <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{src.label || src.source}</span>
+                          <span className={styles.num} style={{ textAlign: 'right', color: '#059669' }}>{fmt(dRev)}</span>
+                          <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(dCost)}</span>
+                          <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: dProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(dProf)}</span>
+                          <span className={styles.num} style={{ textAlign: 'right' }}>{dMgn}%</span>
+                          <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 600 }}>{fmt(dOutVat)}</span>
+                          <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 600 }}>{fmt(dInVat)}</span>
+                          <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: dPayable >= 0 ? '#2563EB' : '#DC2626' }}>{fmt(dPayable)}</span>
+                        </div>
+                      );
+                    });
+                  })()}
                   {/* Totals row */}
                   {(() => {
-                    const totRev  = vatReport.bySource.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
-                    const totCost = vatReport.bySource.reduce((s, r) => s + parseFloat(r.cost || 0), 0);
-                    const totProf = totRev - totCost;
-                    const totVat  = vatReport.bySource.reduce((s, r) => s + parseFloat(r.outputVat || 0), 0);
-                    const totMgn  = totRev > 0 ? ((totProf / totRev) * 100).toFixed(1) : '0.0';
+                    const totRev     = vatReport.bySource.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
+                    const totCost    = vatReport.bySource.reduce((s, r) => s + parseFloat(r.cost || 0), 0);
+                    const totProf    = totRev - totCost;
+                    const totOutVat  = vatReport.bySource.reduce((s, r) => s + parseFloat(r.outputVat || 0), 0);
+                    const totInVat   = parseFloat(vatReport.summary?.inputVat || 0);
+                    const totPayable = Math.round((totOutVat - totInVat) * 100) / 100;
+                    const totMgn     = totRev > 0 ? ((totProf / totRev) * 100).toFixed(1) : '0.0';
                     return (
-                      <div className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', borderTop: '2px solid #D1D5DB', background: '#F9FAFB', fontWeight: 700 }}>
+                      <div className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', borderTop: '2px solid #D1D5DB', background: '#F9FAFB', fontWeight: 700 }}>
                         <span style={{ fontWeight: 700 }}>TOTAL</span>
                         <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 700 }}>{fmt(totRev)}</span>
                         <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 700 }}>{fmt(totCost)}</span>
                         <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: totProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(totProf)}</span>
                         <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>{totMgn}%</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED', fontWeight: 700 }}>{fmt(totVat)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 700 }}>{fmt(totOutVat)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 700 }}>{fmt(totInVat)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: totPayable >= 0 ? '#2563EB' : '#DC2626' }}>{fmt(totPayable)}</span>
                       </div>
                     );
                   })()}
@@ -960,12 +989,18 @@ const FinanceReceiptsDashboard = () => {
         </div>
 
         <div className={styles.table}>
-          <div className={styles.tHead}>
+          <div
+            className={styles.tHead}
+            style={{ gridTemplateColumns: activeTab === 'receipts'
+              ? '40px 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr'
+              : '40px 1.8fr 1.1fr 1fr 1fr 1fr 1fr' }}
+          >
             <span>#</span>
             <span>Module</span>
             <span style={{ textAlign: 'center' }}>Receipt No</span>
             <span style={{ textAlign: 'center' }}>Date</span>
-            {activeTab === 'receipts' && <span style={{ textAlign: 'right' }}>VAT</span>}
+            {activeTab === 'receipts' && <span style={{ textAlign: 'right', color: '#059669' }}>Output VAT</span>}
+            {activeTab === 'receipts' && <span style={{ textAlign: 'right', color: '#DC2626' }}>Input VAT</span>}
             <span style={{ textAlign: 'right' }}>Paid</span>
             {activeTab === 'receivable' && <span style={{ textAlign: 'right' }}>Balance</span>}
             <span style={{ textAlign: 'right' }}>Total</span>
@@ -977,38 +1012,83 @@ const FinanceReceiptsDashboard = () => {
                 ? 'No outstanding receivables — all orders fully paid!'
                 : 'No confirmed receipts yet — payments will appear here once orders are paid.'}
             </div>
-          ) : pagedDocs.map((d, i) => (
-            <div key={d.id} className={styles.tRow} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && setSelected(d)} onClick={() => setSelected(d)}>
-              <span className={styles.rowNum}>{(safePage - 1) * PAGE_SIZE + i + 1}</span>
-              <span className={styles.moduleName}>
-                <span className={styles.moduleIcon} style={{ background: (d.color || G.darkGray) + '1A', color: d.color }}>{d.icon}</span>
-                <span className={styles.moduleLabel}>{d.sourceLabel}</span>
-              </span>
-              <span className={styles.num} style={{ textAlign: 'center' }}>{d.receiptNo}</span>
-              <span className={styles.num} style={{ textAlign: 'center' }}>{fmtDate(d.date)}</span>
-              {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED', fontWeight: 600 }}>{fmt(d.vat || 0)}</span>}
-              <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(d.amountPaid)}</span>
-              {activeTab === 'receivable' && (
-                <span className={styles.num} style={{ textAlign: 'right', color: d.balance < -0.001 ? '#DC2626' : G.forest, fontWeight: d.balance < -0.001 ? 700 : 400 }}>
-                  {fmt(Math.abs(d.balance))}
-                  {d.balance < -0.001 ? ' owed' : ' ✓'}
+          ) : pagedDocs.map((d, i) => {
+            // Per-row input VAT: proportional share of total company input VAT
+            const rowOutVat = d.vatTotal || 0;
+            const rowInVat  = vatTotal > 0 ? Math.round(rowOutVat / vatTotal * inputVatTotal * 100) / 100 : 0;
+            return (
+              <div
+                key={d.id}
+                className={styles.tRow}
+                role="button"
+                tabIndex={0}
+                style={{ gridTemplateColumns: activeTab === 'receipts'
+                  ? '40px 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr'
+                  : '40px 1.8fr 1.1fr 1fr 1fr 1fr 1fr' }}
+                onKeyDown={e => e.key === 'Enter' && setSelected(d)}
+                onClick={() => setSelected(d)}
+              >
+                <span className={styles.rowNum}>{(safePage - 1) * PAGE_SIZE + i + 1}</span>
+                <span className={styles.moduleName}>
+                  <span className={styles.moduleIcon} style={{ background: (d.color || G.darkGray) + '1A', color: d.color }}>{d.icon}</span>
+                  <span className={styles.moduleLabel}>{d.sourceLabel}</span>
                 </span>
-              )}
-              <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(d.total)}</span>
-            </div>
-          ))}
+                <span className={styles.num} style={{ textAlign: 'center' }}>{d.receiptNo}</span>
+                <span className={styles.num} style={{ textAlign: 'center' }}>{fmtDate(d.date)}</span>
+                {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 600 }}>{fmt(rowOutVat)}</span>}
+                {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 600 }}>{fmt(rowInVat)}</span>}
+                <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(d.amountPaid)}</span>
+                {activeTab === 'receivable' && (
+                  <span className={styles.num} style={{ textAlign: 'right', color: d.balance < -0.001 ? '#DC2626' : G.forest, fontWeight: d.balance < -0.001 ? 700 : 400 }}>
+                    {fmt(Math.abs(d.balance))}
+                    {d.balance < -0.001 ? ' owed' : ' ✓'}
+                  </span>
+                )}
+                <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(d.total)}</span>
+              </div>
+            );
+          })}
 
           {activeDocs.length > 0 && (
-            <div className={styles.summaryRow}>
+            <div
+              className={styles.summaryRow}
+              style={{ gridTemplateColumns: activeTab === 'receipts'
+                ? '40px 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr'
+                : '40px 1.8fr 1.1fr 1fr 1fr 1fr 1fr' }}
+            >
               <span className={styles.rowNum}></span>
-              <span className={styles.moduleName} style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 13 }}>Summary</span>
+              <span className={styles.moduleName} style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 13 }}>TOTAL</span>
               <span></span>
               <span></span>
-              <span></span>
-              {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: '#7C3AED' }}>{fmt(vatTotal)}</span>}
-              <span></span>
+              {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: '#059669' }}>{fmt(vatTotal)}</span>}
+              {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: '#DC2626' }}>{fmt(inputVatTotal)}</span>}
+              <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>
+                {activeTab === 'receipts' ? fmt(paidValue) : ''}
+              </span>
               {activeTab === 'receivable' && <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: '#DC2626' }}>{fmt(owedTotal)}</span>}
-              <span></span>
+              <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>
+                {activeTab === 'receipts' ? fmt(paidValue) : ''}
+              </span>
+            </div>
+          )}
+          {/* VAT reconciliation summary shown beneath paid receipts table */}
+          {activeTab === 'receipts' && activeDocs.length > 0 && (
+            <div style={{ display: 'flex', gap: 12, padding: '10px 16px', background: '#F9FAFB', borderTop: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 160, padding: '8px 12px', borderRadius: 6, background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Output VAT</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#059669', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(vatTotal)}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 1 }}>Collected from customers</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 160, padding: '8px 12px', borderRadius: 6, background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Input VAT</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#DC2626', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(inputVatTotal)}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 1 }}>Paid to suppliers (POs + Expenses)</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 160, padding: '8px 12px', borderRadius: 6, background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#1E3A8A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Payable VAT</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: payableVatTotal >= 0 ? '#2563EB' : '#DC2626', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(payableVatTotal)}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 1 }}>Output VAT − Input VAT → government</div>
+              </div>
             </div>
           )}
         </div>
