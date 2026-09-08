@@ -1,7 +1,6 @@
 /* ================================================================
    RegisterPage.module.css
-   Design System: The Ultimate General Design & CSS Master Note
-   Architecture: CSS Variables (HSL) + Mobile-First + 8-Point Grid
+   Centered Standard Register Page
    ================================================================ */
 
 /* ── 1. RESET ────────────────────────────────────────────────── */
@@ -31,277 +30,63 @@
   --success-bg:          142 60% 95%;
 }
 
-/* ── 3. FULL-SCREEN TWO-COLUMN LAYOUT ───────────────────────── */
+/* ── 3. CENTERED LAYOUT ─────────────────────────────────────── */
 .authContainer {
-  display: flex;
-  width: 100%;
-  min-height: 100vh;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  overflow-x: hidden;
-}
-
-/* ── 4. LEFT PANEL ───────────────────────────────────────────── */
-.leftPanel {
-  display: none; /* Mobile-first: hidden on small screens */
-  width: 38%;
-  flex-shrink: 0;
-  min-height: 100vh;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-start;
-  position: relative;
-  overflow: hidden;
-  background-color: hsl(var(--primary-dark));
-}
-
-@media (min-width: 1024px) {
-  .leftPanel { display: flex; }
-}
-
-/* Gradient overlay */
-.leftPanel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    160deg,
-    hsl(142.1 70% 22%) 0%,
-    hsl(142.1 70% 30%) 55%,
-    hsl(142.1 70% 42%) 100%
-  );
-  z-index: 0;
-}
-
-/* Subtle grid texture */
-.leftPanel::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(255,255,255,0.04) 60px),
-    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(255,255,255,0.04) 60px);
-  z-index: 1;
-}
-
-.brandBlock {
-  position: relative;
-  z-index: 2;
-  padding: 3rem 2.25rem 0;
-  width: 100%;
-}
-
-.brandLogo {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  margin-bottom: 3rem;
-}
-
-.logoMark {
-  width: 3rem;
-  height: 3rem;
-  background-color: hsl(var(--background));
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  border-radius: var(--radius);
+  width: 100%;
+  min-height: 100vh;
+  background-color: hsl(var(--muted));
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 2rem 1rem;
 }
 
-.logoMark svg {
-  width: 1.875rem;
-  height: 1.875rem;
-}
-
-.brandName {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: hsl(var(--primary-foreground));
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  line-height: 1.1;
-}
-
-.brandTagline {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.6);
-  letter-spacing: 0.06em;
-  font-weight: 400;
-  text-transform: uppercase;
-  margin-top: 0.25rem;
-}
-
-.heroText {
-  margin-top: 3rem;
-}
-
-.heroText h1 {
-  font-size: 2.25rem;
-  font-weight: 700;
-  color: hsl(var(--primary-foreground));
-  line-height: 1.15;
-  margin-bottom: 1rem;
-  letter-spacing: -0.02em;
-}
-
-.heroText h1 span {
-  color: hsl(100 100% 75%);
-}
-
-.heroText p {
-  font-size: 1rem;
-  color: rgba(255,255,255,0.72);
-  line-height: 1.625;
-  max-width: 18.75rem;
-}
-
-.featureList {
-  list-style: none;
-  padding: 0;
-  margin: 1.75rem 0 0;
+.formArea {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 35rem; /* slightly wider than login for the grid */
+}
+
+/* ── BRAND HEADER ────────────────────────────────────────────── */
+.brandHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
   gap: 0.75rem;
 }
 
-.featureList li {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  font-size: 0.875rem;
-  color: rgba(255,255,255,0.8);
-  font-weight: 400;
-  line-height: 1.5;
-}
-
-.featureDot {
-  width: 0.5rem;
-  height: 0.5rem;
-  background-color: hsl(100 100% 75%);
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.leftFooter {
-  position: relative;
-  z-index: 2;
-  padding: 0 2.25rem 2rem;
-  width: 100%;
-}
-
-.leftFooter p {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.4);
-  line-height: 1.625;
-}
-
-/* ── 5. RIGHT PANEL ──────────────────────────────────────────── */
-.rightPanel {
-  flex: 1;
-  min-height: 100vh;
-  background-color: hsl(var(--muted));
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  overflow-y: auto;
-}
-
-/* ── TOP BAR ─────────────────────────────────────────────────── */
-.rightTopBar {
-  width: 100%;
-  background-color: hsl(var(--primary));
-  padding: 0 1.5rem;
+.logoMark {
+  width: 3.5rem;
   height: 3.5rem;
+  background-color: hsl(var(--primary-foreground));
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
+  justify-content: center;
+  padding: 0.5rem;
 }
 
-@media (min-width: 640px) {
-  .rightTopBar { padding: 0 3rem; }
-}
-
-.topBarBrand {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: hsl(var(--primary-foreground));
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.topBarNav {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-}
-
-.topBarNav a {
-  font-size: 0.8125rem;
-  color: rgba(255,255,255,0.8);
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-.topBarNav a:hover { color: hsl(var(--primary-foreground)); }
-
-.topBarNav a:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
-  border-radius: 2px;
-}
-
-/* ── FORM AREA ───────────────────────────────────────────────── */
-.formArea {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 2.5rem 1.5rem;
-}
-
-@media (min-width: 640px) {
-  .formArea { padding: 2.5rem 3rem; }
-}
-
-/* ── PAGE TITLE ──────────────────────────────────────────────── */
-.pageTitle {
+.logoMark svg {
   width: 100%;
-  max-width: 35rem;
-  margin-bottom: 1.5rem;
+  height: 100%;
 }
 
-.pageTitle h2 {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
-  margin: 0 0 0.375rem;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.pageTitle p {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  margin: 0;
-  line-height: 1.5;
-}
-
-.titleAccent {
-  width: 3rem;
-  height: 3px;
-  background-color: hsl(var(--primary));
-  margin-top: 0.75rem;
-  border-radius: 9999px;
+.brandTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: hsl(var(--primary));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 /* ── NOTIFICATIONS ───────────────────────────────────────────── */
 .notification {
   width: 100%;
-  max-width: 35rem;
   padding: 0.875rem 1.125rem;
   margin-bottom: 1.25rem;
   display: flex;
@@ -331,22 +116,51 @@
   border-color: hsl(var(--success));
 }
 
+.notificationIcon { flex-shrink: 0; }
+
 /* ── FORM CARD ───────────────────────────────────────────────── */
 .formCard {
   background-color: hsl(var(--background));
   width: 100%;
-  max-width: 35rem;
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 2rem;
   border-radius: var(--radius-lg);
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
 }
 
-@media (min-width: 640px) {
-  .formCard { padding: 2.5rem; }
+/* ── FORM HEADING ────────────────────────────────────────────── */
+.formHeading {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.formHeading h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.375rem;
+  letter-spacing: -0.02em;
+}
+
+.formHeading p {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.headingAccent {
+  width: 3rem;
+  height: 3px;
+  background-color: hsl(var(--primary));
+  margin: 0.75rem auto 0;
+  border-radius: 9999px;
 }
 
 /* ── ACCOUNT TYPE BADGE ──────────────────────────────────────── */
+.accountTypeBadgeWrapper {
+  display: flex;
+  justify-content: center;
+}
+
 .accountTypeBadge {
   display: inline-flex;
   align-items: center;
@@ -365,7 +179,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 1.25rem; /* Consistent gap between grid and button section */
   width: 100%;
 }
 
@@ -373,7 +187,6 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.25rem;
-  margin-bottom: 1rem;
 }
 
 @media (min-width: 640px) {
@@ -390,7 +203,6 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: hsl(var(--foreground));
-  display: block;
 }
 
 /* ── INPUTS ──────────────────────────────────────────────────── */
@@ -455,31 +267,11 @@
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
-/* ── SHOW PASSWORD LABEL ─────────────────────────────────────── */
-.showPasswordLabel {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 400;
-  color: hsl(var(--muted-foreground));
-  user-select: none;
-  margin-bottom: 1.25rem;
-}
-
-.showPasswordCheck {
-  width: 1rem;
-  height: 1rem;
-  accent-color: hsl(var(--primary));
-  cursor: pointer;
-}
-
 /* ── FORM ACTIONS ────────────────────────────────────────────── */
 .formActions {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  margin-top: 0.25rem;
 }
 
 /* ── PRIMARY BUTTON ──────────────────────────────────────────── */
@@ -643,48 +435,5 @@
 .backHome:focus {
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
-  border-radius: 2px;
-}
-
-/* ── RIGHT FOOTER ────────────────────────────────────────────── */
-.rightFooter {
-  width: 100%;
-  background-color: hsl(var(--primary));
-  padding: 1rem 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-@media (min-width: 640px) {
-  .rightFooter { padding: 1rem 3rem; }
-}
-
-.rightFooter p {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.7);
-  margin: 0;
-}
-
-.footerLinks {
-  display: flex;
-  gap: 1.25rem;
-}
-
-.footerLinks a {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.6);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.footerLinks a:hover { color: hsl(var(--primary-foreground)); }
-
-.footerLinks a:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
   border-radius: 2px;
 }
