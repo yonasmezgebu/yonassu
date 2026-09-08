@@ -157,7 +157,12 @@ const invoiceDocumentsFromSalesInvoices = async ({ source, sourceLabel, icon, co
 
     const amountPaid = receipt ? asNum(receipt.amount_paid) : 0;
     const total = asNum(inv.total_amount);
-    const balance = round2(amountPaid - total);
+    // A receipt record is proof that Finance confirmed the payment.
+    // If a receipt exists the invoice is fully settled — balance must be 0.
+    // (The old formula amountPaid - total gave false "owed" figures because
+    //  several modules store VAT-inclusive prices; the invoice then re-added
+    //  VAT on top, making total > amountPaid even though the customer paid.)
+    const balance = receipt ? 0 : round2(amountPaid - total);
 
     docs.push({
       id: inv.id,
