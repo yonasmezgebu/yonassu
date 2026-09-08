@@ -383,6 +383,7 @@ const [navSearch, setNavSearch] = useState('');
 
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [viewOrderDetail, setViewOrderDetail] = useState(null);
 
   
   const handleToggleHide = async (p) => {
@@ -888,7 +889,14 @@ const addToCart = (item) => {
     }
   };
 
-  const handleDeleteOrder = async (orderId) => {
+  const canDeleteOrder = (order) => ['CANCELLED', 'COMPLETED'].includes(order?.status);
+
+  const handleDeleteOrder = async (orderId, order) => {
+    if (order && !canDeleteOrder(order)) {
+      showToast('You can only delete a cancelled or completed order.', 'error');
+      setDeleteTarget(null);
+      return;
+    }
     try {
       const res = await apiClient.delete(`/pos/orders/${orderId}`);
       if (res.status === 'success') {
@@ -2703,57 +2711,88 @@ const addToCart = (item) => {
                 <p style={{ fontSize: 13 }}>All online customer orders have been processed.</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
-                {pendingOrders.map(order => (
-                  <div key={order.id} style={{ background: '#F9FAFB', borderRadius: 10, border: '1px solid #E5E7EB', padding: 16, transition: 'all 0.15s' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontWeight: 700, color: '#2563eb', fontSize: 15, fontFamily: 'monospace' }}>{order.sale_code || `ORD-${order.id}`}</span>
-                      <span style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999, }}>ONLINE</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
-                      👤 <strong>{order.customer_name || 'Guest Customer'}</strong>
-                      {order.customer_phone && <span style={{ color: '#6b7280', marginLeft: 6 }}>· {order.customer_phone}</span>}
-                    </div>
-                    {order.order_ref && (
-                      <div style={{ fontSize: 12, color: '#7c3aed', marginBottom: 8 }}>📋 Rx: {order.order_ref}</div>
-                    )}
-                    <div style={{ marginBottom: 12, background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px' }}>
-                      {(order.items || []).map(item => (
-                        <div key={item.id || item.product_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#475569', padding: '3px 0' }}>
-                          <span>💊 {item.product_name} × {item.quantity}</span>
-                          <span style={{ fontWeight: 600 }}>{parseFloat(item.line_total || (item.quantity * item.unit_price)).toFixed(2)} ETB</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(order.created_at).toLocaleString()}</div>
-                        <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--primary)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
-                        {order.payment_status === 'PAID' ? (
-                          <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600, marginTop: 4 }}>✅ Verified by Finance</div>
-                        ) : (
-                          <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, marginTop: 4 }}>⏳ Awaiting Finance</div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button 
-                          onClick={() => setDeleteTarget(order.id)} 
-                          style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', padding: '10px 14px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: 'all 0.15s' }}
-                          title="Delete Order Permanently"
-                        >
-                          🗑️
-                        </button>
-                        <button 
-                          onClick={() => processOnlineOrder(order)} 
-                          disabled={order.payment_status !== 'PAID'}
-                          style={{ background: order.payment_status === 'PAID' ? 'var(--primary)' : '#9ca3af', color: 'white', border: `1px solid ${order.payment_status === 'PAID' ? 'var(--primary)' : '#9ca3af'}`, padding: '10px 20px', borderRadius: 8, cursor: order.payment_status === 'PAID' ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}
-                        >
-                          {order.payment_status === 'PAID' ? 'Process Order →' : 'Locked 🔒'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#F3F4F6', color: '#6B7280', textTransform: 'uppercase', fontSize: 11, letterSpacing: '0.05em' }}>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', whiteSpace: 'nowrap' }}>Order</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left' }}>Customer</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left' }}>Items</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', whiteSpace: 'nowrap' }}>Placed</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'right' }}>Total</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', whiteSpace: 'nowrap' }}>Payment</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingOrders.map(order => (
+                      <tr key={order.id} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.15s' }}>
+                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 700, color: '#2563eb', fontSize: 14, fontFamily: 'monospace' }}>{order.sale_code || `ORD-${order.id}`}</span>
+                            <span style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999 }}>ONLINE</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>
+                            👤 {order.customer_name || 'Guest Customer'}
+                          </div>
+                          {order.customer_phone && <div style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{order.customer_phone}</div>}
+                          {order.order_ref && <div style={{ fontSize: 12, color: '#7c3aed', marginTop: 2, whiteSpace: 'nowrap' }}>📋 Rx: {order.order_ref}</div>}
+                        </td>
+                        <td style={{ padding: '12px 14px', minWidth: 180 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {(order.items || []).map(item => (
+                              <div key={item.id || item.product_id} style={{ display: 'flex', gap: 10, fontSize: 12, color: '#475569', whiteSpace: 'nowrap' }}>
+                                <span>💊 {item.product_name} × {item.quantity}</span>
+                                <span style={{ fontWeight: 600, marginLeft: 'auto' }}>{parseFloat(item.line_total || (item.quantity * item.unit_price)).toFixed(2)} ETB</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(order.created_at).toLocaleString()}</div>
+                        </td>
+                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--primary)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
+                        </td>
+                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                          {order.payment_status === 'PAID' ? (
+                            <span style={{ fontSize: 11, color: '#10b981', fontWeight: 700, background: '#DCFCE7', padding: '3px 10px', borderRadius: 999 }}>✅ Verified by Finance</span>
+                          ) : (
+                            <span style={{ fontSize: 11, color: '#b45309', fontWeight: 700, background: '#FEF3C7', padding: '3px 10px', borderRadius: 999 }}>⏳ Awaiting Finance</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
+                            <button
+                              onClick={() => setViewOrderDetail(order)}
+                              style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: 'all 0.15s', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                              title="View Order"
+                            >
+                              <Eye size={14} /> View
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(order)}
+                              disabled={!canDeleteOrder(order)}
+                              style={{ background: canDeleteOrder(order) ? '#fee2e2' : '#F3F4F6', color: canDeleteOrder(order) ? '#dc2626' : '#9CA3AF', border: `1px solid ${canDeleteOrder(order) ? '#fecaca' : '#E5E7EB'}`, padding: '8px 12px', borderRadius: 8, cursor: canDeleteOrder(order) ? 'pointer' : 'not-allowed', fontWeight: 700, fontSize: 13, transition: 'all 0.15s' }}
+                              title={canDeleteOrder(order) ? 'Delete Order' : 'Delete only allowed for cancelled or completed orders'}
+                            >
+                              🗑️
+                            </button>
+                            <button
+                              onClick={() => processOnlineOrder(order)}
+                              disabled={order.payment_status !== 'PAID'}
+                              style={{ background: order.payment_status === 'PAID' ? 'var(--primary)' : '#9ca3af', color: 'white', border: `1px solid ${order.payment_status === 'PAID' ? 'var(--primary)' : '#9ca3af'}`, padding: '8px 16px', borderRadius: 8, cursor: order.payment_status === 'PAID' ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}
+                            >
+                              {order.payment_status === 'PAID' ? 'Process Order →' : 'Locked 🔒'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -3031,6 +3070,130 @@ const addToCart = (item) => {
         </div>
       )}
 
+      {/* Online Order Detail Modal */}
+      {viewOrderDetail && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9998, backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: 'white', borderRadius: 14, maxWidth: 620, width: '95%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.2)' }}>
+            {/* Header */}
+            <div style={{ background: 'var(--header)', color: 'white', padding: '20px 24px', borderRadius: '14px 14px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Eye size={20} /> Online Order Details
+                </h3>
+                <div style={{ marginTop: 4, fontSize: 13, opacity: 0.8 }}>
+                  {viewOrderDetail.sale_code || `ORD-${viewOrderDetail.id}`}
+                  <span style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: 999, marginLeft: 10, fontSize: 11, fontWeight: 700 }}>ONLINE</span>
+                </div>
+              </div>
+              <button onClick={() => setViewOrderDetail(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, color: 'white', cursor: 'pointer', padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              {/* Customer Info */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>👤 Customer Information</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ padding: '10px 14px', background: '#F9FAFB', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                    <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 2 }}>Name</div>
+                    <div style={{ fontWeight: 600, color: '#111827', fontSize: 14 }}>{viewOrderDetail.customer_name || 'Guest Customer'}</div>
+                  </div>
+                  <div style={{ padding: '10px 14px', background: '#F9FAFB', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                    <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 2 }}>Phone</div>
+                    <div style={{ fontWeight: 600, color: '#111827', fontSize: 14 }}>{viewOrderDetail.customer_phone || '—'}</div>
+                  </div>
+                </div>
+                {viewOrderDetail.order_ref && (
+                  <div style={{ marginTop: 10, padding: '10px 14px', background: '#F5F3FF', borderRadius: 8, border: '1px solid #DDD6FE' }}>
+                    <div style={{ fontSize: 11, color: '#7C3AED', marginBottom: 2 }}>📋 Reference</div>
+                    <div style={{ fontWeight: 600, color: '#7C3AED', fontSize: 14 }}>{viewOrderDetail.order_ref}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Items Table */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>🛒 Items</div>
+                <div style={{ border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: '#F3F4F6', color: '#6B7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <th style={{ padding: '8px 14px', textAlign: 'left' }}>Product</th>
+                        <th style={{ padding: '8px 14px', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '8px 14px', textAlign: 'right' }}>Unit Price</th>
+                        <th style={{ padding: '8px 14px', textAlign: 'right' }}>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(viewOrderDetail.items || []).map((item, i) => {
+                        const qty = parseFloat(item.quantity) || 0;
+                        const price = parseFloat(item.unit_price) || 0;
+                        const total = parseFloat(item.line_total || (qty * price));
+                        return (
+                          <tr key={item.id || item.product_id || i} style={{ borderTop: '1px solid #F3F4F6' }}>
+                            <td style={{ padding: '10px 14px', fontWeight: 600, color: '#111827' }}>💊 {item.product_name || `Product #${item.product_id}`}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', color: '#4B5563' }}>{qty}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', color: '#4B5563' }}>{price.toFixed(2)} ETB</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>{total.toFixed(2)} ETB</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                <div style={{ padding: '14px', background: '#F9FAFB', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>Order Date</div>
+                  <div style={{ fontWeight: 600, color: '#111827', fontSize: 13 }}>{new Date(viewOrderDetail.created_at).toLocaleString()}</div>
+                </div>
+                <div style={{ padding: '14px', background: viewOrderDetail.payment_status === 'PAID' ? '#F0FDF4' : '#FFFBEB', borderRadius: 8, border: `1px solid ${viewOrderDetail.payment_status === 'PAID' ? '#BBF7D0' : '#FDE68A'}` }}>
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>Payment Status</div>
+                  {viewOrderDetail.payment_status === 'PAID' ? (
+                    <span style={{ fontSize: 13, color: '#16A34A', fontWeight: 700 }}>✅ Verified by Finance</span>
+                  ) : (
+                    <span style={{ fontSize: 13, color: '#B45309', fontWeight: 700 }}>⏳ Awaiting Finance Verification</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Total */}
+              <div style={{ padding: '16px 20px', background: 'var(--header)', borderRadius: 8, color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Total Amount</span>
+                <span style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{parseFloat(viewOrderDetail.total_amount).toFixed(2)} ETB</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => { setViewOrderDetail(null); processOnlineOrder(viewOrderDetail); }}
+                  disabled={viewOrderDetail.payment_status !== 'PAID'}
+                  style={{ flex: 1, minHeight: 44, padding: '12px 0', background: viewOrderDetail.payment_status === 'PAID' ? 'var(--primary)' : '#9CA3AF', color: 'white', border: 'none', borderRadius: 8, cursor: viewOrderDetail.payment_status === 'PAID' ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  {viewOrderDetail.payment_status === 'PAID' ? 'Process Order →' : '🔒 Locked (Awaiting Finance)'}
+                </button>
+                <button
+                  onClick={() => { setViewOrderDetail(null); setDeleteTarget(viewOrderDetail); }}
+                  disabled={!canDeleteOrder(viewOrderDetail)}
+                  style={{ padding: '12px 20px', background: canDeleteOrder(viewOrderDetail) ? '#FEE2E2' : '#F3F4F6', color: canDeleteOrder(viewOrderDetail) ? '#DC2626' : '#9CA3AF', border: `1px solid ${canDeleteOrder(viewOrderDetail) ? '#FECACA' : '#E5E7EB'}`, borderRadius: 8, cursor: canDeleteOrder(viewOrderDetail) ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}
+                >
+                  <Trash2 size={16} /> {canDeleteOrder(viewOrderDetail) ? 'Delete' : 'Delete (cancelled/completed only)'}
+                </button>
+                <button
+                  onClick={() => setViewOrderDetail(null)}
+                  style={{ padding: '12px 20px', background: 'white', color: '#4B5563', border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
@@ -3050,7 +3213,7 @@ const addToCart = (item) => {
                 Cancel
               </button>
               <button
-                onClick={() => handleDeleteOrder(deleteTarget)}
+                onClick={() => handleDeleteOrder(deleteTarget.id, deleteTarget)}
                 style={{ flex: 1, minHeight: 44, padding: '12px 0', background: '#DC2626', color: 'white', border: '1px solid #DC2626', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}
               >
                 <Trash2 size={18} /> Yes, Delete
