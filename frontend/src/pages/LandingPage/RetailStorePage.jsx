@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../../services/apiClient';
 import { loadVatSafe, getVatForItem } from '../../services/vatService';
+import authService from '../../services/authService';
 import { PublicNav } from './PublicNavFooter';
 import {
   Store, ShoppingCart, Search, Package, Plus, Minus, Trash2, X,
   CheckCircle, Star, Zap, TrendingUp, ArrowRight, Truck, Phone,
   Mail, FileText, Shield, Info, CreditCard, Box, ChevronDown,
   ChevronUp, Clock, Banknote, User, LogIn, UserPlus, AlignLeft,
-  UploadCloud, AlertTriangle, Check
+  UploadCloud, AlertTriangle, Check, LogOut, ShieldAlert
 } from 'lucide-react';
 import retailStoreHero from '../../assets/hero-section/retail store.jpg';
 import './LandingRedesign.css';
@@ -44,6 +45,7 @@ const RetailStorePage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [placingOrder,   setPlacingOrder]   = useState(false);
   const [orderSuccess,   setOrderSuccess]   = useState(null);
+  const [roleWarning,    setRoleWarning]    = useState(false);
 
   const [orderForm, setOrderForm] = useState({
     delivery_type:    'pickup',
@@ -132,7 +134,12 @@ const RetailStorePage = () => {
       .then(r => setCategories(Array.isArray(r?.data) ? r.data : []))
       .catch(() => {});
 
-    if (parsedUser) {
+    const parsedRoles = Array.isArray(parsedUser?.roles)
+      ? parsedUser.roles.map(r => String(r).toLowerCase())
+      : [];
+    const isCustomerAccount = parsedRoles.includes('customer');
+
+    if (parsedUser && isCustomerAccount) {
       const pendingProductId = location.state?.pendingRetailCartItem || sessionStorage.getItem('pendingRetailCartItem');
       const shouldOpenCart   = location.state?.openRetailCart || sessionStorage.getItem('openRetailCart') === 'true';
 
@@ -189,6 +196,11 @@ const RetailStorePage = () => {
       navigate('/login', { state: { from: '/services/retail' } });
       return;
     }
+    const roles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toLowerCase()) : [];
+    if (!roles.includes('customer')) {
+      setRoleWarning(true);
+      return;
+    }
     try {
       await axios.post('/retail/cart/add', { product_id: product.id, quantity: 1 });
       loadCart();
@@ -214,6 +226,11 @@ const RetailStorePage = () => {
   };
 
   const placeOrder = async () => {
+    const orderRoles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toLowerCase()) : [];
+    if (!orderRoles.includes('customer')) {
+      setRoleWarning(true);
+      return;
+    }
     if (cartItems.length === 0) return;
     const missing = [];
     if (!(orderForm.customer_name  || '').trim()) missing.push('Full Name');
@@ -816,6 +833,50 @@ const RetailStorePage = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────── CUSTOMER-ONLY WARNING ─────────────── */}
+      {roleWarning && (
+        <div className="rsp-overlay" onClick={() => setRoleWarning(false)}>
+          <div className="rsp-modal" onClick={e => e.stopPropagation()}>
+            <div className="rsp-modal-header">
+              <div>
+                <h3 className="rsp-modal-title">
+                  <ShieldAlert size={22} /> Customer Account Required
+                </h3>
+                <p className="rsp-modal-subtitle">Orders on the public store are for customer accounts only</p>
+              </div>
+              <button className="rsp-close-btn" onClick={() => setRoleWarning(false)}><X size={20} strokeWidth={2.5} /></button>
+            </div>
+
+            <div className="rsp-modal-body">
+              <div className="rsp-role-warn-box">
+                <div className="rsp-role-warn-icon">
+                  <ShieldAlert size={40} color="#B45309" strokeWidth={2} />
+                </div>
+                <p className="rsp-role-warn-text">
+                  You are currently signed in as <strong>{user?.fullName || user?.full_name || 'a staff account'}</strong>.
+                </p>
+                <p className="rsp-role-warn-text">
+                  Adding to cart and placing orders here is only available to <strong>Customer</strong> accounts.
+                  Please <strong>log out</strong> and sign in with your customer account to continue with this order.
+                </p>
+                {selectedProduct && (
+                  <p className="rsp-role-warn-product">
+                    Item: <strong>{selectedProduct.name}</strong> — <strong>{parseFloat(selectedProduct.price || 0).toLocaleString()} ETB</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="rsp-modal-footer">
+              <button type="button" className="rsp-cancel-btn" onClick={() => setRoleWarning(false)}>Not Now</button>
+              <button type="button" className="rsp-submit-btn" onClick={() => authService.logout()}>
+                <LogOut size={16} strokeWidth={2.5} /> Log Out &amp; Switch to Customer
+              </button>
+            </div>
           </div>
         </div>
       )}
