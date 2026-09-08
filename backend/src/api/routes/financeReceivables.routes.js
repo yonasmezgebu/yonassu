@@ -450,6 +450,8 @@ router.get('/live-income/:id/detail', authenticate, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Submission not found' });
     }
 
+    let transactions = [];
+
     // For Pharmacy dept — use the sales snapshot from manual_details if present (new format),
     // otherwise fall back to querying pharmacy_sales directly (legacy format)
     if (submission.department === 'Pharmacy') {
