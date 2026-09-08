@@ -2658,6 +2658,12 @@ exports.deleteRetailOrder = catchAsync(async (req, res) => {
     throw new AppError('Order not found', 404);
   }
 
+  // Only cancelled or completed orders may be (soft-)deleted. Orders awaiting
+  // finance verification must not be removed before processing.
+  if (!['CANCELLED', 'COMPLETED'].includes(order.status)) {
+    throw new AppError('You can only delete a cancelled or completed order.', 400);
+  }
+
   // Soft delete: mark the order cancelled (keeps the record + items for history/
   // audit) rather than permanently destroying it. A cancelled status drops it out
   // of the pending online orders list (which only shows PROCESSING/PENDING).
