@@ -611,11 +611,28 @@ const addToCart = (item) => {
             const invoiceReq = await apiClient.post('/pos/checkout-retail', payload);
             invoiceNumber = invoiceReq?.invoice_number || invoiceReq?.data?.invoice_number || invoiceNumber;
         } else {
-            // DIGITAL PAYMENTS (Bank/Telebirr)
-            // As requested, these are NOT recorded in retail_transactions.
-            // They are already audited in finance_income_submissions (receivable book).
-            // We just generate a receipt number for the physical printout.
-            invoiceNumber = 'DIGITAL-' + Math.floor(Math.random()*10000);
+            // DIGITAL PAYMENTS (Bank/Telebirr) — record normally via checkout-retail
+            // so sales_invoices, sales_receipts, and pos_sales are all properly created.
+            const digitalPayload = {
+              sale_type: overrideItem ? (overrideItem.saleType || 'walk_in') : (saleType || 'walk_in'),
+              items: saleItems,
+              cart_id: overrideItem ? overrideItem.id : null,
+              order_request_id: orderRequestId,
+              payment: {
+                method: paymentMethodSrc,
+                amount: totalSrc,
+                status: 'PAID',
+                recipient_name: payerNameSrc,
+                recipient_phone: overrideItem ? (overrideItem.payerPhone || '') : (payerPhone || recipientPhone),
+                transaction_id: txnIdSrc,
+                bank_name: bankName,
+                account_holder: accountHolder,
+                account_number: accountNumber,
+                telbir_number: telbirNumber,
+              }
+            };
+            const invoiceReq = await apiClient.post('/pos/checkout-retail', digitalPayload);
+            invoiceNumber = invoiceReq?.invoice_number || invoiceReq?.data?.invoice_number || invoiceNumber;
         }
 
         setOrderRequestId(null);
@@ -958,7 +975,14 @@ const addToCart = (item) => {
     setPayerPhone(order.customer_phone || '');
     setPaymentAmount(parseFloat(order.total_amount || 0).toFixed(2));
     setPaymentStatus(order.payment_status || 'PAID');
-    setPosPaymentMethod('CASH');
+    
+    // Set correct payment details
+    const method = String(order.payment_method || '').toUpperCase();
+    if (method.includes('BANK')) setPosPaymentMethod('BANK_TRANSFER');
+    else if (method.includes('TELEBIRR') || method.includes('TELBIR') || method.includes('MOBILE')) setPosPaymentMethod('TELBIR');
+    else setPosPaymentMethod('CASH');
+
+    setTxnId(order.payment_ref || '');
     setTab('retail-walkin');
     setShowCart(true);
   };
@@ -2586,9 +2610,15 @@ const addToCart = (item) => {
                <div style={{ textAlign: 'center', padding: '80px 24px', background: '#FAFAFA', borderRadius: 10 }}>
                   <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
                   <h3 style={{ fontWeight: 700, color: '#1E293B', marginBottom: 8, fontSize: 19 }}>All Caught Up!</h3>
-                  <p style={{ color: '#6B7280', maxWidth: 400, margin: '0 auto', lineHeight: 1.5 }}>
-                    There are no unsubmitted sales. Any completed sales have already been moved to the Audit Log.
+                  <p style={{ color: '#6B7280', maxWidth: 400, margin: '0 auto 16px', lineHeight: 1.5 }}>
+                    No pending sales to submit. All completed sales have been sent to Finance.
                   </p>
+                  <button
+                    onClick={() => { setShowAudit(true); setTab('retail-walkin'); loadAuditTrail(auditPeriod); }}
+                    style={{ padding: '10px 20px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                  >
+                    📜 View Audit Log
+                  </button>
                </div>
              ) : (
                <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #E5E7EB' }}>
@@ -2632,11 +2662,25 @@ const addToCart = (item) => {
                              </span>
                            </td>
                            <td style={tdStyle}>
-                             <span style={{
-                               background: '#F9FAFB', color: '#374151', padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600
-                             }}>
-                               {sale.payment_method_name || 'CASH'}
-                             </span>
+                             {(() => {
+                               const pm = sale.payment_method_name || sale.payment_method || 'Cash';
+                               const colors = {
+                                 'cash':          { bg: '#DCFCE7', color: '#166534' },
+                                 'telebirr':      { bg: '#F3E8FF', color: '#6D28D9' },
+                                 'bank transfer': { bg: '#DBEAFE', color: '#1D4ED8' },
+                                 'bank_transfer': { bg: '#DBEAFE', color: '#1D4ED8' },
+                                 'credit':        { bg: '#FEF3C7', color: '#92400E' },
+                                 'check':         { bg: '#E0F2FE', color: '#0369A1' },
+                               };
+                               const c = colors[pm.toLowerCase()] || { bg: '#F3F4F6', color: '#374151' };
+                               const icons = { cash: '💵', telebirr: '📱', 'bank transfer': '🏦', bank_transfer: '🏦', credit: '📋', check: '✉️' };
+                               const icon = icons[pm.toLowerCase()] || '💳';
+                               return (
+                                 <span style={{ background: c.bg, color: c.color, padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                   {icon} {pm.toUpperCase()}
+                                 </span>
+                               );
+                             })()}
                            </td>
                            <td style={{...tdStyle, textAlign: 'right'}}>
                              <strong style={{ color: 'var(--primary)', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{parseFloat(sale.total_amount || 0).toLocaleString()} ETB</strong>
@@ -2947,24 +2991,39 @@ const addToCart = (item) => {
                 <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                   <DollarSign size={14} color="#2563EB" /> Payment Info
                 </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ fontSize: 13, color: '#111827' }}>
-                    <strong>Method:</strong> {detail.payment_method_name || '—'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Payment method with color badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, minWidth: 100 }}>Method:</span>
+                    {(() => {
+                      const pm = detail.payment_method_name || detail.payment_method || 'Cash';
+                      const colors = {
+                        'cash': { bg: '#DCFCE7', color: '#166534' }, 'telebirr': { bg: '#F3E8FF', color: '#6D28D9' },
+                        'bank transfer': { bg: '#DBEAFE', color: '#1D4ED8' }, 'bank_transfer': { bg: '#DBEAFE', color: '#1D4ED8' },
+                        'credit': { bg: '#FEF3C7', color: '#92400E' }, 'check': { bg: '#E0F2FE', color: '#0369A1' },
+                      };
+                      const icons = { cash: '💵', telebirr: '📱', 'bank transfer': '🏦', bank_transfer: '🏦', credit: '📋', check: '✉️' };
+                      const c = colors[pm.toLowerCase()] || { bg: '#F3F4F6', color: '#374151' };
+                      return <span style={{ background: c.bg, color: c.color, padding: '4px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700 }}>{icons[pm.toLowerCase()] || '💳'} {pm.toUpperCase()}</span>;
+                    })()}
                   </div>
-                  <div style={{ fontSize: 13, color: '#111827' }}>
-                    <strong>Amount Paid:</strong> {parseFloat(detail.amount_paid || detail.total_amount || 0).toFixed(2)} ETB
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, minWidth: 100 }}>Amount Paid:</span>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{parseFloat(detail.amount_paid || detail.total_amount || 0).toFixed(2)} ETB</span>
                   </div>
-                  {detail.payment_reference && (
-                    <div style={{ fontSize: 12, color: '#374151' }}>
-                      <strong>Ref / TxnID:</strong> {detail.payment_reference}
+                  {(detail.payment_reference || detail.payment_ref || detail.transaction_id) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, minWidth: 100 }}>Ref / TxnID:</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', fontFamily: 'monospace', background: '#F3F4F6', padding: '2px 8px', borderRadius: 4 }}>
+                        {detail.payment_reference || detail.payment_ref || detail.transaction_id}
+                      </span>
                     </div>
                   )}
-                  <div style={{ marginTop: 4 }}>
-                    <span style={{
-                      background: detail.status_name === 'Completed' ? '#DCFCE7' : '#FEF3C7',
-                      color: detail.status_name === 'Completed' ? '#166534' : '#92400E',
-                      padding: '2px 10px', fontSize: 11, fontWeight: 600, borderRadius: 999
-                    }}>{detail.status_name || 'Completed'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, minWidth: 100 }}>Status:</span>
+                    <span style={{ background: detail.status_name === 'Completed' ? '#DCFCE7' : '#FEF3C7', color: detail.status_name === 'Completed' ? '#166534' : '#92400E', padding: '2px 10px', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>
+                      {detail.status_name || 'Completed'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -3048,9 +3107,9 @@ const addToCart = (item) => {
                     await apiClient.post('/pos/sales/submit-daily', {});
                     setShowSubmitConfirm(false);
                     submitNotification('Sales Submitted to Finance', `${sales.length} transaction(s) totalling ${sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB submitted to Finance.`);
-                    showToast('✅ Submitted to Finance — transactions moved to Audit', 'success');
-                    // Clear the transactions list and reload audit trail
-                    setSales([]);
+                    showToast('✅ Submitted to Finance — view submitted records in Audit Log', 'success');
+                    // Reload to show any remaining unsubmitted sales (should now be empty)
+                    await loadSales();
                     await loadAuditTrail(auditPeriod);
                   } catch (err) {
                     setShowSubmitConfirm(false);
@@ -3323,10 +3382,9 @@ const addToCart = (item) => {
                       step="0.01"
                       value={editingProduct.cost_price || ''}
                       readOnly
-                      disabled
-                      style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, background: '#F9FAFB', outline: 'none', cursor: 'not-allowed', color: '#9CA3AF', boxSizing: 'border-box' }}
+                      style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #BFDBFE', borderRadius: 8, fontSize: 14, background: '#EFF6FF', outline: 'none', cursor: 'not-allowed', color: '#1E3A8A', fontWeight: 700, boxSizing: 'border-box' }}
                     />
-                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>Read-only — from store inventory</div>
+                    <div style={{ fontSize: 11, color: '#2563EB', marginTop: 4, fontWeight: 600 }}>Read-only — from store inventory</div>
                   </div>
                 </div>
 
