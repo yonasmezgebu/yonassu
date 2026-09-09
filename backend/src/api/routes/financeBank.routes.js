@@ -3,22 +3,23 @@ const router = express.Router();
 const c = require('../controllers/financeBank.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 
-router.use(authenticate);
-
-// Accounts CRUD
+// ── Public: list bank/telebirr accounts so customers can choose payment method ──
 router.get('/', c.getAccounts);
-router.post('/', c.createAccount);
-router.put('/:id', c.updateAccount);
-router.patch('/:id/toggle-status', c.toggleAccountStatus);
+
+// ── All other routes require authentication ──────────────────────────────────
+// Accounts CRUD
+router.post('/', authenticate, c.createAccount);
+router.put('/:id', authenticate, c.updateAccount);
+router.patch('/:id/toggle-status', authenticate, c.toggleAccountStatus);
 
 // Cashbook summary (for the overview cards) and per-account transactions
-router.get('/cashbook/summary', c.getCashbookSummary);
-router.get('/:id/transactions', c.getAccountTransactions);
+router.get('/cashbook/summary', authenticate, c.getCashbookSummary);
+router.get('/:id/transactions', authenticate, c.getAccountTransactions);
 
 // Reconciliations
-router.get('/reconciliations', c.getReconciliations);
-router.post('/reconciliations/global', c.createGlobalReconciliation);
-router.post('/reconciliations', c.createReconciliation);
-router.get('/reconciliations/:id', c.getReconciliationById);
+router.get('/reconciliations', authenticate, c.getReconciliations);
+router.post('/reconciliations/global', authenticate, c.createGlobalReconciliation);
+router.post('/reconciliations', authenticate, c.createReconciliation);
+router.get('/reconciliations/:id', authenticate, c.getReconciliationById);
 
 module.exports = router;
