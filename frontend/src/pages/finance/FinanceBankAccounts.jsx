@@ -351,6 +351,16 @@ const FinanceBankAccounts = () => {
   const [loading, setLoading]     = useState(true);
   const [toasts, setToasts]       = useState([]);
 
+  // ── Transactions tab ──
+  const [dailyTx, setDailyTx] = useState(null);
+  const [dailyTxLoading, setDailyTxLoading] = useState(false);
+  const [dailyTxFrom, setDailyTxFrom] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  });
+  const [dailyTxTo, setDailyTxTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dailyTxDept, setDailyTxDept] = useState('all');
+
   const [typeBalances, setTypeBalances] = useState({ cash: 0, bank: 0, telebirr: 0, total: 0 });
   // Per-account-type aggregates: opening / totalIn / totalOut / net.
   const [typeAgg, setTypeAgg] = useState({});
@@ -489,6 +499,23 @@ const FinanceBankAccounts = () => {
   }, [toast]);
 
   useEffect(() => { load(); }, [load]);
+
+  const loadDailyTransactions = useCallback(async () => {
+    setDailyTxLoading(true);
+    try {
+      const params = {};
+      if (dailyTxFrom) params.from = dailyTxFrom;
+      if (dailyTxTo) params.to = dailyTxTo + ' 23:59:59';
+      const res = await apiClient.get('/finance/daily-transactions', { params });
+      setDailyTx(res?.data || null);
+    } catch (e) {
+      console.error('Failed to load daily transactions', e);
+      setDailyTx(null);
+    }
+    setDailyTxLoading(false);
+  }, [dailyTxFrom, dailyTxTo]);
+
+  useEffect(() => { if (tab === 'transactions' && !dailyTx && !dailyTxLoading) loadDailyTransactions(); }, [tab, dailyTx, dailyTxLoading, loadDailyTransactions]);
 
   const openAdd  = () => { setEditAcc(null); setForm(BLANK); setShowForm(true); };
   const openEdit = (acc) => {
@@ -705,6 +732,7 @@ const FinanceBankAccounts = () => {
         <button className={`fba-tab ${tab === 'accounts' ? 'active' : ''}`} onClick={() => setTab('accounts')}>Accounts</button>
         <button className={`fba-tab ${tab === 'reconcile' ? 'active' : ''}`} onClick={() => setTab('reconcile')}>Reconcile</button>
         <button className={`fba-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>History</button>
+        <button className={`fba-tab ${tab === 'transactions' ? 'active' : ''}`} onClick={() => setTab('transactions')}>Transactions</button>
       </div>
 
       {loading && <div style={{ color: 'var(--color-text-secondary)', padding: 48, textAlign: 'center', fontSize: 16, fontWeight: 600 }}><SegmentedSpinner size={32} /> <div style={{ marginTop: 12 }}>Loading data…</div></div>}
@@ -1582,6 +1610,174 @@ const FinanceBankAccounts = () => {
           </div>
         );
       })()}
+
+      {/* ══════ TRANSACTIONS (per-department VAT / COGS / Sales) ══════════════ */}
+      {!loading && tab === 'transactions' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Period filter */}
+          <div style={{ background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: 10, padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>Transaction Period:</span>
+              <label className="fba-lbl" style={{ margin: 0 }}>
+                <span style={{ fontSize: 11, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>From</span>
+                <input type="date" className="fba-inp" style={{ width: 150 }} value={dailyTxFrom} onChange={e => setDailyTxFrom(e.target.value)} />
+              </label>
+              <label className="fba-lbl" style={{ margin: 0 }}>
+                <span style={{ fontSize: 11, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>To</span>
+                <input type="date" className="fba-inp" style={{ width: 150 }} value={dailyTxTo} onChange={e => setDailyTxTo(e.target.value)} />
+              </label>
+              <label className="fba-lbl" style={{ margin: 0 }}>
+                <span style={{ fontSize: 11, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Department</span>
+                <select className="fba-select" style={{ width: 170 }} value={dailyTxDept} onChange={e => setDailyTxDept(e.target.value)}>
+                  <option value="all">All Departments</option>
+                  <option value="retail">Retail &amp; POS</option>
+                  <option value="pharmacy">Pharmacy</option>
+                  <option value="printing">Printing</option>
+                  <option value="car_rental">Car Rental</option>
+                  <option value="agrirent">AgriRent</option>
+                </select>
+              </label>
+              <button type="button" className="btn-green" onClick={loadDailyTransactions} disabled={dailyTxLoading}>
+                <RefreshCw size={15} style={{ animation: dailyTxLoading ? 'fba-spin 1s linear infinite' : 'none' }} /> {dailyTxLoading ? 'Loading…' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+
+          {dailyTxLoading && !dailyTx && (
+            <div style={{ color: 'var(--color-text-secondary)', padding: 48, textAlign: 'center', fontSize: 15, fontWeight: 600 }}>
+              <SegmentedSpinner size={30} /> <div style={{ marginTop: 12 }}>Loading transactions…</div>
+            </div>
+          )}
+
+          {dailyTx && (() => {
+            const s = dailyTx.summary || {};
+            const depts = dailyTx.byDepartment || {};
+            const DEPT_LABEL = { retail: 'Retail & POS', pharmacy: 'Pharmacy', printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent' };
+            const DEPT_COLOR = { retail: '#2563EB', pharmacy: '#059669', printing: '#D97706', car_rental: '#7C3AED', agrirent: '#16A34A' };
+
+            const kpiCards = [
+              { label: 'Total Sales (Birr)', value: s.totalSales, color: '#059669', icon: <TrendingUp size={18} /> },
+              { label: 'Output VAT',         value: s.totalOutputVat, color: '#2563EB', icon: <TrendingUp size={18} /> },
+              { label: 'Input VAT',          value: s.totalInputVat, color: '#DC2626', icon: <TrendingDown size={18} /> },
+              { label: 'COGS',               value: s.totalCogs, color: '#D97706', icon: <DollarSign size={18} /> },
+              { label: 'Gross Profit',       value: s.totalGross, color: '#16A34A', icon: <AlertTriangle size={18} /> },
+            ];
+
+            // Department KPI cards
+            const deptKeys = Object.keys(depts);
+            const days = dailyTx.daily || [];
+
+            // Filters for table
+            const filteredDays = days.map(d => ({
+              day: d.day,
+              inputVat: d.inputVat || 0,
+              netVat: d.netVat || 0,
+              depts: dailyTxDept === 'all' ? d.departments : (d.departments[dailyTxDept] ? { [dailyTxDept]: d.departments[dailyTxDept] } : {}),
+            }));
+
+            return (<>
+              {/* ── KPI Summary Cards ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+                {kpiCards.map((k, i) => (
+                  <div key={i} style={{ background: '#FFFFFF', borderRadius: 10, border: '1px solid var(--color-border)', padding: '16px 18px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{k.label}</span>
+                      <span style={{ color: k.color }}>{k.icon}</span>
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: k.color, fontVariantNumeric: 'tabular-nums' }}>{fmt(k.value)}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Department Totals ── */}
+              <div style={{ background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>🏢 Department Totals ({fmt(s.totalSales)} total sales)</h3>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600 }}>{dailyTx.period?.from || '…'} → {dailyTx.period?.to || '…'}</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="fba-table">
+                    <thead>
+                      <tr>
+                        <th>Department</th>
+                        <th className="right">Sales (Birr)</th>
+                        <th className="right">Output VAT</th>
+                        <th className="right">COGS</th>
+                        <th className="right">Gross Profit</th>
+                        <th className="right">Invoices</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deptKeys.length === 0 && (
+                        <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '28px 0' }}>No sales recorded in this period.</td></tr>
+                      )}
+                      {deptKeys.map(k => {
+                        const d = depts[k];
+                        return (
+                          <tr key={k}>
+                            <td style={{ fontWeight: 700, color: DEPT_COLOR[k] || 'var(--color-text-primary)' }}>{DEPT_LABEL[k] || k}</td>
+                            <td className="right" style={{ fontWeight: 700 }}>{fmt(d.sales)}</td>
+                            <td className="right" style={{ color: '#2563EB' }}>{fmt(d.outputVat)}</td>
+                            <td className="right" style={{ color: '#D97706' }}>{fmt(d.cogs)}</td>
+                            <td className="right" style={{ color: d.gross >= 0 ? '#059669' : '#DC2626', fontWeight: 700 }}>{fmt(d.gross)}</td>
+                            <td className="right">{d.invoiceCount}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* ── Daily Detailed Journal ── */}
+              <div style={{ background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>📒 Daily Transaction Journal (detailed)</h3>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600 }}>{filteredDays.length} day(s)</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="fba-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Department</th>
+                        <th className="right">Sales (Birr)</th>
+                        <th className="right">Output VAT</th>
+                        <th className="right">COGS</th>
+                        <th className="right">Gross Profit</th>
+                        <th className="right">Input VAT</th>
+                        <th className="right">Net VAT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDays.filter(d => Object.keys(d.depts).length > 0).length === 0 && (
+                        <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '28px 0' }}>No transactions in the selected period.</td></tr>
+                      )}
+                      {filteredDays.map(d => (
+                        Object.keys(d.depts).map((src, idx) => {
+                          const det = d.depts[src];
+                          return (
+                            <tr key={`${d.day}-${src}-${idx}`}>
+                              <td style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{fmtD(d.day)}</td>
+                              <td style={{ fontWeight: 700, color: DEPT_COLOR[src] || 'var(--color-text-primary)' }}>{DEPT_LABEL[src] || src}</td>
+                              <td className="right" style={{ fontWeight: 700 }}>{fmt(det.sales)}</td>
+                              <td className="right" style={{ color: '#2563EB' }}>{fmt(det.outputVat)}</td>
+                              <td className="right" style={{ color: '#D97706' }}>{fmt(det.cogs)}</td>
+                              <td className="right" style={{ color: det.gross >= 0 ? '#059669' : '#DC2626', fontWeight: 700 }}>{fmt(det.gross)}</td>
+                              <td className="right" style={{ color: '#DC2626' }}>{fmt(d.inputVat)}</td>
+                              <td className="right" style={{ color: d.netVat >= 0 ? '#2563EB' : '#DC2626' }}>{fmt(d.netVat)}</td>
+                            </tr>
+                          );
+                        })
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>);
+          })()}
+        </div>
+      )}
 
       {/* ══════ VIEW TRANSACTIONS MODAL ══════════════════════════════════════ */}
       {viewAcc && (
