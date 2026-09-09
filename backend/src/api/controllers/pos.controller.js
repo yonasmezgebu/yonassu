@@ -610,7 +610,11 @@ exports.getSalesHistory = catchAsync(async (req, res) => {
       'u.full_name as cashier_name',
       'pm.name as payment_method_name'
     )
-    .whereNull('ps.deleted_at');   // exclude voided/deleted sales
+    .whereNull('ps.deleted_at')   // exclude voided/deleted sales
+    .where(function () {
+      // Only show sales that have NOT yet been submitted to Finance
+      this.where('ps.is_submitted', false).orWhereNull('ps.is_submitted');
+    });
   if (startDate && endDate) {
     query = query.whereBetween('ps.sale_date', [startDate, endDate]);
   }
@@ -2381,11 +2385,13 @@ exports.getAuditTrail = catchAsync(async (req, res) => {
 });
 
 exports.submitDaily = catchAsync(async (req, res) => {
-  const unsubmitted = await db('pos_sales')
-    .whereNull('deleted_at')   // NEVER submit cancelled/returned sales to finance
+  const unsubmitted = await db('pos_sales as ps')
+    .leftJoin('payment_methods as pm', 'ps.payment_method_id', 'pm.id')
+    .whereNull('ps.deleted_at')
     .where(function() {
-      this.where('is_submitted', false).orWhereNull('is_submitted');
-    });
+      this.where('ps.is_submitted', false).orWhereNull('ps.is_submitted');
+    })
+    .select('ps.*', 'pm.name as payment_method_name');
 
   if (unsubmitted.length === 0) {
     return res.status(400).json({ status: 'error', message: 'No pending sales to submit' });
@@ -2396,9 +2402,11 @@ exports.submitDaily = catchAsync(async (req, res) => {
 
   let cashierId = req.user ? req.user.id : (unsubmitted[0].cashier_id || 1);
   let cashierName = req.user ? (req.user.full_name || req.user.fullName || 'Retail Staff') : 'Retail Staff';
+  const dateStr = new Date().toLocaleDateString('en-GB');
+  const batchRef = `POS-SUB-${Date.now().toString().slice(-6)}`;
 
   await dbTransaction(async (trx) => {
-    // Insert one audit row per sale transaction for full traceability
+    // 1. One audit row per sale for traceability
     for (const sale of unsubmitted) {
       await trx('pos_audit_trail').insert({
         cashier_id: cashierId,
@@ -2410,32 +2418,44 @@ exports.submitDaily = catchAsync(async (req, res) => {
       });
     }
 
-    // Mark sales as submitted
+    // 2. ONE finance_income_submissions row PER sale (Finance sees each individually)
+    for (const sale of unsubmitted) {
+      const payMethod = sale.payment_method_name || 'Cash';
+      const invRef = sale.invoice_number || `POS-${sale.id}`;
+      await trx('finance_income_submissions').insert({
+        reference_no: invRef,
+        department: 'Retail Sales',
+        submitted_by: cashierName,
+        amount: parseFloat(sale.total_amount || 0),
+        status: 'Pending',
+        description: `POS ${sale.sale_type || 'walk_in'} sale — ${invRef} — ${payMethod} — ${dateStr}`,
+        manual_details: JSON.stringify({
+          batch_ref: batchRef,
+          payment_method: payMethod,
+          sale_type: sale.sale_type || 'walk_in',
+          invoice_number: invRef,
+          payment_reference: sale.payment_reference || null,
+          notes: sale.notes || null
+        }),
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      });
+    }
+
+    // 3. Mark all as submitted
     await trx('pos_sales')
+      .whereNull('deleted_at')
       .where(function() {
         this.where('is_submitted', false).orWhereNull('is_submitted');
       })
       .update({ is_submitted: true });
 
-    // Send to Finance Live Income for Receivables Book
-    const refNo = `RETAIL-${Date.now().toString().slice(-6)}`;
-    await trx('finance_income_submissions').insert({
-      department: 'Retail Sales',
-      submitted_by: cashierName,
-      amount: totalAmount,
-      reference_no: refNo,
-      description: `Daily Retail Sales - ${totalTransactions} transactions`,
-      status: 'Pending',
-      created_at: db.fn.now(),
-      updated_at: db.fn.now()
-    });
-
     sendFinanceNotification({
       title: 'New Income Submission',
-      message: `ETB ${Number(totalAmount || 0).toLocaleString()} Retail POS daily sales (${totalTransactions} txns) submitted for verification (Ref: ${refNo}).`,
+      message: `ETB ${Number(totalAmount || 0).toLocaleString()} POS daily sales (${totalTransactions} txns) submitted for verification (Ref: ${batchRef}).`,
       type: 'finance',
       link: '/finance/pharmacy-sales?tab=list',
-      related_entity_id: refNo
+      related_entity_id: batchRef
     }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
   });
 
@@ -2444,6 +2464,7 @@ exports.submitDaily = catchAsync(async (req, res) => {
     data: { message: 'Daily sales submitted successfully', totalTransactions, totalAmount }
   });
 });
+
 
 
 exports.checkoutRetail = catchAsync(async (req, res) => {
@@ -2468,13 +2489,14 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
   const totalAmount = subtotal + vatAmount;
 
   const invoiceNumber = await generateInvoiceNumber();
-  let paymentMethodId = 1; // Default Cash
-  if (payment?.method === 'BANK_TRANSFER') paymentMethodId = 3;
-  if (payment?.method === 'TELBIR') paymentMethodId = 4;
-
-  if (paymentMethodId !== 1) {
-    return res.status(400).json({ status: 'error', message: 'Only CASH transactions are allowed in the POS transaction database. Digital payments go through Finance.' });
-  }
+  // Resolve payment method ID for all accepted methods
+  let paymentMethodId = 1; // Default: Cash
+  const pmMethodUpper = (payment?.method || '').toUpperCase();
+  if (pmMethodUpper === 'BANK_TRANSFER' || pmMethodUpper === 'BANK') paymentMethodId = 3;
+  if (pmMethodUpper === 'TELBIR' || pmMethodUpper === 'TELEBIRR') paymentMethodId = 4;
+  // Ensure the payment_methods row exists for this id
+  const pmRow = await db('payment_methods').where({ id: paymentMethodId }).first();
+  if (!pmRow) paymentMethodId = 1; // fallback to Cash if not configured
 
   let completedStatus = await db('sale_statuses').where('status_code', 'completed').first();
   if (!completedStatus) {
@@ -2528,8 +2550,8 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
     await trx('sales_invoices').insert({
       id: invoiceId,
       invoice_no: invoiceNumber,
-      source: 'pos',
-      sale_type: 'walk_in',
+      source: 'retail',
+      sale_type: ((sale_type || 'walk_in').toLowerCase().replace('-', '_')),
       sale_id: saleId,
       customer_name: payment?.recipient_name || 'Walk-in Customer',
       customer_tin: null,
@@ -2573,7 +2595,7 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
       receipt_no: receiptNumber,
       invoice_id: invoiceId,
       amount_paid: payment?.amount || totalAmount,
-      payment_method: 'Cash',
+      payment_method: payment?.method || 'Cash',
       payment_reference: paymentRef,
       received_by_name: req.user?.fullName || req.user?.name || 'Cashier',
       status: 'active',
