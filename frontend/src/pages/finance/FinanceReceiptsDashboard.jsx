@@ -399,14 +399,14 @@ const FinanceReceiptsDashboard = () => {
   const [saveError, setSaveError] = useState('');
   const [page, setPage] = useState(1);
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(location.pathname.includes('receipts') ? 'receipts' : 'receivable');
+  const [activeTab, setActiveTab] = useState(location.pathname.includes('receipts') ? 'receipts' : 'invoices');
   const [vatPeriod, setVatPeriod] = useState('year');
   const [vatDateRange, setVatDateRange] = useState({ from: '', to: '' });
   const vatPeriodRef = useRef(vatPeriod);
   const vatDateRangeRef = useRef(vatDateRange);
 
   useEffect(() => {
-    setActiveTab(location.pathname.includes('receipts') ? 'receipts' : 'receivable');
+    setActiveTab(location.pathname.includes('receipts') ? 'receipts' : 'invoices');
     setPage(1);
   }, [location.pathname]);
 
@@ -517,7 +517,7 @@ const FinanceReceiptsDashboard = () => {
 
   const receivableDocs = docs.filter((d) => d.balance < -0.001);
   const paidDocs = docs.filter((d) => d.balance >= -0.001);
-  const activeDocs = activeTab === 'receivable' ? receivableDocs : paidDocs;
+  const activeDocs = activeTab === 'invoices' ? receivableDocs : paidDocs;
 
   const totalPages = Math.max(1, Math.ceil(activeDocs.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -526,11 +526,13 @@ const FinanceReceiptsDashboard = () => {
   const receivableValue = receivableDocs.reduce((s, d) => s + Math.abs(d.balance), 0);
   const paidValue = paidDocs.reduce((s, d) => s + d.total, 0);
   const owedTotal = receivableValue;
-  // vatTotal = sum of Output VAT on all paid receipts (correct field is vatTotal from invoiceDocument.service)
-  const vatTotal = paidDocs.reduce((s, d) => s + (d.vatTotal || 0), 0);
+  // vatTotal from the VAT report ensures absolute consistency with the VAT & Profit tab
+  const vatTotal = vatReport?.summary?.outputVat !== undefined 
+    ? parseFloat(vatReport.summary.outputVat || 0) 
+    : paidDocs.reduce((s, d) => s + (d.vatTotal || 0), 0);
   // inputVatTotal and payableVat from the VAT report (company-wide, from purchases + expenses)
   const inputVatTotal = parseFloat(vatReport?.summary?.inputVat || 0);
-  const payableVatTotal = Math.max(0, vatTotal - inputVatTotal);
+  const payableVatTotal = parseFloat(vatReport?.summary?.payableVat !== undefined ? vatReport.summary.payableVat : Math.max(0, vatTotal - inputVatTotal));
 
   return (
     <div className={styles.page}>
@@ -554,9 +556,9 @@ const FinanceReceiptsDashboard = () => {
 
       {/* ── ROW 1: KPI HERO CARDS ── */}
       <div className={styles.kpiGrid}>
-        <div className={`${styles.kpiCard} ${activeTab === 'receivable' ? styles.kpiCardActive : ''}`}>
+        <div className={`${styles.kpiCard} ${activeTab === 'invoices' ? styles.kpiCardActive : ''}`}>
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Receivables</span>
+            <span className={styles.kpiLabel}>Invoices (Unpaid)</span>
             <span className={styles.kpiIcon} style={{ background: '#FEF3C7' }}><Icon.file /></span>
           </div>
           <div className={styles.kpiValue} style={{ color: '#B45309' }}>{receivableDocs.length}</div>
@@ -601,10 +603,10 @@ const FinanceReceiptsDashboard = () => {
       {/* ── ROW 2: TABS ── */}
       <div className={styles.tabBar}>
         <button
-          className={`${styles.tabBtn} ${activeTab === 'receivable' ? styles.tabBtnActive : ''}`}
-          onClick={() => { setActiveTab('receivable'); setPage(1); }}
+          className={`${styles.tabBtn} ${activeTab === 'invoices' ? styles.tabBtnActive : ''}`}
+          onClick={() => { setActiveTab('invoices'); setPage(1); }}
         >
-          <Icon.file /> Receivables
+          <Icon.file /> Invoices (Unpaid)
           <span className={styles.tabBadge} style={{ background: '#FEF3C7', color: '#92400E' }}>{receivableDocs.length}</span>
         </button>
         <button
@@ -944,9 +946,9 @@ const FinanceReceiptsDashboard = () => {
                     const totRev     = vatReport.bySource.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
                     const totCost    = vatReport.bySource.reduce((s, r) => s + parseFloat(r.cost || 0), 0);
                     const totProf    = totRev - totCost;
-                    const totOutVat  = vatReport.bySource.reduce((s, r) => s + parseFloat(r.outputVat || 0), 0);
+                    const totOutVat  = parseFloat(vatReport.summary?.outputVat || 0);
                     const totInVat   = parseFloat(vatReport.summary?.inputVat || 0);
-                    const totPayable = Math.round((totOutVat - totInVat) * 100) / 100;
+                    const totPayable = parseFloat(vatReport.summary?.payableVat !== undefined ? vatReport.summary.payableVat : (totOutVat - totInVat));
                     const totMgn     = totRev > 0 ? ((totProf / totRev) * 100).toFixed(1) : '0.0';
                     return (
                       <div className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', borderTop: '2px solid #D1D5DB', background: '#F9FAFB', fontWeight: 700 }}>
@@ -981,9 +983,9 @@ const FinanceReceiptsDashboard = () => {
       {activeTab !== 'vatprofit' && (
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitleIcon}>{activeTab === 'receivable' ? <Icon.file /> : <Icon.check />}</span>
+          <span className={styles.cardTitleIcon}>{activeTab === 'invoices' ? <Icon.file /> : <Icon.check />}</span>
           <h3 className={styles.cardTitle}>
-            {activeTab === 'receivable' ? 'Receivables — awaiting full payment' : 'Receipts — payment confirmed'}
+            {activeTab === 'invoices' ? 'Invoices — awaiting full payment' : 'Receipts — payment confirmed'}
           </h3>
           <span className={styles.cardSub}>{activeDocs.length} documents · click row to view</span>
         </div>
@@ -1002,14 +1004,14 @@ const FinanceReceiptsDashboard = () => {
             {activeTab === 'receipts' && <span style={{ textAlign: 'right', color: '#059669' }}>Output VAT</span>}
             {activeTab === 'receipts' && <span style={{ textAlign: 'right', color: '#DC2626' }}>Input VAT</span>}
             <span style={{ textAlign: 'right' }}>Paid</span>
-            {activeTab === 'receivable' && <span style={{ textAlign: 'right' }}>Balance</span>}
+            {activeTab === 'invoices' && <span style={{ textAlign: 'right' }}>Balance</span>}
             <span style={{ textAlign: 'right' }}>Total</span>
           </div>
 
           {pagedDocs.length === 0 ? (
             <div className={styles.empty}>
-              {activeTab === 'receivable'
-                ? 'No outstanding receivables — all orders fully paid!'
+              {activeTab === 'invoices'
+                ? 'No outstanding invoices — all orders fully paid!'
                 : 'No confirmed receipts yet — payments will appear here once orders are paid.'}
             </div>
           ) : pagedDocs.map((d, i) => {
@@ -1038,7 +1040,7 @@ const FinanceReceiptsDashboard = () => {
                 {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 600 }}>{fmt(rowOutVat)}</span>}
                 {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 600 }}>{fmt(rowInVat)}</span>}
                 <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(d.amountPaid)}</span>
-                {activeTab === 'receivable' && (
+                {activeTab === 'invoices' && (
                   <span className={styles.num} style={{ textAlign: 'right', color: d.balance < -0.001 ? '#DC2626' : G.forest, fontWeight: d.balance < -0.001 ? 700 : 400 }}>
                     {fmt(Math.abs(d.balance))}
                     {d.balance < -0.001 ? ' owed' : ' ✓'}
@@ -1065,7 +1067,7 @@ const FinanceReceiptsDashboard = () => {
               <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>
                 {activeTab === 'receipts' ? fmt(paidValue) : ''}
               </span>
-              {activeTab === 'receivable' && <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: '#DC2626' }}>{fmt(owedTotal)}</span>}
+              {activeTab === 'invoices' && <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: '#DC2626' }}>{fmt(owedTotal)}</span>}
               <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>
                 {activeTab === 'receipts' ? fmt(paidValue) : ''}
               </span>
@@ -1112,7 +1114,7 @@ const FinanceReceiptsDashboard = () => {
         )}
 
         <div className={styles.note}>
-          {activeTab === 'receivable'
+          {activeTab === 'invoices'
             ? 'Every order placed in any module auto-generates a Sales Receipt upon payment. The receipt shows per-item tax treatment (Standard / Exempt / Zero-rated). Once payment is confirmed, the receipt moves to Paid Receipts.'
             : 'Every payment received auto-generates a linked Sales Receipt: Sale ID → Payment ID → Receipt ID — no double counting. The receipt confirms money received against the sale; it never recalculates the sale.'}
         </div>
