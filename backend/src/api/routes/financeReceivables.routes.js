@@ -837,6 +837,19 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
             financeName: finance_name || (req.user && req.user.fullName) || 'Finance Officer',
           },
         });
+
+        // ── Mint/link Sales Invoice + Receipt so POS approvals show in
+        //    Finance Receipts Dashboard (Invoices tab & Receipts tab)
+        await ensureInvoiceAndReceipt(trx, {
+          source: 'retail',
+          saleId: parseInt(cartId, 10) + 800000000, // unique synthetic sale_id for POS carts
+          customer: cart.customer_name || 'Walk-in Customer',
+          amount,
+          paymentMethod: cart.payment_method || 'Cash',
+          paymentReference: cart.txn_id || cart.payment_reference || cart.cart_code,
+          description: `Retail POS Sale — ${cart.customer_name || 'Walk-in Customer'}`,
+          receivedBy: finance_name || (req.user && req.user.fullName) || 'Finance Officer',
+        });
       });
 
       sendFinanceNotification({
@@ -942,33 +955,36 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       }
 
       // Mint + link a Sales Invoice and Receipt for the approved income so it always
-// shows on the Sales Invoice & Receipt page. Departments whose modules already
-// create their own invoice + receipt at sale time are skipped so approving never
-// creates a duplicate. Everything else (manual walk-ins / general inflow) gets
-// the synthetic invoice. Idempotent (keyed on source + sale_id).
-const deptKey = String(submission.department || '').toLowerCase();
-if (!SELF_INVOICING_DEPARTMENTS.has(deptKey)) {
-  await ensureInvoiceAndReceipt(trx, {
-    source: 'manual',
-    saleId: 500000000 + parseInt(id, 10),
-    customer: customerName,
-    amount: systemTotal,
-    paymentMethod: manualDetails.paymentMethod || 'Cash',
-    paymentReference: submission.reference_no || manualDetails.paymentReference || null,
-    description: submission.description,
-    receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
-  });
-} else {
-  // Self-invoicing module already recorded the invoice (with VAT) at order
-  // time. Approval only attaches the receipt so the invoice shows PAID with
-  // balance/owed = 0 — never a second invoice.
-  await ensureReceiptForInvoicedSubmission(trx, {
-    department: submission.department,
-    manualDetails: manualDetails || {},
-    amount: systemTotal,
-    receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
-  });
-}
+      // shows on the Sales Invoice & Receipt page. Departments whose modules already
+      // create their own invoice + receipt at sale time are skipped so approving never
+      // creates a duplicate. Everything else (manual walk-ins / general inflow) gets
+      // the synthetic invoice. Idempotent (keyed on source + sale_id).
+      const deptKey = String(submission.department || '').toLowerCase();
+      // For 'retail pos' without an order_id (POS cart approvals from finance_income_submissions),
+      // treat as non-self-invoicing so a proper sales_invoice + sales_receipt is always created.
+      const isPosWithoutOrder = (deptKey === 'retail pos' || deptKey === 'retailpos') && !manualDetails.order_id;
+      if (!SELF_INVOICING_DEPARTMENTS.has(deptKey) || isPosWithoutOrder) {
+        await ensureInvoiceAndReceipt(trx, {
+          source: isPosWithoutOrder ? 'retail' : 'manual',
+          saleId: isPosWithoutOrder ? (parseInt(manualDetails.cart_id || id, 10) + 800000000) : (500000000 + parseInt(id, 10)),
+          customer: customerName,
+          amount: systemTotal,
+          paymentMethod: manualDetails.paymentMethod || 'Cash',
+          paymentReference: submission.reference_no || manualDetails.paymentReference || null,
+          description: submission.description,
+          receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
+        });
+      } else {
+        // Self-invoicing module already recorded the invoice (with VAT) at order
+        // time. Approval only attaches the receipt so the invoice shows PAID with
+        // balance/owed = 0 — never a second invoice.
+        await ensureReceiptForInvoicedSubmission(trx, {
+          department: submission.department,
+          manualDetails: manualDetails || {},
+          amount: systemTotal,
+          receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
+        });
+      }
 
       if (submission.department === 'Printing' && submission.manual_details) {
         try {
@@ -1158,8 +1174,8 @@ const DEPARTMENT_TO_SOURCE = {
   'pharmacy': 'pharmacy',
   'printing': 'printing',
   'retail': 'retail',
-  'retail pos': 'pos',
-  'retailpos': 'pos',
+  'retail pos': 'retail',
+  'retailpos': 'retail',
   'car rental': 'car_rental',
   'agrirent': 'agrirent',
 };
