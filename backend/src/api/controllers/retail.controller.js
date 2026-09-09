@@ -28,7 +28,7 @@ exports.getProducts = catchAsync(async (req, res) => {
   let query = db('retail_products as p')
     .select(
       'p.id', 'p.name', 'p.sku',
-      'p.price',
+      'p.price', 'p.cost_price',
       'p.category_id', 'p.product_image', 'p.description',
       db.raw('COALESCE(gsm.quantity_in_store, p.stock_quantity) as stock_quantity'), 'p.reorder_level',
       'p.is_active', 'pc.name as category_name'
@@ -56,7 +56,7 @@ exports.getProductById = catchAsync(async (req, res) => {
   const product = await db('retail_products as p')
     .select(
       'p.id', 'p.name', 'p.sku',
-      'p.price',
+      'p.price', 'p.cost_price',
       'p.category_id', 'p.product_image', 'p.description',
       db.raw('COALESCE(gsm.quantity_in_store, p.stock_quantity) as stock_quantity'), 'p.reorder_level',
       'p.is_active', 'pc.name as category_name'
@@ -204,13 +204,30 @@ exports.placeOrder = catchAsync(async (req, res) => {
       // If stock_quantity is NULL, treat as unlimited — no deduction needed
     }
 
-    const invoice_number = await generateInvoiceNumber(); // Use INV- prefix for invoices, or we can use order_number for retail_orders, but prompt asks for "invoice" 
+
+       // Resolve payment enum
+    let resolvedPaymentEnum = 'cash';
+    if (payment_method && !isNaN(payment_method)) {
+      const acc = await trx('finance_accounts').where('id', payment_method).first();
+      if (acc) {
+        if (acc.account_type === 'Bank') resolvedPaymentEnum = 'bank_transfer';
+        else if (acc.account_type === 'Mobile Wallet' || (acc.bank_provider && acc.bank_provider.toLowerCase().includes('telebirr'))) resolvedPaymentEnum = 'telebirr';
+        else resolvedPaymentEnum = 'cash';
+      }
+    } else if (payment_method && typeof payment_method === 'string') {
+      const validEnums = ['cash', 'bank_transfer', 'telebirr', 'credit'];
+      if (validEnums.includes(payment_method.toLowerCase())) {
+        resolvedPaymentEnum = payment_method.toLowerCase();
+      }
+    }
+
     const retail_order_number = await generateOrderNumber('RET');
-    const isPaid = payment_method && payment_ref;
+    const isPaid = payment_method && (payment_ref || resolvedProofPath);
 
     const [orderId] = await trx('retail_orders').insert({
       customer_id: req.user.id,
       invoice_number: retail_order_number, subtotal, tax, delivery_fee, total_amount: total,
+      payment_method: resolvedPaymentEnum,
       status: 'PROCESSING', payment_status: isPaid ? 'PENDING' : 'AWAITING_PAYMENT',
       delivery_type: delivery_type || 'pickup',
       delivery_address: delivery_address || null,
@@ -218,7 +235,6 @@ exports.placeOrder = catchAsync(async (req, res) => {
       customer_name:  resolvedName,
       customer_phone: resolvedPhone,
       customer_email: resolvedEmail,
-      payment_method: payment_method || null,
       payment_ref: resolvedPaymentRef,
       payment_proof_path: resolvedProofPath,
       created_at: db.fn.now(), updated_at: db.fn.now()
@@ -252,10 +268,21 @@ exports.placeOrder = catchAsync(async (req, res) => {
 
   // Submit to Finance Live Income for verification
   if (payment_method && (resolvedPaymentRef || resolvedProofPath)) {
+    // Resolve the human-readable account name for Finance to identify the payment channel
+    let resolvedAccountName = String(payment_method);
+    try {
+      const acc = await db('finance_accounts').where('id', payment_method).first();
+      if (acc) resolvedAccountName = `${acc.account_type} - ${acc.account_name}${acc.account_number ? ` (${acc.account_number})` : ''}`;
+    } catch (_) {}
+
     const details = {
       order_id: result.orderId,
-      paymentMethod: payment_method,
-      receivedFrom: resolvedName || 'Customer'
+      order_invoice: result.invoice_number,
+      paymentMethod: resolvedAccountName,
+      paymentRef: resolvedPaymentRef || null,
+      receivedFrom: resolvedName || 'Customer',
+      phone: resolvedPhone || null,
+      email: resolvedEmail || null,
     };
     if (resolvedProofPath && req.file) {
       details.paymentScreenshot = req.file.filename;
@@ -265,8 +292,8 @@ exports.placeOrder = catchAsync(async (req, res) => {
       department: 'Retail',
       submitted_by: resolvedName || 'Customer Portal',
       amount: total,
-      reference_no: resolvedPaymentRef || (req.file ? req.file.filename : 'N/A'),
-      description: `Customer Retail Order ${result.invoice_number} - ${resolvedName || 'Customer'}`,
+      reference_no: resolvedPaymentRef || (req.file ? req.file.filename : result.invoice_number),
+      description: `Online Retail Order ${result.invoice_number} — ${resolvedName || 'Customer'} via ${resolvedAccountName}`,
       status: 'Pending',
       manual_details: JSON.stringify(details),
       created_at: db.fn.now(),
@@ -274,8 +301,8 @@ exports.placeOrder = catchAsync(async (req, res) => {
     }).catch(err => console.error('Failed to submit retail to finance:', err.message));
 
     sendFinanceNotification({
-      title: 'New Income Submission',
-      message: `ETB ${Number(total || 0).toLocaleString()} Retail (customer portal) income submitted for verification.`,
+      title: '🛒 New Online Order — Finance Verification',
+      message: `ETB ${Number(total || 0).toLocaleString()} — Retail Order ${result.invoice_number} (${resolvedName || 'Customer'}, ${resolvedAccountName}) awaiting verification.`,
       type: 'finance',
       link: '/finance/pharmacy-sales?tab=list',
       related_entity_id: result.orderId
@@ -474,7 +501,7 @@ exports.getInventory = catchAsync(async (req, res) => {
   const { search, category_id, low_stock } = req.query;
   let query = db('retail_products as rp')
     .select(
-      'rp.id', 'rp.name', 'rp.sku', 'rp.price', 'rp.category_id',
+      'rp.id', 'rp.name', 'rp.sku', 'rp.price', 'rp.cost_price', 'rp.category_id',
       'rp.stock_quantity', 'rp.reorder_level', 'rp.expiry_date',
       'rp.product_image', 'rp.is_active', 'rp.created_at', 'rp.updated_at',
       'rc.name as category_name'
@@ -850,7 +877,6 @@ exports.getSubmissionDetails = catchAsync(async (req, res) => {
 });
 
 exports.submitDailyRetail = catchAsync(async (req, res) => {
-  // Fetch ALL unsubmitted retail transactions (both WALK-IN and ONLINE)
   const unsubmitted = await db('retail_transactions').where({ is_submitted: false });
   if (unsubmitted.length === 0) throw new AppError('No unsubmitted retail sales to submit', 400);
 
@@ -858,9 +884,11 @@ exports.submitDailyRetail = catchAsync(async (req, res) => {
   const cashierName = req.user.full_name || req.user.name || req.user.email || 'Retail Cashier';
   const dateStr = new Date().toLocaleDateString('en-GB');
   const sub_no = 'RET-SUB-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Date.now().toString().slice(-4);
+  const { generateInvoiceNumber } = require('../../utils/orderNumber');
+  const { createSalesInvoice, createSalesReceipt } = require('../../services/invoiceDocument.service');
 
   await db.transaction(async (trx) => {
-    // 1. Write audit trail entry
+    // 1. One audit trail entry for the whole batch
     await trx('retail_audit_trail').insert({
       cashier_id: req.user.id,
       action: 'Submitted to Finance',
@@ -869,15 +897,87 @@ exports.submitDailyRetail = catchAsync(async (req, res) => {
       notes: `${unsubmitted.length} transaction(s) — ${dateStr} — Ref: ${sub_no}`
     });
 
-    // 2. Submit to Finance Live Income (shared table, Retail dept)
-    await trx('finance_income_submissions').insert({
-      reference_no: sub_no,
-      department: 'Retail',
-      submitted_by: cashierName,
-      amount: totalAmount,
-      status: 'Pending',
-      description: `Retail daily sales submission — ${unsubmitted.length} transaction(s) on ${dateStr}`
-    });
+    // 2. ONE finance_income_submissions row PER transaction
+    //    (Finance sees each separately with exact payment method + amount)
+    for (const txn of unsubmitted) {
+      const payMethod = txn.payment_method || 'Cash';
+      const txnRef = txn.invoice_number || `RET-${txn.id}`;
+
+      await trx('finance_income_submissions').insert({
+        reference_no: txnRef,
+        department: 'Retail',
+        submitted_by: cashierName,
+        amount: Number(txn.total_amount),
+        status: 'Pending',
+        description: `Retail ${txn.sale_type || 'WALK-IN'} sale — ${txnRef} — ${payMethod} — ${dateStr}`,
+        manual_details: JSON.stringify({
+          batch_ref: sub_no,
+          payment_method: payMethod,
+          sale_type: txn.sale_type || 'WALK-IN',
+          invoice_number: txnRef,
+          transaction_id: txn.transaction_id || null,
+          customer_phone: txn.customer_phone || null,
+          sender_name: txn.sender_name || null
+        }),
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      });
+
+      // 3. Ensure sales_invoice + sales_receipt exist for this transaction
+      //    so it appears in Receipts and VAT & Profit pages.
+      const existingInvoice = await trx('sales_invoices')
+        .where({ source: 'retail', sale_id: txn.id })
+        .andWhereNot('status', 'cancelled')
+        .first();
+
+      if (!existingInvoice) {
+        // Fetch line items
+        const txnItems = await trx('retail_transaction_items as rti')
+          .join('retail_products as p', 'rti.product_id', 'p.id')
+          .where('rti.transaction_id', txn.id)
+          .select('p.id as product_id', 'p.name', 'p.cost_price',
+                  'rti.quantity', 'rti.unit_price', 'rti.line_total');
+
+        const lines = txnItems.length > 0
+          ? txnItems.map(it => ({
+              itemId: it.product_id,
+              name: it.name,
+              qty: Number(it.quantity),
+              unitPrice: Number(it.unit_price),
+              costPrice: it.cost_price != null ? Number(it.cost_price) : null,
+              amount: Number(it.line_total)
+            }))
+          : [{
+              itemId: 0,
+              name: `Retail Sale ${txn.invoice_number || txn.id}`,
+              qty: 1,
+              unitPrice: Number(txn.subtotal || txn.total_amount),
+              costPrice: null,
+              amount: Number(txn.subtotal || txn.total_amount)
+            }];
+
+        const invNo = txn.invoice_number || await generateInvoiceNumber();
+        const invResult = await createSalesInvoice(trx, {
+          source: 'retail',
+          saleId: txn.id,
+          saleType: String(txn.sale_type || 'WALK-IN').toUpperCase() === 'ONLINE' ? 'online' : 'walk_in',
+          invoiceNo: invNo,
+          customer: txn.sender_name || txn.customer_name || null,
+          customerTin: null,
+          lines,
+          createdBy: cashierName,
+          date: txn.created_at
+        });
+
+        await createSalesReceipt(trx, {
+          invoiceId: invResult.invoiceId,
+          amountPaid: Number(txn.total_amount),
+          paymentMethod: payMethod,
+          paymentReference: txn.transaction_id || null,
+          receivedBy: cashierName
+        });
+      }
+    }
 
     sendFinanceNotification({
       title: 'New Income Submission',
@@ -887,10 +987,10 @@ exports.submitDailyRetail = catchAsync(async (req, res) => {
       related_entity_id: sub_no
     }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
-    // 3. Mark all as submitted and set submission_ref
-    await trx('retail_transactions').where({ is_submitted: false }).update({ 
+    // 4. Mark all as submitted
+    await trx('retail_transactions').where({ is_submitted: false }).update({
       is_submitted: true,
-      submission_ref: sub_no 
+      submission_ref: sub_no
     });
   });
 
