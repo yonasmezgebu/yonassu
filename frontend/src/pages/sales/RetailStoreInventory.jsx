@@ -521,7 +521,7 @@ export default function RetailStoreInventory() {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:14, minWidth:760 }}>
                   <thead>
                     <tr>
-                      {[['#','center'],['Product Name','left'],['Category','left'],['Qty in Store','center'],['Unit','center'],['Price (ETB)','right'],['Action','center']].map(([h,ta],i) => (
+                      {[['#','center'],['Product Name','left'],['Category','left'],['Qty in Store','center'],['Unit','center'],['Cost Price (ETB)','right'],['Action','center']].map(([h,ta],i) => (
                         <th key={i} style={{
                           padding:'12px 18px',
                           textAlign: ta,
@@ -554,7 +554,7 @@ export default function RetailStoreInventory() {
                       const dName = item.name || item.product_name || `product #${item.product_id||item.id||idx+1}`;
                       const dUnit = item.unit || item.product_unit || 'pcs';
                       const dCat  = item.category || item.product_category || '—';
-                      const dPrice = Number(item.unit_price || item.price || 0).toFixed(2);
+                      const dPrice = Number(item.cost_price || 0).toFixed(2);
                       return (
                         <tr key={`row-${item.id||idx}`} className="inv-row" style={{ borderBottom:`1px solid ${BORDER}`, background:CARD }}>
                           <td style={{ padding:'13px 18px', textAlign:'center', color:TXT_2, fontSize:13, fontWeight:500, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{idx+1}</td>
