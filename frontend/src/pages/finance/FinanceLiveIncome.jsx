@@ -1572,10 +1572,17 @@ const FinanceLiveIncome = () => {
                 </thead>
                 <tbody>
                   {pendingList.map((sub, idx) => {
-                    const isCash = CASH_DEPTS.includes(sub.department);
-                    const typePill = isCash
-                      ? { bg: 'var(--color-success-bg)', color: 'var(--color-success)', label: '💵 Cash' }
-                      : { bg: 'var(--color-info-bg)', color: 'var(--color-info)', label: '📱 Digital' };
+                    let md = null;
+                    try { md = sub.manual_details ? JSON.parse(sub.manual_details) : null; } catch (_) {}
+                    const pm = md?.paymentMethod || '';
+                    const isTelebirr = /telebirr/i.test(pm);
+                    const isBank = /bank|transfer|cbe|awash/i.test(pm);
+                    const isCashPay = !isTelebirr && !isBank;
+                    const typePill = isTelebirr
+                      ? { bg: '#FEF3C7', color: '#D97706', label: '📱 Telebirr' }
+                      : isBank
+                        ? { bg: '#E0F2FE', color: '#0284C7', label: '🏦 Bank Transfer' }
+                        : { bg: 'var(--color-success-bg)', color: 'var(--color-success)', label: '💵 Cash' };
                 return (
                       <tr key={sub.id} className="fli-row-hover" style={{ background: '#fff' }}>
                         <td style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{idx + 1}</td>
@@ -1594,7 +1601,7 @@ const FinanceLiveIncome = () => {
                             className="fli-btn fli-btn-primary"
                             style={{ height: 32, fontSize: 12, padding: '0 12px' }}
                           >
-                            <Eye size={13} /> {isCash ? 'Verify Cash' : 'Verify Proof'}
+                            <Eye size={13} /> Verify Payment
                           </button>
                         </td>
                       </tr>
