@@ -398,10 +398,10 @@ const FinanceReceiptsDashboard = () => {
   const [page, setPage] = useState(1);
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(location.pathname.includes('receipts') ? 'receipts' : 'invoices');
+  const [activeTab, setActiveTab] = useState('receipts');
 
   useEffect(() => {
-    setActiveTab(location.pathname.includes('receipts') ? 'receipts' : 'invoices');
+    setActiveTab('receipts');
     setPage(1);
   }, [location.pathname]);
 
@@ -455,17 +455,18 @@ const FinanceReceiptsDashboard = () => {
     setSavingCompany(false);
   };
 
-  const receivableDocs = docs.filter((d) => d.balance < -0.001 && d.source === 'printing');
-  const paidDocs = docs.filter((d) => !(d.balance < -0.001 && d.source === 'printing'));
-  const activeDocs = activeTab === 'invoices' ? receivableDocs : paidDocs;
+  // All records are treated as receipts — invoice tab removed
+  const receivableDocs = [];
+  const paidDocs = docs;
+  const activeDocs = docs;
 
   const totalPages = Math.max(1, Math.ceil(activeDocs.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pagedDocs = activeDocs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const receivableValue = receivableDocs.reduce((s, d) => s + Math.abs(d.balance), 0);
+  const receivableValue = 0;
   const paidValue = paidDocs.reduce((s, d) => s + d.total, 0);
-  const owedTotal = receivableValue;
+  const owedTotal = 0;
 
   return (
     <div className={styles.page}>
@@ -503,23 +504,8 @@ const FinanceReceiptsDashboard = () => {
 
 
       {/* ── ROW 2: TABS ── */}
-      <div className={styles.tabBar}>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'invoices' ? styles.tabBtnActive : ''}`}
-          onClick={() => { setActiveTab('invoices'); setPage(1); }}
-        >
-          <Icon.file /> Invoices (Unpaid)
-          <span className={styles.tabBadge} style={{ background: '#FEF3C7', color: '#92400E' }}>{receivableDocs.length}</span>
-        </button>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'receipts' ? styles.tabBtnActive : ''}`}
-          onClick={() => { setActiveTab('receipts'); setPage(1); }}
-        >
-          <Icon.check /> Receipts (Paid)
-          <span className={styles.tabBadge} style={{ background: '#DCFCE7', color: '#166534' }}>{paidDocs.length}</span>
-        </button>
-      </div>
-
+      {/* Tabs removed: The system now operates entirely on paid Receipts. */}
+      
       {/* ── ROW 3: COMPANY PROFILE ── */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
@@ -567,9 +553,9 @@ const FinanceReceiptsDashboard = () => {
       {/* ── ROW 4: DOCUMENT LIST ── */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitleIcon}>{activeTab === 'invoices' ? <Icon.file /> : <Icon.check />}</span>
+          <span className={styles.cardTitleIcon}><Icon.check /></span>
           <h3 className={styles.cardTitle}>
-            {activeTab === 'invoices' ? 'Invoices — awaiting full payment' : 'Receipts — payment confirmed'}
+            Receipts — payment confirmed
           </h3>
           <span className={styles.cardSub}>{activeDocs.length} documents · click row to view</span>
         </div>
@@ -577,24 +563,19 @@ const FinanceReceiptsDashboard = () => {
         <div className={styles.table}>
           <div
             className={styles.tHead}
-            style={{ gridTemplateColumns: activeTab === 'receipts'
-              ? '40px 1.5fr 1fr 1fr 1fr 1fr'
-              : '40px 1.8fr 1.1fr 1fr 1fr 1fr 1fr' }}
+            style={{ gridTemplateColumns: '40px 1.5fr 1fr 1fr 1fr 1fr' }}
           >
             <span>#</span>
             <span>Module</span>
             <span style={{ textAlign: 'center' }}>Receipt No</span>
             <span style={{ textAlign: 'center' }}>Date</span>
             <span style={{ textAlign: 'right' }}>Paid</span>
-            {activeTab === 'invoices' && <span style={{ textAlign: 'right' }}>Balance</span>}
             <span style={{ textAlign: 'right' }}>Total</span>
           </div>
 
           {pagedDocs.length === 0 ? (
             <div className={styles.empty}>
-              {activeTab === 'invoices'
-                ? 'No outstanding invoices — all orders fully paid!'
-                : 'No confirmed receipts yet — payments will appear here once orders are paid.'}
+              No confirmed receipts yet — payments will appear here once orders are paid.
             </div>
           ) : pagedDocs.map((d, i) => {
             return (
