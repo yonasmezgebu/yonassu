@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import { amountInWordsBirr } from '../../utils/amountInWords';
@@ -387,8 +387,6 @@ const PAGE_SIZE = 10;
 const FinanceReceiptsDashboard = () => {
   const [agg, setAgg] = useState(null);
   const [docs, setDocs] = useState([]);
-  const [vatReport, setVatReport] = useState(null);
-  const [vatLoading, setVatLoading] = useState(false);
   const [company, setCompany] = useState({ name: '', address: '', phone: '', tin: '', vatReg: '' });
   const [companyDraft, setCompanyDraft] = useState(null);
   const [savingCompany, setSavingCompany] = useState(false);
@@ -399,11 +397,8 @@ const FinanceReceiptsDashboard = () => {
   const [saveError, setSaveError] = useState('');
   const [page, setPage] = useState(1);
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(location.pathname.includes('receipts') ? 'receipts' : 'invoices');
-  const [vatPeriod, setVatPeriod] = useState('year');
-  const [vatDateRange, setVatDateRange] = useState({ from: '', to: '' });
-  const vatPeriodRef = useRef(vatPeriod);
-  const vatDateRangeRef = useRef(vatDateRange);
 
   useEffect(() => {
     setActiveTab(location.pathname.includes('receipts') ? 'receipts' : 'invoices');
@@ -434,68 +429,13 @@ const FinanceReceiptsDashboard = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  const fetchVatReport = async (period, from, to) => {
-    setVatLoading(true);
-    try {
-      const params = {};
-      if (from && to) {
-        params.from = from;
-        params.to = to + ' 23:59:59';
-      } else {
-        params.period = period || 'year';
-      }
-      const res = await api.get('/finance/vat-profit-report', { params });
-      setVatReport(res?.data || null);
-    } catch (err) {
-      console.error('VAT report load failed:', err);
-      setVatReport(null);
-    }
-    setVatLoading(false);
-  };
-
-  // Load VAT report whenever user opens the tab, and also on first mount
   useEffect(() => {
-    if (activeTab === 'vatprofit') {
-      fetchVatReport(vatPeriod, vatDateRange.from, vatDateRange.to);
+    if (docs.length > 0 && location.state?.selectedSaleId) {
+      const doc = docs.find(d => d.saleId === location.state.selectedSaleId || d.id === location.state.selectedSaleId);
+      if (doc) setSelected(doc);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [docs, location.state]);
 
-  // Also load on first render if the tab is already vatprofit
-  useEffect(() => {
-    fetchVatReport('year', '', '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handlePeriodClick = (key) => {
-    setVatPeriod(key);
-    setVatDateRange({ from: '', to: '' });
-    vatPeriodRef.current = key;
-    vatDateRangeRef.current = { from: '', to: '' };
-    fetchVatReport(key, '', '');
-  };
-
-  const handleDateFromChange = (val) => {
-    const newRange = { ...vatDateRange, from: val };
-    setVatDateRange(newRange);
-    vatDateRangeRef.current = newRange;
-    setVatPeriod('custom');
-    vatPeriodRef.current = 'custom';
-  };
-
-  const handleDateToChange = (val) => {
-    const newRange = { ...vatDateRange, to: val };
-    setVatDateRange(newRange);
-    vatDateRangeRef.current = newRange;
-    setVatPeriod('custom');
-    vatPeriodRef.current = 'custom';
-  };
-
-  const handleRefresh = () => {
-    const p = vatPeriodRef.current;
-    const r = vatDateRangeRef.current;
-    fetchVatReport(p, r.from, r.to);
-  };
 
   const saveCompany = async () => {
     setSavingCompany(true);
@@ -515,8 +455,8 @@ const FinanceReceiptsDashboard = () => {
     setSavingCompany(false);
   };
 
-  const receivableDocs = docs.filter((d) => d.balance < -0.001);
-  const paidDocs = docs.filter((d) => d.balance >= -0.001);
+  const receivableDocs = docs.filter((d) => d.balance < -0.001 && d.source === 'printing');
+  const paidDocs = docs.filter((d) => !(d.balance < -0.001 && d.source === 'printing'));
   const activeDocs = activeTab === 'invoices' ? receivableDocs : paidDocs;
 
   const totalPages = Math.max(1, Math.ceil(activeDocs.length / PAGE_SIZE));
@@ -526,19 +466,26 @@ const FinanceReceiptsDashboard = () => {
   const receivableValue = receivableDocs.reduce((s, d) => s + Math.abs(d.balance), 0);
   const paidValue = paidDocs.reduce((s, d) => s + d.total, 0);
   const owedTotal = receivableValue;
-  // vatTotal from the VAT report ensures absolute consistency with the VAT & Profit tab
-  const vatTotal = vatReport?.summary?.outputVat !== undefined 
-    ? parseFloat(vatReport.summary.outputVat || 0) 
-    : paidDocs.reduce((s, d) => s + (d.vatTotal || 0), 0);
-  // inputVatTotal and payableVat from the VAT report (company-wide, from purchases + expenses)
-  const inputVatTotal = parseFloat(vatReport?.summary?.inputVat || 0);
-  const payableVatTotal = parseFloat(vatReport?.summary?.payableVat !== undefined ? vatReport.summary.payableVat : Math.max(0, vatTotal - inputVatTotal));
 
   return (
     <div className={styles.page}>
       {/* ── HEADER ── */}
       <div className={styles.header}>
         <div className={styles.titleBlock}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'none', border: '1px solid #E5E7EB', borderRadius: 8,
+              padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              color: '#374151', marginBottom: 8, fontFamily: 'inherit',
+              transition: 'background 0.15s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+          >
+            ← Back
+          </button>
           <h2 className={styles.welcomeTitle}>
             Receipts <span className={styles.welcomeEmoji}>🧾</span>
           </h2>
@@ -554,51 +501,6 @@ const FinanceReceiptsDashboard = () => {
 
       {error && <div className={styles.error}>{error}</div>}
 
-      {/* ── ROW 1: KPI HERO CARDS ── */}
-      <div className={styles.kpiGrid}>
-        <div className={`${styles.kpiCard} ${activeTab === 'invoices' ? styles.kpiCardActive : ''}`}>
-          <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Invoices (Unpaid)</span>
-            <span className={styles.kpiIcon} style={{ background: '#FEF3C7' }}><Icon.file /></span>
-          </div>
-          <div className={styles.kpiValue} style={{ color: '#B45309' }}>{receivableDocs.length}</div>
-          <div className={styles.kpiMeta}>Unpaid / outstanding orders</div>
-          <div className={styles.kpiSub}>Awaiting full payment</div>
-        </div>
-
-        <div className={`${styles.kpiCard} ${activeTab === 'receipts' ? styles.kpiCardActive : ''}`}>
-          <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Receipts (Paid)</span>
-            <span className={styles.kpiIcon} style={{ background: 'var(--color-success-bg)' }}><Icon.check /></span>
-          </div>
-          <div className={styles.kpiValue} style={{ color: G.forest }}>{paidDocs.length}</div>
-          <div className={styles.kpiMeta}>Fully paid orders</div>
-          <div className={styles.kpiSub}>Invoice → Payment confirmed</div>
-        </div>
-
-        <div className={`${styles.kpiCard} ${styles.kpiCardHero}`}>
-          <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Outstanding Balance</span>
-            <span className={styles.kpiIconHero}><Icon.money /></span>
-          </div>
-          <div className={styles.kpiHeroValue}>{fmt(receivableValue)}</div>
-          <div className={styles.kpiHeroMeta}>
-            <span>{fmtShort(receivableValue)}</span>
-            <span>{receivableDocs.length} invoices</span>
-          </div>
-          <div className={styles.kpiHeroFoot}>Total unpaid across all modules</div>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Total Value Collected</span>
-            <span className={styles.kpiIcon} style={{ background: 'var(--color-info-bg)' }}><Icon.bank /></span>
-          </div>
-          <div className={styles.kpiValue} style={{ color: G.blue }}>{fmt(paidValue)}</div>
-          <div className={styles.kpiMeta}>Revenue received to date</div>
-          <div className={styles.kpiSub}>{paidDocs.length} confirmed receipts</div>
-        </div>
-      </div>
 
       {/* ── ROW 2: TABS ── */}
       <div className={styles.tabBar}>
@@ -615,12 +517,6 @@ const FinanceReceiptsDashboard = () => {
         >
           <Icon.check /> Receipts (Paid)
           <span className={styles.tabBadge} style={{ background: '#DCFCE7', color: '#166534' }}>{paidDocs.length}</span>
-        </button>
-        <button
-          className={`${styles.tabBtn} ${activeTab === 'vatprofit' ? styles.tabBtnActive : ''}`}
-          onClick={() => { setActiveTab('vatprofit'); setPage(1); }}
-        >
-          <Icon.barChart /> VAT & Profit
         </button>
       </div>
 
@@ -668,319 +564,7 @@ const FinanceReceiptsDashboard = () => {
         </div>
       </div>
 
-      {/* ── ROW 4: VAT & PROFIT (when tab active) ── */}
-      {activeTab === 'vatprofit' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Period Filter Bar */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardTitleIcon}><Icon.barChart /></span>
-              <h3 className={styles.cardTitle}>VAT & Profit Report</h3>
-              <span className={styles.cardSub}>Live data — Output VAT from sales · Input VAT from purchases/expenses · HR costs from payroll · Profit = Revenue - Cost - HR</span>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '12px 20px', flexWrap: 'wrap' }}>
-              {[
-                { key: 'today', label: 'Today' },
-                { key: 'week', label: 'This Week' },
-                { key: 'month', label: 'This Month' },
-                { key: 'year', label: 'This Year' },
-                { key: 'all', label: 'All Time' }
-              ].map(p => (
-                <button key={p.key} onClick={() => handlePeriodClick(p.key)}
-                  style={{ padding: '6px 14px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    background: vatPeriod === p.key && !vatDateRange.from ? '#2563EB' : '#F3F4F6',
-                    color: vatPeriod === p.key && !vatDateRange.from ? '#fff' : '#374151' }}>
-                  {p.label}
-                </button>
-              ))}
-              <span style={{ color: '#D1D5DB', margin: '0 4px' }}>|</span>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B7280' }}>Custom:</label>
-              <input type="date" value={vatDateRange.from} onChange={(e) => handleDateFromChange(e.target.value)}
-                style={{ padding: '5px 8px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 12 }} />
-              <span style={{ color: '#9CA3AF' }}>-</span>
-              <input type="date" value={vatDateRange.to} onChange={(e) => handleDateToChange(e.target.value)}
-                style={{ padding: '5px 8px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 12 }} />
-              <button onClick={handleRefresh} disabled={vatLoading}
-                style={{ padding: '5px 14px', background: '#059669', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: vatLoading ? 0.6 : 1 }}>
-                {vatLoading ? 'Loading...' : 'Refresh'}
-              </button>
-              {vatReport?.period && (
-                <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>
-                  {vatReport.period.from} to {vatReport.period.to} · {vatReport.summary?.invoiceCount || 0} receipts
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Spinner: first load (no data yet) */}
-          {vatLoading && !vatReport && (
-            <div className={styles.card} style={{ textAlign: 'center', padding: '2.5rem 1.5rem', color: '#9CA3AF' }}>
-              <SegmentedSpinner size={28} />
-              <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', fontWeight: 500 }}>Loading live VAT &amp; Profit data…</div>
-            </div>
-          )}
-
-          {/* Subtle refresh overlay while data is already showing */}
-          {vatLoading && vatReport && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', color: '#6B7280', fontSize: '0.8125rem' }}>
-              <SegmentedSpinner size={14} /> Refreshing…
-            </div>
-          )}
-
-          {/* No data */}
-          {!vatLoading && !vatReport && (
-            <div className={styles.card} style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📊</div>
-              <div style={{ fontWeight: 600, color: '#374151' }}>No data for this period</div>
-              <div style={{ fontSize: '0.875rem', color: '#9CA3AF', marginTop: '0.25rem' }}>Try selecting a different time range or click Refresh.</div>
-            </div>
-          )}
-
-          {vatReport && (() => {
-            const s = vatReport.summary || {};
-
-            // ── Core 3 calculations (from actual sales data) ──
-            const totalRev   = parseFloat(s.totalRevenue || 0);
-            const cogs       = parseFloat(s.totalCogs || 0);
-            const grossProf  = totalRev - cogs;
-
-            // ── Extended P&L (backend may or may not provide these) ──
-            const opExpenses = parseFloat(s.totalExpenses || 0);
-            const opProf     = grossProf - opExpenses;
-            const taxesInt   = parseFloat(s.taxesAndInterest || 0);
-            const netProf    = opProf - taxesInt;
-            const profMargin = totalRev > 0 ? ((netProf / totalRev) * 100).toFixed(1) : '0.0';
-
-            // ── VAT figures ──
-            const outputVat  = parseFloat(s.outputVat || 0);
-            const inputVat   = parseFloat(s.inputVat || 0);
-            const payableVat = outputVat - inputVat;
-
-          return (<>
-            {/* ── Key Calculations (3 only, as requested) ── */}
-            <div className={styles.card} style={{ marginBottom: 20 }}>
-              <div className={styles.cardHeader} style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                <span className={styles.cardTitleIcon}><Icon.barChart /></span>
-                <h3 className={styles.cardTitle}>Key Calculations</h3>
-                <span className={styles.cardSub}>Formula reference — how each figure is computed</span>
-              </div>
-              <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
-                {/* 1 */}
-                <div style={{ padding: '14px 16px', borderRadius: 8, background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
-                  <div style={{ fontWeight: 700, color: '#065F46', marginBottom: 4, fontSize: 14 }}>1. Total Revenue</div>
-                  <div style={{ fontSize: 12, color: '#374151' }}>All the money earned from sales before any costs are deducted.</div>
-                  <div style={{ marginTop: 8, fontFamily: 'monospace', background: '#D1FAE5', padding: '4px 8px', borderRadius: 4, fontSize: 12, color: '#065F46', fontWeight: 700, display: 'inline-block' }}>= Sum of all department sales</div>
-                </div>
-                {/* 2 */}
-                <div style={{ padding: '14px 16px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA' }}>
-                  <div style={{ fontWeight: 700, color: '#991B1B', marginBottom: 4, fontSize: 14 }}>2. Cost of Goods Sold (COGS)</div>
-                  <div style={{ fontSize: 12, color: '#374151' }}>Direct costs of producing goods or services (materials, labor, etc.).</div>
-                  <div style={{ marginTop: 8, fontFamily: 'monospace', background: '#FEE2E2', padding: '4px 8px', borderRadius: 4, fontSize: 12, color: '#991B1B', fontWeight: 700, display: 'inline-block' }}>= Sum of item cost prices × qty sold</div>
-                </div>
-                {/* 3 */}
-                <div style={{ padding: '14px 16px', borderRadius: 8, background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-                  <div style={{ fontWeight: 700, color: '#1E3A8A', marginBottom: 4, fontSize: 14 }}>3. Gross Profit</div>
-                  <div style={{ fontSize: 12, color: '#374151' }}>Profit after deducting only the direct cost of goods.</div>
-                  <div style={{ marginTop: 8, fontFamily: 'monospace', background: '#DBEAFE', padding: '4px 8px', borderRadius: 4, fontSize: 12, color: '#1E3A8A', fontWeight: 700, display: 'inline-block' }}>Gross Profit = Total Revenue − COGS</div>
-                </div>
-              </div>
-            </div>
-
-            {/* ── VAT Summary Cards (clean, per department) ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-              {/* Output VAT */}
-              <div style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', borderRadius: 12, padding: '18px 20px', border: '1px solid #A7F3D0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Output VAT</div>
-                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>Collected from customers at point of sale</div>
-                  </div>
-                  <span><Icon.trendUp /></span>
-                </div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: '#059669', fontVariantNumeric: 'tabular-nums' }}>{fmt(outputVat)}</div>
-                <div style={{ fontSize: 10, color: '#065F46', marginTop: 6, padding: '4px 8px', background: '#A7F3D0', borderRadius: 4, display: 'inline-block' }}>
-                  From {vatReport.bySource?.length || 0} department(s)
-                </div>
-              </div>
-
-              {/* Input VAT */}
-              <div style={{ background: 'linear-gradient(135deg, #FEF2F2, #FEE2E2)', borderRadius: 12, padding: '18px 20px', border: '1px solid #FECACA' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Input VAT</div>
-                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>Paid to suppliers on purchases</div>
-                  </div>
-                  <span><Icon.trendDown /></span>
-                </div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>{fmt(inputVat)}</div>
-                <div style={{ fontSize: 10, color: '#991B1B', marginTop: 6, padding: '4px 8px', background: '#FECACA', borderRadius: 4, display: 'inline-block' }}>
-                  PO: {fmt(s.inputVatFromPurchases || 0)} + Expenses: {fmt(s.inputVatFromExpenses || 0)}
-                </div>
-              </div>
-
-              {/* Payable VAT */}
-              <div style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', borderRadius: 12, padding: '18px 20px', border: '1px solid #BFDBFE' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#1E3A8A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payable VAT</div>
-                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>Output VAT − Input VAT</div>
-                  </div>
-                  <span><Icon.court /></span>
-                </div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: payableVat >= 0 ? '#2563EB' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
-                  {payableVat >= 0 ? '+' : ''}{fmt(payableVat)}
-                </div>
-                <div style={{ fontSize: 10, marginTop: 6, padding: '4px 8px', borderRadius: 4, display: 'inline-block',
-                  background: payableVat >= 0 ? '#BFDBFE' : '#FECACA',
-                  color: payableVat >= 0 ? '#1E3A8A' : '#991B1B' }}>
-                  {payableVat >= 0 ? '↑ Amount payable to government' : '↓ Refund due from government'}
-                </div>
-              </div>
-
-              {/* Gross Profit card */}
-              <div style={{ background: 'linear-gradient(135deg, #FFFBEB, #FEF3C7)', borderRadius: 12, padding: '18px 20px', border: '1px solid #FDE68A' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gross Profit</div>
-                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>Revenue − COGS</div>
-                  </div>
-                  <span><Icon.money /></span>
-                </div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: grossProf >= 0 ? '#059669' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
-                  {grossProf >= 0 ? '+' : ''}{fmt(grossProf)}
-                </div>
-                <div style={{ fontSize: 10, color: '#92400E', marginTop: 6, padding: '4px 8px', background: '#FDE68A', borderRadius: 4, display: 'inline-block' }}>
-                  Margin: {totalRev > 0 ? ((grossProf / totalRev) * 100).toFixed(1) : '0.0'}%
-                </div>
-              </div>
-            </div>
-
-            {/* ── P&L Statement (all 7 rows as shown in image; first 3 live-calculated) ── */}
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <span className={styles.cardTitleIcon}><Icon.clipboard /></span>
-                <h3 className={styles.cardTitle}>Profit &amp; Loss Statement</h3>
-                <span className={styles.cardSub}>Live data from all departments</span>
-              </div>
-              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {[
-                  { label: 'Total Revenue',              value: totalRev,    color: '#059669', indent: 0,  bold: false, desc: 'All money earned from sales before any costs' },
-                  { label: 'Cost of Goods Sold (COGS)',  value: -cogs,       color: '#DC2626', indent: 0,  bold: false, desc: 'Direct costs of producing goods/services' },
-                  { label: 'Gross Profit',               value: grossProf,   color: '#2563EB', indent: 0,  bold: true,  separator: true },
-                  { label: 'Operating Expenses',         value: -opExpenses, color: '#DC2626', indent: 20, bold: false, desc: 'Costs of running the business (rent, salaries, utilities)' },
-                  { label: 'Operating Profit',           value: opProf,      color: '#2563EB', indent: 0,  bold: true },
-                  { label: 'Taxes and Interest',         value: -taxesInt,   color: '#DC2626', indent: 20, bold: false, desc: 'Income tax, interest on loans' },
-                  { label: 'NET PROFIT',                 value: netProf,     color: netProf >= 0 ? '#059669' : '#DC2626', indent: 0, bold: true, large: true, separator: true },
-                  { label: 'Profit Margin',              value: profMargin + '%', color: '#374151', indent: 0, bold: false, isText: true },
-                ].map((row, i) => (
-                  <div key={i} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: `${row.large ? '12' : '8'}px ${row.large ? '14' : '10'}px`,
-                    marginLeft: row.indent,
-                    borderRadius: row.bold ? 6 : 0,
-                    background: row.large ? '#F9FAFB' : row.bold ? '#F9FAFB' : 'transparent',
-                    borderTop: row.separator ? '2px solid #D1D5DB' : 'none',
-                    marginTop: row.separator ? 6 : 0,
-                  }}>
-                    <div>
-                      <span style={{ fontSize: row.large ? 14 : 13, fontWeight: row.bold ? 700 : 400, color: row.color }}>{row.label}</span>
-                      {row.desc && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{row.desc}</div>}
-                    </div>
-                    <span style={{ fontSize: row.large ? 16 : 13, fontWeight: row.bold ? 800 : 500, color: row.color, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                      {row.isText ? row.value : (row.value >= 0 ? '+' : '') + fmt(row.value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Revenue by Department ── */}
-            {vatReport.bySource && vatReport.bySource.length > 0 && (
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <span className={styles.cardTitleIcon}><Icon.barChart /></span>
-                  <h3 className={styles.cardTitle}>Revenue by Department</h3>
-                  <span className={styles.cardSub}>{vatReport.bySource.length} source{vatReport.bySource.length !== 1 ? 's' : ''} · each department's sales recorded separately</span>
-                </div>
-                <div className={styles.table}>
-                  <div className={styles.tHead} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr' }}>
-                    <span>Department</span>
-                    <span style={{ textAlign: 'right' }}>Revenue</span>
-                    <span style={{ textAlign: 'right' }}>COGS</span>
-                    <span style={{ textAlign: 'right' }}>Gross Profit</span>
-                    <span style={{ textAlign: 'right' }}>Margin</span>
-                    <span style={{ textAlign: 'right', color: '#059669' }}>Output VAT</span>
-                    <span style={{ textAlign: 'right', color: '#DC2626' }}>Input VAT</span>
-                    <span style={{ textAlign: 'right', color: '#2563EB' }}>Payable VAT</span>
-                  </div>
-                  {(() => {
-                    // Distribute total input VAT proportionally by each department's output VAT share
-                    const totalOutVat = vatReport.bySource.reduce((s, r) => s + parseFloat(r.outputVat || 0), 0);
-                    const totalInVat  = parseFloat(vatReport.summary?.inputVat || 0);
-                    return vatReport.bySource.map((src, i) => {
-                      const dRev     = parseFloat(src.revenue || 0);
-                      const dCost    = parseFloat(src.cost || 0);
-                      const dProf    = dRev - dCost;
-                      const dMgn     = dRev > 0 ? ((dProf / dRev) * 100).toFixed(1) : '0.0';
-                      const dOutVat  = parseFloat(src.outputVat || 0);
-                      // Input VAT share proportional to this dept's output VAT vs total output VAT
-                      const share    = totalOutVat > 0 ? dOutVat / totalOutVat : 0;
-                      const dInVat   = Math.round(totalInVat * share * 100) / 100;
-                      const dPayable = Math.round((dOutVat - dInVat) * 100) / 100;
-                      return (
-                        <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr' }}>
-                          <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{src.label || src.source}</span>
-                          <span className={styles.num} style={{ textAlign: 'right', color: '#059669' }}>{fmt(dRev)}</span>
-                          <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(dCost)}</span>
-                          <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: dProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(dProf)}</span>
-                          <span className={styles.num} style={{ textAlign: 'right' }}>{dMgn}%</span>
-                          <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 600 }}>{fmt(dOutVat)}</span>
-                          <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 600 }}>{fmt(dInVat)}</span>
-                          <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: dPayable >= 0 ? '#2563EB' : '#DC2626' }}>{fmt(dPayable)}</span>
-                        </div>
-                      );
-                    });
-                  })()}
-                  {/* Totals row */}
-                  {(() => {
-                    const totRev     = vatReport.bySource.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
-                    const totCost    = vatReport.bySource.reduce((s, r) => s + parseFloat(r.cost || 0), 0);
-                    const totProf    = totRev - totCost;
-                    const totOutVat  = parseFloat(vatReport.summary?.outputVat || 0);
-                    const totInVat   = parseFloat(vatReport.summary?.inputVat || 0);
-                    const totPayable = parseFloat(vatReport.summary?.payableVat !== undefined ? vatReport.summary.payableVat : (totOutVat - totInVat));
-                    const totMgn     = totRev > 0 ? ((totProf / totRev) * 100).toFixed(1) : '0.0';
-                    return (
-                      <div className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', borderTop: '2px solid #D1D5DB', background: '#F9FAFB', fontWeight: 700 }}>
-                        <span style={{ fontWeight: 700 }}>TOTAL</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 700 }}>{fmt(totRev)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 700 }}>{fmt(totCost)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: totProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(totProf)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>{totMgn}%</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 700 }}>{fmt(totOutVat)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 700 }}>{fmt(totInVat)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: totPayable >= 0 ? '#2563EB' : '#DC2626' }}>{fmt(totPayable)}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            )}
-
-            <div className={styles.note}>
-              <strong>How data flows:</strong> Every sale in every department (Printing, Car Rental, Pharmacy, Sales, etc.) auto-generates a Sales Receipt. This page aggregates all those receipts:
-              &nbsp;<strong>Total Revenue</strong> = sum of all receipt amounts across departments ·
-              &nbsp;<strong>COGS</strong> = sum of item cost prices × qty ·
-              &nbsp;<strong>Output VAT</strong> = VAT collected from customers ·
-              &nbsp;<strong>Input VAT</strong> = VAT paid to suppliers on purchases ·
-              &nbsp;<strong>Payable VAT</strong> = Output − Input (what goes to government).
-            </div>
-          </>); })()}
-        </div>
-      )}
-
       {/* ── ROW 4: DOCUMENT LIST ── */}
-      {activeTab !== 'vatprofit' && (
       <div className={styles.card}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitleIcon}>{activeTab === 'invoices' ? <Icon.file /> : <Icon.check />}</span>
@@ -994,15 +578,13 @@ const FinanceReceiptsDashboard = () => {
           <div
             className={styles.tHead}
             style={{ gridTemplateColumns: activeTab === 'receipts'
-              ? '40px 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr'
+              ? '40px 1.5fr 1fr 1fr 1fr 1fr'
               : '40px 1.8fr 1.1fr 1fr 1fr 1fr 1fr' }}
           >
             <span>#</span>
             <span>Module</span>
             <span style={{ textAlign: 'center' }}>Receipt No</span>
             <span style={{ textAlign: 'center' }}>Date</span>
-            {activeTab === 'receipts' && <span style={{ textAlign: 'right', color: '#059669' }}>Output VAT</span>}
-            {activeTab === 'receipts' && <span style={{ textAlign: 'right', color: '#DC2626' }}>Input VAT</span>}
             <span style={{ textAlign: 'right' }}>Paid</span>
             {activeTab === 'invoices' && <span style={{ textAlign: 'right' }}>Balance</span>}
             <span style={{ textAlign: 'right' }}>Total</span>
@@ -1015,9 +597,6 @@ const FinanceReceiptsDashboard = () => {
                 : 'No confirmed receipts yet — payments will appear here once orders are paid.'}
             </div>
           ) : pagedDocs.map((d, i) => {
-            // Per-row input VAT: proportional share of total company input VAT
-            const rowOutVat = d.vatTotal || 0;
-            const rowInVat  = vatTotal > 0 ? Math.round(rowOutVat / vatTotal * inputVatTotal * 100) / 100 : 0;
             return (
               <div
                 key={d.id}
@@ -1025,7 +604,7 @@ const FinanceReceiptsDashboard = () => {
                 role="button"
                 tabIndex={0}
                 style={{ gridTemplateColumns: activeTab === 'receipts'
-                  ? '40px 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr'
+                  ? '40px 1.5fr 1fr 1fr 1fr 1fr'
                   : '40px 1.8fr 1.1fr 1fr 1fr 1fr 1fr' }}
                 onKeyDown={e => e.key === 'Enter' && setSelected(d)}
                 onClick={() => setSelected(d)}
@@ -1037,8 +616,6 @@ const FinanceReceiptsDashboard = () => {
                 </span>
                 <span className={styles.num} style={{ textAlign: 'center' }}>{d.receiptNo}</span>
                 <span className={styles.num} style={{ textAlign: 'center' }}>{fmtDate(d.date)}</span>
-                {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 600 }}>{fmt(rowOutVat)}</span>}
-                {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 600 }}>{fmt(rowInVat)}</span>}
                 <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(d.amountPaid)}</span>
                 {activeTab === 'invoices' && (
                   <span className={styles.num} style={{ textAlign: 'right', color: d.balance < -0.001 ? '#DC2626' : G.forest, fontWeight: d.balance < -0.001 ? 700 : 400 }}>
@@ -1061,9 +638,6 @@ const FinanceReceiptsDashboard = () => {
               <span className={styles.rowNum}></span>
               <span className={styles.moduleName} style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 13 }}>TOTAL</span>
               <span></span>
-              <span></span>
-              {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: '#059669' }}>{fmt(vatTotal)}</span>}
-              {activeTab === 'receipts' && <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: '#DC2626' }}>{fmt(inputVatTotal)}</span>}
               <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>
                 {activeTab === 'receipts' ? fmt(paidValue) : ''}
               </span>
@@ -1073,26 +647,7 @@ const FinanceReceiptsDashboard = () => {
               </span>
             </div>
           )}
-          {/* VAT reconciliation summary shown beneath paid receipts table */}
-          {activeTab === 'receipts' && activeDocs.length > 0 && (
-            <div style={{ display: 'flex', gap: 12, padding: '10px 16px', background: '#F9FAFB', borderTop: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 160, padding: '8px 12px', borderRadius: 6, background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Output VAT</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#059669', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(vatTotal)}</div>
-                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 1 }}>Collected from customers</div>
-              </div>
-              <div style={{ flex: 1, minWidth: 160, padding: '8px 12px', borderRadius: 6, background: '#FEF2F2', border: '1px solid #FECACA' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Input VAT</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#DC2626', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(inputVatTotal)}</div>
-                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 1 }}>Paid to suppliers (POs + Expenses)</div>
-              </div>
-              <div style={{ flex: 1, minWidth: 160, padding: '8px 12px', borderRadius: 6, background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#1E3A8A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Payable VAT</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: payableVatTotal >= 0 ? '#2563EB' : '#DC2626', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(payableVatTotal)}</div>
-                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 1 }}>Output VAT − Input VAT → government</div>
-              </div>
-            </div>
-          )}
+
         </div>
 
         {totalPages > 1 && (
@@ -1119,7 +674,6 @@ const FinanceReceiptsDashboard = () => {
             : 'Every payment received auto-generates a linked Sales Receipt: Sale ID → Payment ID → Receipt ID — no double counting. The receipt confirms money received against the sale; it never recalculates the sale.'}
         </div>
       </div>
-      )}
 
       {selected && <DocumentModal doc={selected} company={company} onClose={() => setSelected(null)} />}
     </div>
