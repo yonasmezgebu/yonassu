@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
 import { triggerNotification } from '../../utils/ceoNotifications';
 import {
   TrendingUp, Download, Search, CheckCircle2, AlertCircle,
   Calendar, Building, DollarSign, Filter, RefreshCw, Layers, FileText,
-  ArrowLeft, Printer, User, Phone, Package, CreditCard, Hash, Smartphone, Eye, X
+  ArrowLeft, Printer, User, Phone, Package, CreditCard, Hash, Smartphone, Eye, X, Receipt
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
@@ -412,19 +413,26 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
 
 
 /* ─── Main Component ────────────────────────────────────────────── */
+const PAGE_SIZE = 20;
+
 const FinanceOutstandingReceivables = () => {
   const [receivables, setReceivables] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toasts, show, remove } = useToast();
+  const navigate = useNavigate();
 
   // Navigation State
   const [view, setView] = useState('list');
   const [detailId, setDetailId] = useState(null);
 
   // Filters
-  const [customerFilter, setCustomerFilter] = useState('All');
+  const [deptFilter, setDeptFilter] = useState('All');
   const [agingFilter, setAgingFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState('1');
 
   const loadReceivables = useCallback(async () => {
     setLoading(true);
@@ -447,6 +455,12 @@ const FinanceOutstandingReceivables = () => {
     }
   }, [view, loadReceivables]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageInput('1');
+  }, [deptFilter, agingFilter, searchQuery]);
+
   // Process data
   const today = new Date();
   const processed = useMemo(() => {
@@ -458,11 +472,12 @@ const FinanceOutstandingReceivables = () => {
     });
   }, [receivables, today]);
 
-  const uniqueCustomers = useMemo(() => [...new Set(processed.map(r => r.customer_name))].sort(), [processed]);
+  // Fixed departments (matches SOURCE_LABEL on backend)
+  const DEPARTMENTS = ['Retail & POS', 'Pharmacy', 'Printing', 'Car Rental', 'AgriRent', 'Manual Entry'];
 
   const filtered = useMemo(() => {
     return processed.filter(inv => {
-      const matchCust = customerFilter === 'All' || inv.customer_name === customerFilter;
+      const matchDept = deptFilter === 'All' || inv.department_source === deptFilter;
       let matchAging = true;
       if (agingFilter === '0-30') matchAging = inv.daysOverdue >= 0 && inv.daysOverdue <= 30;
       if (agingFilter === '31-60') matchAging = inv.daysOverdue > 30 && inv.daysOverdue <= 60;
@@ -470,13 +485,31 @@ const FinanceOutstandingReceivables = () => {
       if (agingFilter === '>90') matchAging = inv.daysOverdue > 90;
       const matchSearch = (inv.invoice_no || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (inv.customer_name || '').toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCust && matchAging && matchSearch;
+      return matchDept && matchAging && matchSearch;
     });
-  }, [processed, customerFilter, agingFilter, searchQuery]);
+  }, [processed, deptFilter, agingFilter, searchQuery]);
 
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const pagedData = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const goToPage = (p) => {
+    const clamped = Math.min(Math.max(1, p), totalPages);
+    setCurrentPage(clamped);
+    setPageInput(String(clamped));
+  };
+
+  // Totals (entire filtered set — not just current page)
+  const totalInvoiced    = filtered.reduce((s, r) => s + parseFloat(r.total_amount   || 0), 0);
+  const totalSellingPrice= filtered.reduce((s, r) => s + parseFloat(r.selling_price  || r.subtotal || r.total_amount || 0), 0);
+  const totalCogs        = filtered.reduce((s, r) => s + parseFloat(r.cogs           || 0), 0);
+  const totalInputVat    = filtered.reduce((s, r) => s + parseFloat(r.input_vat      || 0), 0);
+  const totalOutputVat   = filtered.reduce((s, r) => s + parseFloat(r.output_vat     || 0), 0);
+  const totalPayableVat  = totalOutputVat - totalInputVat;
+  const totalGrossProfit = filtered.reduce((s, r) => s + parseFloat(r.gross_profit   || 0), 0);
   const totalOutstanding = filtered.reduce((s, r) => s + parseFloat(r.outstanding_balance || 0), 0);
-  const totalPaid = filtered.reduce((s, r) => s + parseFloat(r.amount_paid || 0), 0);
-  const totalInvoiced = filtered.reduce((s, r) => s + parseFloat(r.total_amount || 0), 0);
+  const totalPaid        = filtered.reduce((s, r) => s + parseFloat(r.amount_paid    || 0), 0);
 
   return (
     <div className="ror-page">
@@ -508,6 +541,13 @@ const FinanceOutstandingReceivables = () => {
                 <button className="ror-btn-outline" onClick={loadReceivables}>
                   <RefreshCw size={15} /> Refresh
                 </button>
+                <button
+                  className="ror-btn-outline"
+                  onClick={() => navigate('/finance/invoices')}
+                  style={{ borderColor: '#7C3AED', color: '#7C3AED' }}
+                >
+                  <Receipt size={15} /> Sales Invoices &amp; Receipts
+                </button>
                 <button className="ror-btn-primary">
                   <Download size={15} /> Export CSV
                 </button>
@@ -517,10 +557,12 @@ const FinanceOutstandingReceivables = () => {
             {/* ── KPI CARDS ── */}
             <div className="ror-kpi-grid">
               {[
-                { title: 'Total Invoiced', value: totalInvoiced, icon: <FileText size={22} color="#FFFFFF" />, accent: 'var(--color-primary)', bg: '#EFF6FF' },
-                { title: 'Total Settled / Paid', value: totalPaid, icon: <CheckCircle2 size={22} color="#FFFFFF" />, accent: 'var(--color-success)', bg: 'var(--color-success-bg)', textColor: 'var(--color-success)' },
-                { title: 'Total Outstanding', value: totalOutstanding, icon: <TrendingUp size={22} color="#FFFFFF" />, accent: 'var(--color-warning)', bg: 'var(--color-warning-bg)', textColor: 'var(--color-warning)' },
-                { title: 'Recorded Entries', value: filtered.length, icon: <Layers size={22} color="#FFFFFF" />, accent: 'var(--color-info)', bg: 'var(--color-info-bg)', isCount: true, textColor: 'var(--color-info)' },
+                { title: 'Total Revenue',   value: totalInvoiced,    icon: <FileText   size={22} color="#FFFFFF" />, accent: 'var(--color-primary)', bg: '#EFF6FF' },
+                { title: 'Total COGS',      value: totalCogs,        icon: <DollarSign size={22} color="#FFFFFF" />, accent: '#7C3AED',              bg: '#F5F3FF',                   textColor: '#7C3AED' },
+                { title: 'Gross Profit',    value: totalGrossProfit, icon: <TrendingUp  size={22} color="#FFFFFF" />, accent: 'var(--color-success)', bg: 'var(--color-success-bg)', textColor: 'var(--color-success)' },
+                { title: 'Output VAT',      value: totalOutputVat,   icon: <CheckCircle2 size={22} color="#FFFFFF" />, accent: 'var(--color-info)', bg: 'var(--color-info-bg)',     textColor: 'var(--color-info)' },
+                { title: 'Input VAT',       value: totalInputVat,    icon: <CheckCircle2 size={22} color="#FFFFFF" />, accent: 'var(--color-warning)', bg: 'var(--color-warning-bg)', textColor: 'var(--color-warning)' },
+                { title: 'Payable VAT (Output − Input)', value: totalPayableVat, icon: <DollarSign size={22} color="#FFFFFF" />, accent: totalPayableVat >= 0 ? '#DC2626' : '#16A34A', bg: totalPayableVat >= 0 ? '#FEE2E2' : '#DCFCE7', textColor: totalPayableVat >= 0 ? '#DC2626' : '#16A34A' },
               ].map((kpi, i) => (
                 <div key={i} className="ror-kpi-card" style={{ background: kpi.bg, borderLeft: `4px solid ${kpi.accent}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
@@ -529,9 +571,9 @@ const FinanceOutstandingReceivables = () => {
                     </div>
                     <div style={{ fontSize: 12, fontWeight: 500, color: kpi.textColor || 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{kpi.title}</div>
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: kpi.textColor || 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                    {!kpi.isCount && <span style={{ fontSize: 15, color: kpi.textColor || 'var(--color-text-muted)', marginRight: 5, fontWeight: 600 }}>ETB</span>}
-                    {kpi.isCount ? kpi.value : fmt(kpi.value)}
+                  <div style={{ fontSize: 26, fontWeight: 700, color: kpi.textColor || 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ fontSize: 13, color: kpi.textColor || 'var(--color-text-muted)', marginRight: 5, fontWeight: 600 }}>ETB</span>
+                    {fmt(kpi.value)}
                   </div>
                 </div>
               ))}
@@ -555,11 +597,15 @@ const FinanceOutstandingReceivables = () => {
 
                 <div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                    <Building size={13} /> Source / Department
+                    <Building size={13} /> Department
                   </label>
-                  <select value={customerFilter} onChange={e => setCustomerFilter(e.target.value)} className="ror-input">
-                    <option value="All">All Sources</option>
-                    {uniqueCustomers.map(c => <option key={c} value={c}>{c}</option>)}
+                  <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} className="ror-input">
+                    <option value="All">All Departments</option>
+                    <option value="Retail &amp; POS">Retail &amp; POS</option>
+                    <option value="Pharmacy">Pharmacy</option>
+                    <option value="Printing">Printing</option>
+                    <option value="Car Rental">Car Rental</option>
+                    <option value="AgriRent">AgriRent</option>
                   </select>
                 </div>
 
@@ -577,7 +623,7 @@ const FinanceOutstandingReceivables = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button onClick={() => { setCustomerFilter('All'); setAgingFilter('All'); setSearchQuery(''); }} className="ror-btn-clear">
+                  <button onClick={() => { setDeptFilter('All'); setAgingFilter('All'); setSearchQuery(''); }} className="ror-btn-clear">
                     Clear Filters
                   </button>
                 </div>
@@ -596,15 +642,15 @@ const FinanceOutstandingReceivables = () => {
                   <table className="ror-table">
                     <thead>
                       <tr>
-                        {['Source / Reference', 'Dates', 'Total Amount (ETB)', 'Settled / Paid (ETB)', 'Status', 'Action'].map((h, hi) => (
-                          <th key={h} style={{ textAlign: hi >= 2 ? 'right' : 'left' }}>{h}</th>
+                        {['Source / Reference', 'Date', 'Selling Price (ETB)', 'COGS (ETB)', 'Input VAT (ETB)', 'Output VAT (ETB)', 'Payable VAT (ETB)', 'Total (ETB)', 'Status', 'Action'].map((h, hi) => (
+                          <th key={h} style={{ textAlign: hi >= 2 && hi <= 7 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {filtered.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ padding: '60px 24px', textAlign: 'center' }}>
+                          <td colSpan={10} style={{ padding: '60px 24px', textAlign: 'center' }}>
                             <div style={{ background: 'var(--color-bg-page)', width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', border: '1px dashed var(--color-border)', borderRadius: 10 }}>
                               <Search size={28} color="var(--color-primary)" />
                             </div>
@@ -612,71 +658,189 @@ const FinanceOutstandingReceivables = () => {
                             <div style={{ color: 'var(--color-text-secondary)', marginTop: 4, fontSize: 13 }}>Try adjusting your filters or search query.</div>
                           </td>
                         </tr>
-                      ) : filtered.map((inv, rowIdx) => {
+                      ) : pagedData.map((inv) => {
                         const isPaid = inv.status === 'Paid';
-                        const isOverdue = inv.status === 'Overdue';
+                        const isReceipt = isPaid && inv.receipt_no;
+                        const rowInputVat = parseFloat(inv.input_vat || 0);
+                        const rowOutputVat = parseFloat(inv.output_vat || inv.vat_total || 0);
+                        const rowPayableVat = rowOutputVat - rowInputVat;
                         return (
                           <tr key={inv.id} className="ror-table-row" style={{ background: '#fff' }}>
                             <td style={{ verticalAlign: 'top' }}>
-                              <div style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 14, marginBottom: 6 }}>{inv.customer_name}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-info)', background: 'var(--color-info-bg)', padding: '2px 10px', fontFamily: 'monospace', borderRadius: 999 }}>
-                                  {inv.invoice_no || `REC-ID-${inv.id}`}
+                              <div style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 14, marginBottom: 4 }}>{inv.customer_name}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-info)', background: 'var(--color-info-bg)', padding: '2px 8px', fontFamily: 'monospace', borderRadius: 999 }}>
+                                  {inv.invoice_no || `ID-${inv.id}`}
                                 </span>
-                                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500, background: 'var(--color-bg-page)', padding: '2px 10px', borderRadius: 999 }}>
+                                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500, background: 'var(--color-bg-page)', padding: '2px 8px', borderRadius: 999, border: '1px solid var(--color-border)' }}>
                                   {inv.department_source || 'N/A'}
                                 </span>
+                                {isReceipt && (
+                                  <span style={{ fontSize: 11, color: 'var(--color-success)', fontWeight: 600, background: 'var(--color-success-bg)', padding: '2px 8px', borderRadius: 999 }}>
+                                    RCP: {inv.receipt_no}
+                                  </span>
+                                )}
                               </div>
                             </td>
 
-                            <td style={{ color: 'var(--color-text-secondary)', fontSize: 13, verticalAlign: 'top' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                                <Calendar size={13} color="var(--color-primary)" />
-                                <span style={{ color: 'var(--color-text-primary)', fontWeight: 600, minWidth: 44 }}>Record:</span>
-                                {fmtD(inv.invoice_date)}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <Calendar size={13} color="var(--color-text-muted)" />
-                                <span style={{ color: 'var(--color-text-primary)', fontWeight: 600, minWidth: 44 }}>Due:</span>
-                                {fmtD(inv.due_date)}
-                              </div>
+                            <td style={{ color: 'var(--color-text-secondary)', fontSize: 13, verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                              {fmtD(inv.invoice_date)}
                             </td>
 
                             <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
-                              <div style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 15 }}>{fmt(inv.total_amount)}</div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 14 }}>{fmt(inv.selling_price || inv.subtotal || inv.total_amount)}</div>
                             </td>
 
                             <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
-                              <div style={{ fontWeight: 700, color: 'var(--color-success)', fontSize: 15 }}>{fmt(inv.amount_paid)}</div>
+                              <div style={{ fontWeight: 600, color: '#7C3AED', fontSize: 14 }}>{fmt(inv.cogs || 0)}</div>
+                            </td>
+
+                            <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--color-warning)', fontSize: 14 }}>{fmt(rowInputVat)}</div>
+                            </td>
+
+                            <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--color-info)', fontSize: 14 }}>{fmt(rowOutputVat)}</div>
+                            </td>
+
+                            <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                              <div style={{ fontWeight: 700, color: rowPayableVat >= 0 ? '#DC2626' : '#16A34A', fontSize: 14 }}>{fmt(rowPayableVat)}</div>
+                            </td>
+
+                            <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 14 }}>{fmt(inv.total_amount)}</div>
                             </td>
 
                             <td style={{ textAlign: 'center', verticalAlign: 'top' }}>
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 5,
-                                background: isPaid ? 'var(--color-success-bg)' : isOverdue ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)',
-                                color: isPaid ? 'var(--color-success)' : isOverdue ? 'var(--color-danger)' : 'var(--color-warning)',
-                                padding: '2px 10px', fontSize: 12, fontWeight: 500,
-                                border: `1px solid ${isPaid ? 'var(--color-success)' : isOverdue ? 'var(--color-danger)' : 'var(--color-warning)'}`,
-                                borderRadius: 999,
+                                background: isPaid ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
+                                color: isPaid ? 'var(--color-success)' : 'var(--color-warning)',
+                                padding: '3px 10px', fontSize: 12, fontWeight: 600,
+                                border: `1px solid ${isPaid ? 'var(--color-success)' : 'var(--color-warning)'}`,
+                                borderRadius: 999, whiteSpace: 'nowrap'
                               }}>
-                                {isPaid ? <CheckCircle2 size={13} strokeWidth={3} /> : <AlertCircle size={13} strokeWidth={3} />}
-                                {inv.status}
+                                {isPaid ? <CheckCircle2 size={12} strokeWidth={3} /> : <AlertCircle size={12} strokeWidth={3} />}
+                                {isPaid ? (isReceipt ? 'Receipt / Paid' : 'Paid') : 'Invoice / Unpaid'}
                               </div>
                             </td>
 
                             <td style={{ textAlign: 'center', verticalAlign: 'top' }}>
-                              <button
-                                onClick={() => { setDetailId(inv.id); setView('detail'); }}
-                                className="ror-btn-view"
-                              >
-                                <Eye size={13} /> View
-                              </button>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
+                                <button
+                                  onClick={() => { setDetailId(inv.id); setView('detail'); }}
+                                  className="ror-btn-view"
+                                >
+                                  <Eye size={13} /> Detail
+                                </button>
+                                <button
+                                  onClick={() => navigate('/finance/invoices', { state: { selectedSaleId: inv.sale_id || inv.id } })}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    background: '#7C3AED', color: 'white',
+                                    border: 'none', borderRadius: 6,
+                                    padding: '4px 10px', fontSize: 12, fontWeight: 600,
+                                    cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit'
+                                  }}
+                                >
+                                  <Receipt size={12} /> Receipt
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
+
+                    {/* ── SUMMARY / TOTALS ROW ── */}
+                    {filtered.length > 0 && (
+                      <tfoot>
+                        <tr style={{ background: '#1E293B' }}>
+                          <td colSpan={2} style={{ padding: '14px 16px', fontWeight: 700, fontSize: 13, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Page {safePage}/{totalPages} &nbsp;·&nbsp; {filtered.length} records total
+                          </td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalSellingPrice)}</td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#A78BFA', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCogs)}</td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#FCD34D', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalInputVat)}</td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#67E8F9', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalOutputVat)}</td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: totalPayableVat >= 0 ? '#FCA5A5' : '#86EFAC', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalPayableVat)}</td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalInvoiced)}</td>
+                          <td colSpan={2} style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700, fontSize: 12, color: '#94A3B8' }}>TOTALS</td>
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
+                </div>
+              )}
+
+              {/* ── PAGINATION FOOTER ── */}
+              {!loading && filtered.length > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 20px',
+                  background: '#F8FAFC',
+                  borderTop: '1px solid var(--color-border)',
+                  flexWrap: 'wrap', gap: 12,
+                  position: 'sticky', bottom: 0, zIndex: 10,
+                  boxShadow: '0 -2px 8px rgba(0,0,0,0.06)'
+                }}>
+                  {/* Left: record info */}
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                    Showing <strong style={{ color: 'var(--color-text-primary)' }}>
+                      {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)}
+                    </strong> of <strong style={{ color: 'var(--color-text-primary)' }}>{filtered.length}</strong> records
+                  </div>
+
+                  {/* Center: page jump */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Go to page</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalPages}
+                      value={pageInput}
+                      onChange={e => setPageInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { const p = parseInt(pageInput); if (!isNaN(p)) goToPage(p); } }}
+                      onBlur={() => { const p = parseInt(pageInput); if (!isNaN(p)) goToPage(p); }}
+                      style={{
+                        width: 60, height: 34, border: '1px solid var(--color-border)',
+                        borderRadius: 7, textAlign: 'center', fontSize: 13,
+                        fontWeight: 600, fontFamily: 'inherit', outline: 'none',
+                        color: 'var(--color-text-primary)', background: 'white'
+                      }}
+                    />
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>of <strong>{totalPages}</strong></span>
+                  </div>
+
+                  {/* Right: prev/next */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => goToPage(safePage - 1)}
+                      disabled={safePage <= 1}
+                      style={{
+                        height: 34, padding: '0 16px', borderRadius: 7, fontSize: 13, fontWeight: 600,
+                        background: safePage <= 1 ? '#F1F5F9' : 'var(--color-primary)',
+                        color: safePage <= 1 ? '#94A3B8' : 'white',
+                        border: '1px solid ' + (safePage <= 1 ? 'var(--color-border)' : 'var(--color-primary)'),
+                        cursor: safePage <= 1 ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        fontFamily: 'inherit', transition: 'all 150ms ease'
+                      }}
+                    >← Prev</button>
+                    <button
+                      onClick={() => goToPage(safePage + 1)}
+                      disabled={safePage >= totalPages}
+                      style={{
+                        height: 34, padding: '0 16px', borderRadius: 7, fontSize: 13, fontWeight: 600,
+                        background: safePage >= totalPages ? '#F1F5F9' : 'var(--color-primary)',
+                        color: safePage >= totalPages ? '#94A3B8' : 'white',
+                        border: '1px solid ' + (safePage >= totalPages ? 'var(--color-border)' : 'var(--color-primary)'),
+                        cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        fontFamily: 'inherit', transition: 'all 150ms ease'
+                      }}
+                    >Next →</button>
+                  </div>
                 </div>
               )}
             </div>
@@ -736,7 +900,7 @@ const FinanceOutstandingReceivables = () => {
 
         .ror-kpi-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(3, 1fr);
           gap: 16px;
           margin-bottom: 20px;
         }
@@ -848,6 +1012,7 @@ const FinanceOutstandingReceivables = () => {
           .ror-meta-grid { grid-template-columns: repeat(2, 1fr); }
           .ror-filter-grid { grid-template-columns: 1fr 1fr; }
         }
+        tfoot td { vertical-align: middle; }
         @media (max-width: 768px) {
           .ror-kpi-grid { grid-template-columns: 1fr; }
           .ror-meta-grid { grid-template-columns: 1fr; }
