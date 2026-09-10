@@ -1,4 +1,4 @@
-const { db, transaction } = require('../../config/database');
+﻿const { db, transaction } = require('../../config/database');
 const { audit } = require('../../config/logger');
 const { sendEmail } = require('../../services/email.service');
 const { sendCeoNotification } = require('../../services/notification.service');
@@ -597,7 +597,7 @@ exports.processPOMobilePayments = catchAsync(async (req, res) => {
       date: new Date().toISOString().slice(0, 10),
       type: 'EV',
       reference: referenceNumber || `PO-${purchaseOrder.po_number}`,
-      description: `Purchase order payment: ${purchaseOrder.po_number}${notes ? ' — ' + notes : ''}`,
+      description: `Purchase order payment: ${purchaseOrder.po_number}${notes ? ' â€” ' + notes : ''}`,
       receipts: 0,
       payments: Number(amount)
     });
@@ -1204,7 +1204,7 @@ exports.rejectCashHandover = catchAsync(async (req, res) => {
   res.status(200).json({ status: 'success', message: 'Handover rejected successfully' });
 });
 
-/* ── VAT & Profit Report — LIVE from ALL source tables ──────────────────── */
+/* â”€â”€ VAT & Profit Report â€” LIVE from ALL source tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 exports.getVatProfitReport = catchAsync(async (req, res) => {
   const { from, to, period } = req.query;
@@ -1225,18 +1225,18 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const fmt2 = (n) => Math.round(parseFloat(n || 0) * 100) / 100;
   const applyRange = (qb, col) => { if (dateFrom) qb.where(col, '>=', dateFrom); if (dateTo) qb.where(col, '<=', dateTo); };
 
-  /* ══════════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      REVENUE from ALL source tables (matching receipts dashboard)
-     ══════════════════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   const sources = [
-    { key: 'retail', label: 'Retail & POS', icon: '🛒', color: '#2563EB' },
-    { key: 'pharmacy', label: 'Pharmacy', icon: '💊', color: '#059669' },
-    { key: 'printing', label: 'Printing', icon: '🖨️', color: '#D97706' },
-    { key: 'car_rental', label: 'Car Rental', icon: '🚗', color: '#7C3AED' },
-    { key: 'agrirent', label: 'AgriRent', icon: '🚜', color: '#16A34A' },
-    { key: 'tender_sell', label: 'Tender Sell', icon: '📤', color: '#0EA5E9' },
-    { key: 'tender_buy', label: 'Tender Buy', icon: '📥', color: '#EF4444' },
+    { key: 'retail', label: 'Retail & POS', icon: 'ðŸ›’', color: '#2563EB' },
+    { key: 'pharmacy', label: 'Pharmacy', icon: 'ðŸ’Š', color: '#059669' },
+    { key: 'printing', label: 'Printing', icon: 'ðŸ–¨ï¸', color: '#D97706' },
+    { key: 'car_rental', label: 'Car Rental', icon: 'ðŸš—', color: '#7C3AED' },
+    { key: 'agrirent', label: 'AgriRent', icon: 'ðŸšœ', color: '#16A34A' },
+    { key: 'tender_sell', label: 'Tender Sell', icon: 'ðŸ“¤', color: '#0EA5E9' },
+    { key: 'tender_buy', label: 'Tender Buy', icon: 'ðŸ“¥', color: '#EF4444' },
   ];
 
   const sourceResults = {};
@@ -1325,9 +1325,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     cogs: 0,
   };
 
-  /* ══════════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      AGGREGATE TOTALS
-     ══════════════════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   let totalRevenue = 0, totalOutputVat = 0, totalInvoiceCount = 0, totalCogs = 0;
   const bySource = sources.map(s => {
@@ -1343,9 +1343,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     return { ...s, revenue: rev, outputVat: outVat, cost, profit, invoiceCount: d.invoiceCount || 0, margin: rev > 0 ? fmt2((profit / rev) * 100) : 0 };
   });
 
-  /* ══════════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      INPUT VAT (purchase orders + expenses)
-     ══════════════════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   const poRow = await db('purchase_orders')
     .modify((q) => { applyRange(q, 'created_at'); })
@@ -1368,9 +1368,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const inputVat = fmt2(inputVatFromPurchases + inputVatFromExpenses);
   const payableVat = fmt2(totalOutputVat - inputVat);
 
-  /* ══════════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      HR COSTS (payroll + employees)
-     ══════════════════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   const hrRow = await db('payroll_company_aggregation')
     .modify(function(q) {
@@ -1411,9 +1411,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     monthlySalaryTotal: fmt2(empRow.sal),
   };
 
-  /* ══════════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      PROFIT & LOSS
-     ══════════════════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   const grossProfit = fmt2(totalRevenue - totalCogs);
   const operatingProfit = fmt2(grossProfit - totalExpenses);
@@ -1421,9 +1421,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const totalCost = fmt2(totalCogs + totalExpenses + hrCosts.netPay);
   const margin = totalRevenue > 0 ? fmt2((netProfit / totalRevenue) * 100) : 0;
 
-  /* ══════════════════════════════════════════════════════════════════════
-     BY MONTH (from sales_invoices only — other sources don't have monthly granularity)
-     ══════════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     BY MONTH (from sales_invoices only â€” other sources don't have monthly granularity)
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   const invMonthRows = await db('sales_invoices')
     .andWhereNot('status', 'cancelled')
@@ -1452,9 +1452,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     return { month: r.month, revenue: rev, cost, outputVat: outVat, profit, margin: rev > 0 ? fmt2((profit / rev) * 100) : 0 };
   });
 
-  /* ══════════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      TOP PRODUCTS (from invoice items)
-     ══════════════════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   const topProdRows = await db('sales_invoice_items as sii')
     .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
@@ -1474,9 +1474,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     return { name: p.name, source: p.source, qtySold: parseInt(p.qty || 0), revenue: rev, cost: c, profit: fmt2(rev - c), margin: rev > 0 ? fmt2(((rev - c) / rev) * 100) : 0, vat: fmt2(p.vat) };
   });
 
-  /* ══════════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      RESPONSE
-     ══════════════════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   res.json({
     status: 'success',
@@ -1491,155 +1491,6 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
       bySource,
       byMonth,
       topProducts,
-    }
-  });
-});
-
-
-exports.getDailyTransactions = catchAsync(async (req, res) => {
-  const { from, to } = req.query;
-  let dateFrom = from || null;
-  let dateTo = to || null;
-  if (!dateFrom && !dateTo) {
-    const now = new Date();
-    dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString().slice(0, 19).replace('T', ' ');
-  }
-  const fmt2 = (n) => Math.round(parseFloat(n || 0) * 100) / 100;
-  const applyRange = (qb, col) => { if (dateFrom) qb.where(col, '>=', dateFrom); if (dateTo) qb.where(col, '<=', dateTo); };
-
-  // --- 1. Revenue + Output VAT per source per day ---
-  const invRows = await db('sales_invoices')
-    .whereNot('status', 'cancelled')
-    .modify((q) => { applyRange(q, 'created_at'); })
-    .select(
-      db.raw("DATE_FORMAT(created_at, '%Y-%m-%d') as day"),
-      'source'
-    )
-    .sum('subtotal as revenue')
-    .sum('vat_total as output_vat')
-    .sum('total_amount as gross')
-    .count('* as invoice_count')
-    .groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d'), source")
-    .orderBy('day', 'asc');
-
-  // --- 2. COGS per source per day ---
-  const cogsRows = await db('sales_invoice_items as sii')
-    .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
-    .whereNot('si.status', 'cancelled')
-    .modify((q) => { applyRange(q, 'si.created_at'); })
-    .select(
-      db.raw("DATE_FORMAT(si.created_at, '%Y-%m-%d') as day"),
-      'si.source'
-    )
-    .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cogs'))
-    .groupByRaw("DATE_FORMAT(si.created_at, '%Y-%m-%d'), si.source");
-
-  // --- 3. Input VAT from purchases (per day, company-wide) ---
-  const poInputVat = await db('purchase_orders')
-    .modify((q) => { applyRange(q, 'created_at'); })
-    .select(
-      db.raw("DATE_FORMAT(created_at, '%Y-%m-%d') as day"),
-      db.raw('COALESCE(SUM(tax_amount), 0) as input_vat'),
-      db.raw('COALESCE(SUM(total_amount), 0) as po_total')
-    )
-    .groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
-    .orderBy('day', 'asc');
-
-  // --- 4. Input VAT from expenses (per day, company-wide) ---
-  const expInputVat = await db('expenses').whereNull('deleted_at')
-    .modify((q) => { applyRange(q, 'created_at'); })
-    .select(
-      db.raw("DATE_FORMAT(created_at, '%Y-%m-%d') as day"),
-      db.raw('COALESCE(SUM(vat_amount), 0) as input_vat'),
-      db.raw('COALESCE(SUM(amount), 0) as expense_total')
-    )
-    .groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
-    .orderBy('day', 'asc');
-
-  // --- Build Cogs map ---
-  const cogsMap = {};
-  for (const r of cogsRows) {
-    if (!cogsMap[r.day]) cogsMap[r.day] = {};
-    cogsMap[r.day][r.source] = fmt2(r.cogs);
-  }
-
-  // --- Build Input VAT maps ---
-  const poInputMap = {};
-  for (const r of poInputVat) {
-    poInputMap[r.day] = fmt2(r.input_vat);
-  }
-  const expInputMap = {};
-  for (const r of expInputVat) {
-    expInputMap[r.day] = fmt2(r.input_vat);
-  }
-
-  // --- Combine by day and source ---
-  const days = {};
-  for (const r of invRows) {
-    if (!days[r.day]) days[r.day] = { day: r.day, departments: {} };
-    const dept = r.day && days[r.day].departments;
-    const src = r.source;
-    const revenue = fmt2(r.revenue);
-    const outputVat = fmt2(r.output_vat);
-    const cogs = (cogsMap[r.day] && cogsMap[r.day][src]) || 0;
-    dept[src] = {
-      sales: revenue,
-      outputVat,
-      cogs,
-      gross: fmt2(revenue - cogs),
-      invoiceCount: parseInt(r.invoice_count || 0),
-    };
-  }
-
-  // --- Add input VAT per day (company-wide, same for all depts) ---
-  for (const dayKey of Object.keys(days)) {
-    const inputVat = (poInputMap[dayKey] || 0) + (expInputMap[dayKey] || 0);
-    days[dayKey].inputVat = inputVat;
-    days[dayKey].netVat = fmt2(
-      Object.values(days[dayKey].departments).reduce((s, d) => s + d.outputVat, 0) - inputVat
-    );
-  }
-
-  // --- Summary ---
-  let totalSales = 0, totalOutputVat = 0, totalCogs = 0, totalInputVat = 0;
-  const byDepartment = {};
-  for (const d of Object.values(days)) {
-    totalInputVat += d.inputVat || 0;
-    for (const [src, detail] of Object.entries(d.departments)) {
-      if (!byDepartment[src]) byDepartment[src] = { sales: 0, outputVat: 0, cogs: 0, gross: 0, invoiceCount: 0 };
-      byDepartment[src].sales += detail.sales;
-      byDepartment[src].outputVat += detail.outputVat;
-      byDepartment[src].cogs += detail.cogs;
-      byDepartment[src].gross += detail.gross;
-      byDepartment[src].invoiceCount += detail.invoiceCount;
-      totalSales += detail.sales;
-      totalOutputVat += detail.outputVat;
-      totalCogs += detail.cogs;
-    }
-  }
-
-  // Round byDepartment values
-  for (const k of Object.keys(byDepartment)) {
-    byDepartment[k].sales = fmt2(byDepartment[k].sales);
-    byDepartment[k].outputVat = fmt2(byDepartment[k].outputVat);
-    byDepartment[k].cogs = fmt2(byDepartment[k].cogs);
-    byDepartment[k].gross = fmt2(byDepartment[k].gross);
-  }
-
-  res.json({
-    status: 'success',
-    data: {
-      period: { from: dateFrom || 'All time', to: dateTo || 'Now' },
-      summary: {
-        totalSales: fmt2(totalSales),
-        totalOutputVat: fmt2(totalOutputVat),
-        totalInputVat: fmt2(totalInputVat),
-        totalCogs: fmt2(totalCogs),
-        totalGross: fmt2(totalSales - totalCogs),
-      },
-      byDepartment,
-      daily: Object.values(days),
     }
   });
 });
