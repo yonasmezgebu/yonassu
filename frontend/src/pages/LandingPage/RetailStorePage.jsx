@@ -826,7 +826,7 @@ const RetailStorePage = () => {
                   <button type="button" className="rsp-cancel-btn" onClick={() => setCartOpen(false)}>Cancel</button>
                   <button type="submit" className="rsp-submit-btn" disabled={placingOrder || cartItems.length === 0}>
                     {placingOrder
-                      ? <>Processing…</>
+                      ? <><span className="rsp-submit-spinner" /> Processing…</>
                       : <>Place Order <ArrowRight size={16} strokeWidth={2.5} /></>
                     }
                   </button>
