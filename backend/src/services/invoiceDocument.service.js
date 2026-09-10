@@ -208,6 +208,9 @@ const printingDocuments = () =>
 const rentalDocuments = () =>
   invoiceDocumentsFromSalesInvoices({ source: 'car_rental', sourceLabel: 'Car Rental', icon: '🚗', color: '#7C3AED', description: 'Car rental order' });
 
+const manualDocuments = () =>
+  invoiceDocumentsFromSalesInvoices({ source: 'manual', sourceLabel: 'Manual Entry', icon: '📝', color: '#475569', description: 'Manual general inflow' });
+
 // 5. AgriRent
 const agrirentDocuments = async () => {
   const docs = [];
@@ -462,7 +465,8 @@ const buildDocuments = async ({ status = 'all', customer = '', sources = null } 
     car_rental: rentalDocuments,
     agrirent: agrirentDocuments,
     tender_sell: tenderSellDocuments,
-    tender_buy: tenderBuyDocuments
+    tender_buy: tenderBuyDocuments,
+    manual: manualDocuments
   };
   const keys = sources && sources.length ? sources : Object.keys(buildFns);
   const [company, ...results] = await Promise.all([
