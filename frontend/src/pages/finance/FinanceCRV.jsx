@@ -10,7 +10,7 @@ import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import { useAuth } from '../../hooks/useAuth';
 
 /* ─── Native Canvas Signature Pad ────────────────────────────── */
-const SigPad = ({ label, onSave }) => {
+const SigPad = ({ label, onSave, storageKey }) => {
   const canvasRef = useRef(null);
   const isDrawing  = useRef(false);
   const lastPos    = useRef(null);
@@ -80,7 +80,10 @@ const SigPad = ({ label, onSave }) => {
     const dataUrl = canvas.toDataURL('image/png');
     onSave(dataUrl);
     setSaved(true);
-  }, [onSave]);
+    if (storageKey) {
+      localStorage.setItem(storageKey, dataUrl);
+    }
+  }, [onSave, storageKey]);
 
   const stopDraw = useCallback(() => {
     isDrawing.current = false;
@@ -102,6 +105,28 @@ const SigPad = ({ label, onSave }) => {
     };
   }, [startDraw, draw, stopDraw]);
 
+  useEffect(() => {
+    if (storageKey) {
+      const savedData = localStorage.getItem(storageKey);
+      if (savedData) {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          const img = new window.Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            hasInk.current = true;
+            setIsEmpty(false);
+            setSaved(true);
+            onSave(savedData);
+          };
+          img.src = savedData;
+        }
+      }
+    }
+  }, [storageKey, onSave]);
+
   const handleClear = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -110,6 +135,9 @@ const SigPad = ({ label, onSave }) => {
     setIsEmpty(true);
     setSaved(false);
     onSave(null);
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+    }
   };
 
   return (
@@ -274,7 +302,7 @@ const FinanceCRV = () => {
   const [amountWords, setAmountWords] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [description, setDescription] = useState('');
-  const [referenceNo, setReferenceNo] = useState('');
+  const [referenceNo, setReferenceNo] = useState(() => 'REF-' + Math.floor(100000 + Math.random() * 900000));
 
   const [bankName, setBankName]             = useState('');
   const [accountHolder, setAccountHolder]   = useState('');
@@ -289,6 +317,10 @@ const FinanceCRV = () => {
   const [preparedBy, setPreparedBy]         = useState(profileName);
   const [receiverName, setReceiverName]     = useState('');
 
+  useEffect(() => {
+    if (profileName) setPreparedBy(profileName);
+  }, [profileName]);
+
   const [preparedSig, setPreparedSig]       = useState(null);
   const [receiverSig, setReceiverSig]       = useState(null);
 
@@ -299,6 +331,11 @@ const FinanceCRV = () => {
   /* ── Tabs + History ─────────────────────────────────────────── */
   const [activeTab, setActiveTab]   = useState('form'); // 'form' | 'history'
   const [crvList, setCrvList]       = useState([]);
+  const [companyAccounts, setCompanyAccounts] = useState([]);
+
+  useEffect(() => {
+    api.get('/finance-bank').then(res => setCompanyAccounts(res.data?.data || res.data || [])).catch(console.error);
+  }, []);
   const [crvLoading, setCrvLoading] = useState(false);
   const [printTarget, setPrintTarget] = useState(null);
   const [detailCrv, setDetailCrv]     = useState(null);
@@ -839,7 +876,13 @@ const FinanceCRV = () => {
 
             {paymentMethod === 'Bank' && (
               <div style={{ background: '#f0f9ff', padding: 20, borderRadius: 10, border: '1px solid #bae6fd' }}>
-                <h4 style={{ margin: '0 0 14px', fontSize: 13, color: '#0369a1', fontWeight: 700 }}>Bank Details</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <h4 style={{ margin: 0, fontSize: 13, color: '#0369a1', fontWeight: 700 }}>Bank Details</h4>
+                  <select className="form-input" style={{ width: 250, padding: '8px 12px', border: '1px solid #7dd3fc', borderRadius: 8, fontSize: 13 }} onChange={e => {
+                    const acc = companyAccounts.find(a => a.id.toString() === e.target.value);
+                    if (acc) { setBankName(acc.bank_provider || ''); setAccountHolder('Sutana Enterprise'); setAccountNumber(acc.account_number || ''); }
+                  }}><option value="">Select Company Bank Account...</option>{companyAccounts.filter(a => a.account_type === 'Bank').map(a => <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>)}</select>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <input required value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Bank Name *" onFocus={e => (e.target.style.borderColor = '#0284c7')} onBlur={e => (e.target.style.borderColor = '#7dd3fc')} style={{ padding: '10px 14px', border: '1px solid #7dd3fc', borderRadius: 8, outline: 'none', fontSize: 14 }} />
                   <input required value={accountHolder} onChange={e => setAccountHolder(e.target.value)} placeholder="Account Holder *" onFocus={e => (e.target.style.borderColor = '#0284c7')} onBlur={e => (e.target.style.borderColor = '#7dd3fc')} style={{ padding: '10px 14px', border: '1px solid #7dd3fc', borderRadius: 8, outline: 'none', fontSize: 14 }} />
@@ -851,7 +894,13 @@ const FinanceCRV = () => {
 
             {paymentMethod === 'Telebirr' && (
               <div style={{ background: '#fffbeb', padding: 20, borderRadius: 10, border: '1px solid #fde68a' }}>
-                <h4 style={{ margin: '0 0 14px', fontSize: 13, color: '#b45309', fontWeight: 700 }}>Telebirr Details</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <h4 style={{ margin: 0, fontSize: 13, color: '#b45309', fontWeight: 700 }}>Telebirr Details</h4>
+                  <select className="form-input" style={{ width: 250, padding: '8px 12px', border: '1px solid #fcd34d', borderRadius: 8, fontSize: 13 }} onChange={e => {
+                    const acc = companyAccounts.find(a => a.id.toString() === e.target.value);
+                    if (acc) { setTelebirrNumber(acc.account_number || ''); setTelebirrName(acc.account_name || 'Sutana Enterprise'); }
+                  }}><option value="">Select Company Telebirr...</option>{companyAccounts.filter(a => a.account_type === 'Mobile Wallet').map(a => <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>)}</select>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <input required value={telebirrNumber} onChange={e => setTelebirrNumber(e.target.value)} placeholder="Mobile Number *" onFocus={e => (e.target.style.borderColor = '#d97706')} onBlur={e => (e.target.style.borderColor = '#fcd34d')} style={{ padding: '10px 14px', border: '1px solid #fcd34d', borderRadius: 8, outline: 'none', fontSize: 14 }} />
                   <input required value={telebirrName} onChange={e => setTelebirrName(e.target.value)} placeholder="Full Name *" onFocus={e => (e.target.style.borderColor = '#d97706')} onBlur={e => (e.target.style.borderColor = '#fcd34d')} style={{ padding: '10px 14px', border: '1px solid #fcd34d', borderRadius: 8, outline: 'none', fontSize: 14 }} />
@@ -873,6 +922,9 @@ const FinanceCRV = () => {
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 7 }}>Prepared By (Finance Person)</label>
                 <input {...input(preparedBy, setPreparedBy, 'Accountant Name')} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e2e8f0', borderRadius: 9, boxSizing: 'border-box', outline: 'none', fontSize: 14, display: 'block' }} />
                 <p style={{ margin: '6px 0 0', fontSize: 11, color: '#94a3b8' }}>Auto-filled from your profile</p>
+                <div style={{ marginTop: 12 }}>
+                  <SigPad key={sigKey} label="Prepared By Signature" onSave={setPreparedSig} storageKey="accountant_signature" />
+                </div>
               </div>
 
               <div>
