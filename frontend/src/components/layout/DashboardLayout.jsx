@@ -1084,7 +1084,6 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         { label: 'Expense Book',               path: '/finance/cash-book',               icon: '📚', keywords: 'expense book cash book payments ledger record' },
         { label: 'Liabilities & Payable',      path: '/finance/liabilities',             icon: '⚠️', keywords: 'liabilities accounts payable debts owed suppliers' },
         { label: 'Bank Accounts',              path: '/finance/bank-accounts',           icon: '🏦', keywords: 'bank accounts reconciliation balance transfer deposit' },
-        { label: 'Sales Invoice & Receipt',    path: '/finance/invoices',                icon: '🖨️', keywords: 'sales invoice receipt print document tax' },
         { label: 'Live Income',                path: '/finance/pharmacy-sales',          icon: '📈', keywords: 'live income all departments verification submissions approve reject' },
         { label: 'Revenue Book',               path: '/finance/outstanding-ar',          icon: '📕', keywords: 'revenue book outstanding receivables income records' },
         { label: 'Accounts Receivable',        path: '/finance/accounts-receivable',     icon: '👥', keywords: 'accounts receivable customers collect debt invoices due' },
