@@ -8,6 +8,7 @@ import {
 import api from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import { formatCurrency } from '../../utils/formatters';
+import { useAuth } from '../../hooks/useAuth';
 
 const monthName = (m) => new Date(2000, parseInt(m) - 1).toLocaleString('default', { month: 'long' });
 
@@ -215,7 +216,7 @@ const styles = `
 `;
 
 /* ─── Native Canvas Signature Pad ────────────────────────────── */
-const SigPad = ({ label, onSave }) => {
+const SigPad = ({ label, onSave, storageKey }) => {
   const canvasRef = useRef(null);
   const isDrawing  = useRef(false);
   const lastPos    = useRef(null);
@@ -264,10 +265,22 @@ const SigPad = ({ label, onSave }) => {
     setIsEmpty(false);
   }, []);
 
+  const handleSave = useCallback(() => {
+    if (isEmpty) return;
+    const canvas = canvasRef.current;
+    const dataUrl = canvas.toDataURL('image/png');
+    onSave(dataUrl);
+    setSaved(true);
+    if (storageKey) {
+      localStorage.setItem(storageKey, dataUrl);
+    }
+  }, [isEmpty, onSave, storageKey]);
+
   const stopDraw = useCallback(() => {
     isDrawing.current = false;
     lastPos.current = null;
-  }, []);
+    handleSave();
+  }, [handleSave]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -282,13 +295,7 @@ const SigPad = ({ label, onSave }) => {
     };
   }, [startDraw, draw, stopDraw]);
 
-  const handleSave = () => {
-    if (isEmpty) return;
-    const canvas = canvasRef.current;
-    const dataUrl = canvas.toDataURL('image/png');
-    onSave(dataUrl);
-    setSaved(true);
-  };
+
 
   const handleClear = () => {
     const canvas = canvasRef.current;
@@ -297,7 +304,31 @@ const SigPad = ({ label, onSave }) => {
     setIsEmpty(true);
     setSaved(false);
     onSave(null);
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+    }
   };
+
+  useEffect(() => {
+    if (storageKey) {
+      const savedData = localStorage.getItem(storageKey);
+      if (savedData) {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          const img = new window.Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            setIsEmpty(false);
+            setSaved(true);
+            onSave(savedData);
+          };
+          img.src = savedData;
+        }
+      }
+    }
+  }, [storageKey, onSave]);
 
   return (
     <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', background: '#FFFFFF', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
@@ -310,14 +341,11 @@ const SigPad = ({ label, onSave }) => {
           <button type="button" onClick={handleClear} style={{ fontSize: 12, padding: '6px 12px', border: 'none', background: 'var(--color-danger)', color: '#FFFFFF', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
             Clear
           </button>
-          <button type="button" onClick={handleSave} disabled={isEmpty} style={{ fontSize: 12, padding: '6px 12px', border: 'none', background: isEmpty ? '#9CA3AF' : '#2563EB', color: '#FFFFFF', borderRadius: 8, cursor: isEmpty ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
-            Save
-          </button>
         </div>
       </div>
       <canvas ref={canvasRef} width={400} height={120} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw} style={{ width: '100%', height: 120, display: 'block', cursor: 'crosshair', background: '#FFFFFF', touchAction: 'none' }} />
       <div style={{ padding: '8px 10px', background: '#F9FAFB', borderTop: '1px solid var(--color-border)', fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'center', fontWeight: 500 }}>
-        {isEmpty ? 'Draw signature and Save' : saved ? '✓ Captured' : 'Press Save'}
+        {isEmpty ? 'Draw signature on canvas (auto-saves)' : saved ? '✓ Captured' : 'Saving...'}
       </div>
     </div>
   );
@@ -533,7 +561,7 @@ const FinanceEV = () => {
   const [amountWords, setAmountWords] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [description, setDescription] = useState('');
-  const [referenceNo, setReferenceNo] = useState('');
+  const [referenceNo, setReferenceNo] = useState(() => 'REF-' + Math.floor(100000 + Math.random() * 900000));
 
   const [bankName, setBankName]             = useState('');
   const [accountHolder, setAccountHolder]   = useState('');
@@ -543,13 +571,22 @@ const FinanceEV = () => {
   const [telebirrNumber, setTelebirrNumber] = useState('');
   const [telebirrName, setTelebirrName]     = useState('');
 
-  const [preparedBy, setPreparedBy]         = useState('');
-  const [checkedBy, setCheckedBy]           = useState('');
+  const { user } = useAuth();
+  const profileName = user?.fullName || user?.name || user?.full_name || '';
+  const [preparedBy, setPreparedBy]         = useState(profileName);
   const [receiverName, setReceiverName]     = useState('');
 
+  useEffect(() => {
+    if (profileName) setPreparedBy(profileName);
+  }, [profileName]);
+
   const [preparedSig, setPreparedSig]       = useState(null);
-  const [checkedSig, setCheckedSig]         = useState(null);
   const [receiverSig, setReceiverSig]       = useState(null);
+
+  const [companyAccounts, setCompanyAccounts] = useState([]);
+  useEffect(() => {
+    api.get('/finance-bank').then(res => setCompanyAccounts(res.data?.data || res.data || [])).catch(console.error);
+  }, []);
 
   const [submitted, setSubmitted] = useState(null);
   const [loading, setLoading]     = useState(false);
@@ -570,6 +607,7 @@ const FinanceEV = () => {
   const [statusLoad, setStatusLoad]   = useState(false);
   const [finalizeTarget, setFinalizeTarget] = useState(null);
   const [finalizing, setFinalizing]   = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
 
   const loadStatus = useCallback(async () => {
     setStatusLoad(true);
@@ -664,8 +702,8 @@ const FinanceEV = () => {
     setPaymentMethod('Cash');
     setBankName(''); setAccountHolder(''); setAccountNumber(''); setChequeNo('');
     setTelebirrNumber(''); setTelebirrName('');
-    setPreparedBy(''); setCheckedBy(''); setReceiverName('');
-    setPreparedSig(null); setCheckedSig(null); setReceiverSig(null);
+    setPreparedBy(''); setReceiverName('');
+    setPreparedSig(null); setReceiverSig(null);
     setSubmitted(null); setError(null); setNotification(null);
     setMaintSource({ rawId: item.rawId, asset: item.asset, description: item.description, amount: item.amount, isFuel: item.isFuel });
     setActiveTab('ev');
@@ -687,11 +725,11 @@ const FinanceEV = () => {
         paymentMethod, description, referenceNo,
         bankDetails:     paymentMethod === 'Bank'     ? { bankName, accountHolder, accountNumber, chequeNo } : null,
         telebirrDetails: paymentMethod === 'Telebirr' ? { telebirrNumber, fullName: telebirrName }          : null,
-        preparedBy, checkedBy, receiverName,
-        preparedSignature: preparedSig, checkedSignature:  checkedSig, receiverSignature: receiverSig,
+        preparedBy, receiverName,
+        preparedSignature: preparedSig, receiverSignature: receiverSig,
       };
 
-let evNumber;
+      let evNumber;
       if (maintSource) {
         if (maintSource.isFuel) {
           const res = await api.patch(`/car-renting/fuel-service/${maintSource.rawId}/finance-pay`, payload);
@@ -720,8 +758,8 @@ let evNumber;
     setPaidTo(''); setDescription('');
     setBankName(''); setAccountHolder(''); setAccountNumber(''); setChequeNo('');
     setTelebirrNumber(''); setTelebirrName('');
-    setPreparedBy(''); setCheckedBy(''); setReceiverName('');
-    setPreparedSig(null); setCheckedSig(null); setReceiverSig(null);
+    setPreparedBy(''); setReceiverName('');
+    setPreparedSig(null); setReceiverSig(null);
   };
 
   const statusConfig = {
@@ -813,9 +851,8 @@ let evNumber;
               By Cash
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 60 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, marginTop: 40, pageBreakInside: 'avoid' }}>
             <PrintSigBlock label="Prepared By" name={submitted.preparedBy} sigImage={submitted.preparedSignature} />
-            <PrintSigBlock label="Checked By" name={submitted.checkedBy} sigImage={submitted.checkedSignature} />
             <PrintSigBlock label="Payee's Signature" name={submitted.receiverName} sigImage={submitted.receiverSignature} />
           </div>
         </div>
@@ -901,7 +938,12 @@ let evNumber;
                     }[v.status] || { bg: '#F3F4F6', color: 'var(--color-text-secondary)', label: v.status };
                     const pm = v.payment_method;
                     return (
-                      <div key={v.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px', background: '#FFFFFF', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+                      <div key={v.id}
+                        onClick={() => setSelectedVoucher(v)}
+                        style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px', background: '#FFFFFF', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', cursor: 'pointer', transition: 'box-shadow 0.18s, border-color 0.18s' }}
+                        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 18px rgba(37,99,235,0.10)'; e.currentTarget.style.borderColor = '#93c5fd'; }}
+                        onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
+                      >
                         <div style={{ flex: '1 1 220px', minWidth: 200 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 15, color: 'var(--color-primary)' }}>{v.ev_number}</span>
@@ -1464,7 +1506,13 @@ let evNumber;
 
               {paymentMethod === 'Bank' && (
                 <div style={{ background: '#F9FAFB', padding: 20, border: '1px solid var(--color-border)', borderRadius: 10 }}>
-                  <h4 style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 600 }}>Bank Details</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h4 style={{ margin: 0, fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 600 }}>Bank Details</h4>
+                    <select className="form-input" style={{ width: 250, padding: '8px 12px', border: '1px solid #7dd3fc', borderRadius: 8, fontSize: 13 }} onChange={e => {
+                      const acc = companyAccounts.find(a => a.id.toString() === e.target.value);
+                      if (acc) { setBankName(acc.bank_provider || ''); setAccountHolder('Sutana Enterprise'); setAccountNumber(acc.account_number || ''); }
+                    }}><option value="">Select Company Bank Account...</option>{companyAccounts.filter(a => a.account_type === 'Bank').map(a => <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>)}</select>
+                  </div>
                   <div className="grid-2">
                     <input className="form-input" required value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Bank Name *" />
                     <input className="form-input" required value={accountHolder} onChange={e => setAccountHolder(e.target.value)} placeholder="Account Holder *" />
@@ -1476,7 +1524,13 @@ let evNumber;
 
               {paymentMethod === 'Telebirr' && (
                 <div style={{ background: '#F9FAFB', padding: 20, border: '1px solid var(--color-border)', borderRadius: 10 }}>
-                  <h4 style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 600 }}>Telebirr Details</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h4 style={{ margin: 0, fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 600 }}>Telebirr Details</h4>
+                    <select className="form-input" style={{ width: 250, padding: '8px 12px', border: '1px solid #fcd34d', borderRadius: 8, fontSize: 13 }} onChange={e => {
+                      const acc = companyAccounts.find(a => a.id.toString() === e.target.value);
+                      if (acc) { setTelebirrNumber(acc.account_number || ''); setTelebirrName(acc.account_name || 'Sutana Enterprise'); }
+                    }}><option value="">Select Company Telebirr...</option>{companyAccounts.filter(a => a.account_type === 'Mobile Wallet').map(a => <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>)}</select>
+                  </div>
                   <div className="grid-2">
                     <input className="form-input" required value={telebirrNumber} onChange={e => setTelebirrNumber(e.target.value)} placeholder="Mobile Number *" />
                     <input className="form-input" required value={telebirrName} onChange={e => setTelebirrName(e.target.value)} placeholder="Full Name *" />
@@ -1488,16 +1542,12 @@ let evNumber;
             {/* Signatures */}
             <div className="card-container" style={{ padding: 24 }}>
               <h3 className="section-title"><PenTool size={20} /> Signatures</h3>
-              <div className="grid-3">
+              <div className="grid-2">
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Prepared By (Name) *</label>
                   <input className="form-input" required value={preparedBy} onChange={e => setPreparedBy(e.target.value)} placeholder="Accountant Name" style={{ marginBottom: 12 }} />
-                  <SigPad label="Prepared By" onSave={setPreparedSig} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Checked By (Name) *</label>
-                  <input className="form-input" required value={checkedBy} onChange={e => setCheckedBy(e.target.value)} placeholder="Manager Name" style={{ marginBottom: 12 }} />
-                  <SigPad label="Checked By" onSave={setCheckedSig} />
+                  <p style={{ margin: '-6px 0 12px', fontSize: 11, color: '#94a3b8' }}>Auto-filled from your profile</p>
+                  <SigPad label="Prepared By" onSave={setPreparedSig} storageKey="accountant_signature" />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Payee's Name *</label>
@@ -1943,6 +1993,110 @@ let evNumber;
          );
          })()}
       </div>
+
+      {/* ══ VOUCHER DETAIL MODAL ══ */}
+      {selectedVoucher && (() => {
+        const v = selectedVoucher;
+        const badge = {
+          pending_ceo:      { bg: 'var(--color-warning-bg)',  color: '#92400E', label: 'Pending CEO Approval' },
+          approved_finance: { bg: 'var(--color-info-bg)',     color: '#0369A1', label: 'Approved — Ready to Finalize' },
+          rejected:         { bg: 'var(--color-danger-bg)',   color: '#991B1B', label: 'Rejected' },
+          completed:        { bg: 'var(--color-success-bg)',  color: '#15803D', label: 'Completed' },
+        }[v.status] || { bg: '#F3F4F6', color: '#374151', label: v.status };
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={e => e.target === e.currentTarget && setSelectedVoucher(null)}>
+            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 680, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', maxHeight: '92vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+              {/* Header */}
+              <div style={{ padding: '20px 28px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0F172A', borderRadius: '16px 16px 0 0' }}>
+                <div>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: 20, color: '#60A5FA', letterSpacing: 1 }}>{v.ev_number}</div>
+                  <span style={{ background: badge.bg, color: badge.color, padding: '3px 12px', fontSize: 12, fontWeight: 700, borderRadius: 99, marginTop: 6, display: 'inline-block' }}>{badge.label}</span>
+                </div>
+                <button onClick={() => setSelectedVoucher(null)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', fontSize: 20, cursor: 'pointer', color: '#94a3b8', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                {/* Key Info Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  {[['Date', new Date(v.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })],
+                    ['Payment Method', v.payment_method],
+                    ['Reference No', v.reference_no || v.referenceNo || '—'],
+                    ['Prepared By', v.prepared_by || '—'],
+                  ].map(([label, val]) => (
+                    <div key={label} style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 14px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', display: 'block', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Paid To */}
+                <div style={{ background: '#eff6ff', borderRadius: 10, padding: '14px 18px', border: '1px solid #bfdbfe' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#3b82f6', display: 'block', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Paid To</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: '#1e3a8a' }}>{v.paid_to}</span>
+                </div>
+
+                {/* Description */}
+                {v.description && (
+                  <div style={{ background: '#f9fafb', borderRadius: 10, padding: '14px 18px', border: '1px solid #e5e7eb' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', display: 'block', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Being Payment For</span>
+                    <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>{v.description}</span>
+                  </div>
+                )}
+
+                {/* Amount */}
+                <div style={{ background: '#fefce8', borderRadius: 10, padding: '16px 18px', border: '1px solid #fde68a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, color: '#92400e', fontSize: 13 }}>TOTAL AMOUNT</span>
+                  <span style={{ fontSize: 24, fontWeight: 900, color: '#a16207', fontVariantNumeric: 'tabular-nums' }}>ETB {parseFloat(v.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+
+                {/* Payment Details */}
+                {v.payment_method === 'Bank' && (v.bank_name || v.account_number) && (
+                  <div style={{ background: '#eff6ff', borderRadius: 10, padding: '14px 18px', border: '1px solid #bfdbfe' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#2563eb', display: 'block', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Bank Details</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13 }}>
+                      {v.bank_name && <div><span style={{ color: '#6b7280', fontSize: 11 }}>Bank</span><br/><b>{v.bank_name}</b></div>}
+                      {v.account_number && <div><span style={{ color: '#6b7280', fontSize: 11 }}>Account No.</span><br/><b>{v.account_number}</b></div>}
+                      {v.account_holder && <div><span style={{ color: '#6b7280', fontSize: 11 }}>Account Holder</span><br/><b>{v.account_holder}</b></div>}
+                      {v.cheque_no && <div><span style={{ color: '#6b7280', fontSize: 11 }}>Cheque No.</span><br/><b>{v.cheque_no}</b></div>}
+                    </div>
+                  </div>
+                )}
+
+                {v.payment_method === 'Telebirr' && (v.telebirr_number) && (
+                  <div style={{ background: '#fefce8', borderRadius: 10, padding: '14px 18px', border: '1px solid #fde68a' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#b45309', display: 'block', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Telebirr Details</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13 }}>
+                      <div><span style={{ color: '#6b7280', fontSize: 11 }}>Mobile Number</span><br/><b>{v.telebirr_number}</b></div>
+                      {v.telebirr_name && <div><span style={{ color: '#6b7280', fontSize: 11 }}>Name</span><br/><b>{v.telebirr_name}</b></div>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reject reason */}
+                {v.reject_reason && (
+                  <div style={{ background: '#fef2f2', borderRadius: 10, padding: '14px 18px', border: '1px solid #fca5a5' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', display: 'block', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Rejection Reason</span>
+                    <span style={{ fontSize: 14, color: '#991b1b' }}>{v.reject_reason}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div style={{ padding: '16px 28px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button onClick={() => setSelectedVoucher(null)} style={{ padding: '10px 20px', background: '#F3F4F6', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+                {v.status === 'approved_finance' && (
+                  <button onClick={() => { setSelectedVoucher(null); setFinalizeTarget(v); }} style={{ padding: '10px 22px', background: '#16A34A', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle size={14} /> Finalize &amp; Record
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ══ FINALIZE MODAL ══ */}
       {finalizeTarget && (
