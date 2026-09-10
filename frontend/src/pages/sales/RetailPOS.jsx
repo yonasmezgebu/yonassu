@@ -2788,7 +2788,7 @@ const addToCart = (item) => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {(order.items || []).map(item => (
                               <div key={item.id || item.product_id} style={{ display: 'flex', gap: 10, fontSize: 12, color: '#475569', whiteSpace: 'nowrap' }}>
-                                <span>💊 {item.product_name} × {item.quantity}</span>
+                                <span>{item.product_name} × {item.quantity}</span>
                                 <span style={{ fontWeight: 600, marginLeft: 'auto' }}>{parseFloat(item.line_total || (item.quantity * item.unit_price)).toFixed(2)} ETB</span>
                               </div>
                             ))}
@@ -3191,7 +3191,7 @@ const addToCart = (item) => {
                         const total = parseFloat(item.line_total || (qty * price));
                         return (
                           <tr key={item.id || item.product_id || i} style={{ borderTop: '1px solid #F3F4F6' }}>
-                            <td style={{ padding: '10px 14px', fontWeight: 600, color: '#111827' }}>💊 {item.product_name || `Product #${item.product_id}`}</td>
+                            <td style={{ padding: '10px 14px', fontWeight: 600, color: '#111827' }}>{item.product_name || `Product #${item.product_id}`}</td>
                             <td style={{ padding: '10px 14px', textAlign: 'center', color: '#4B5563' }}>{qty}</td>
                             <td style={{ padding: '10px 14px', textAlign: 'right', color: '#4B5563' }}>{price.toFixed(2)} ETB</td>
                             <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>{total.toFixed(2)} ETB</td>
