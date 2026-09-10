@@ -319,7 +319,7 @@ const Toast = ({ toasts }) => (
 );
 
 /* ── 4-Panel Reconciliation Summary ──────────────────────────────────────── */
-const TypePanel = ({ label, icon, color, bg, erpBal, actualVal, onActualChange }) => (
+const TypePanel = ({ label, icon, color, bg, erpBal, actualVal, onActualChange, accounts, selectedAccId, onSelectAcc }) => (
   <div className="fba-card" style={{ padding: 20 }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
       <div style={{ width: 40, height: 40, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: color, border: `1px solid ${color}`, flexShrink: 0 }}>
@@ -327,6 +327,20 @@ const TypePanel = ({ label, icon, color, bg, erpBal, actualVal, onActualChange }
       </div>
       <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--color-text-primary)' }}>{label}</div>
     </div>
+    {accounts && accounts.length > 1 && (
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 6 }}>Select Account</div>
+        <select className="fba-select" value={selectedAccId || ''} onChange={e => onSelectAcc && onSelectAcc(e.target.value)}>
+          <option value="">All {label} accounts (combined)</option>
+          {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}{a.account_number ? ` — ${a.account_number}` : ''}</option>)}
+        </select>
+      </div>
+    )}
+    {accounts && accounts.length === 1 && (
+      <div style={{ marginBottom: 14, fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+        Account: {accounts[0].account_name}{accounts[0].account_number ? ` (${accounts[0].account_number})` : ''}
+      </div>
+    )}
     <div style={{ marginBottom: 16, background: '#F9FAFB', padding: 12, border: '1px solid var(--color-border)', borderRadius: 8 }}>
       <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 4 }}>Account Balance (System)</div>
       <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>ETB {fmt(erpBal)}</div>
@@ -369,6 +383,8 @@ const FinanceBankAccounts = () => {
   const [saving, setSaving]       = useState(false);
 
   const [panelActuals, setPanelActuals] = useState({ cash:'', bank:'', telebirr:'', total:'' });
+  const [selectedBankAccId, setSelectedBankAccId] = useState('');
+  const [selectedTelebirrAccId, setSelectedTelebirrAccId] = useState('');
 
   const [viewAcc, setViewAcc]     = useState(null);
   const [viewTx, setViewTx]       = useState([]);
@@ -603,9 +619,13 @@ const FinanceBankAccounts = () => {
       return;
     }
 
-    const cashAcc = accounts.find(a => a.account_type === 'Cash');
-    const bankAcc = accounts.find(a => a.account_type === 'Bank');
-    const teleAcc = accounts.find(a => a.account_type === 'Mobile Wallet');
+    const cashAcc = accounts.find(a => a.account_type === 'Cash' && a.status === 'Active');
+    const bankAcc = selectedBankAccId
+      ? accounts.find(a => a.id.toString() === selectedBankAccId)
+      : accounts.find(a => a.account_type === 'Bank' && a.status === 'Active');
+    const teleAcc = selectedTelebirrAccId
+      ? accounts.find(a => a.id.toString() === selectedTelebirrAccId)
+      : accounts.find(a => a.account_type === 'Mobile Wallet' && a.status === 'Active');
 
     if (!cashAcc || !bankAcc || !teleAcc) {
       toast('You must have at least one Cash, Bank, and Mobile Wallet account created to do a global reconciliation.', 'error');
@@ -626,6 +646,7 @@ const FinanceBankAccounts = () => {
       const reconciledCount = res?.reconciledCount;
       toast(reconciledCount ? `Global reconciliation saved — ${reconciledCount} record(s) marked reconciled.` : 'Global reconciliation saved successfully!', 'success');
       setPanelActuals({ cash:'', bank:'', telebirr:'', total:'' });
+      setSelectedBankAccId(''); setSelectedTelebirrAccId('');
       setTab('history'); setReconAcc(null);
       load();
     } catch (e) {
@@ -1115,18 +1136,53 @@ const FinanceBankAccounts = () => {
                       erpBal={typeBalances.cash}
                       actualVal={panelActuals.cash}
                       onActualChange={v => setPanelActuals(p => ({...p, cash: v}))}
+                      accounts={accounts.filter(a => a.account_type === 'Cash' && a.status === 'Active')}
                     />
                     <TypePanel
                       label="Bank" icon={<Building2 size={20}/>} color="var(--color-info)" bg="var(--color-info-bg)"
-                      erpBal={typeBalances.bank}
+                      erpBal={(() => {
+                        if (selectedBankAccId) {
+                          const a = accounts.find(a => a.id.toString() === selectedBankAccId);
+                          return a ? parseFloat(a.netBalance || 0) : typeBalances.bank;
+                        }
+                        return typeBalances.bank;
+                      })()}
                       actualVal={panelActuals.bank}
                       onActualChange={v => setPanelActuals(p => ({...p, bank: v}))}
+                      accounts={accounts.filter(a => a.account_type === 'Bank' && a.status === 'Active')}
+                      selectedAccId={selectedBankAccId}
+                      onSelectAcc={id => {
+                        setSelectedBankAccId(id);
+                        if (id) {
+                          const a = accounts.find(a => a.id.toString() === id);
+                          if (a) setPanelActuals(p => ({...p, bank: String(parseFloat(a.netBalance || 0).toFixed(2))}));
+                        } else {
+                          setPanelActuals(p => ({...p, bank: ''}));
+                        }
+                      }}
                     />
                     <TypePanel
                       label="Mobile Wallet (Telebirr)" icon={<Smartphone size={20}/>} color="var(--color-warning)" bg="var(--color-warning-bg)"
-                      erpBal={typeBalances.telebirr}
+                      erpBal={(() => {
+                        if (selectedTelebirrAccId) {
+                          const a = accounts.find(a => a.id.toString() === selectedTelebirrAccId);
+                          return a ? parseFloat(a.netBalance || 0) : typeBalances.telebirr;
+                        }
+                        return typeBalances.telebirr;
+                      })()}
                       actualVal={panelActuals.telebirr}
                       onActualChange={v => setPanelActuals(p => ({...p, telebirr: v}))}
+                      accounts={accounts.filter(a => a.account_type === 'Mobile Wallet' && a.status === 'Active')}
+                      selectedAccId={selectedTelebirrAccId}
+                      onSelectAcc={id => {
+                        setSelectedTelebirrAccId(id);
+                        if (id) {
+                          const a = accounts.find(a => a.id.toString() === id);
+                          if (a) setPanelActuals(p => ({...p, telebirr: String(parseFloat(a.netBalance || 0).toFixed(2))}));
+                        } else {
+                          setPanelActuals(p => ({...p, telebirr: ''}));
+                        }
+                      }}
                     />
                   </div>
                   
