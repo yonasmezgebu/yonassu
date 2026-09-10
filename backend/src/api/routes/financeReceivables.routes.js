@@ -1400,7 +1400,7 @@ router.get('/book', authenticate, async (req, res) => {
       })
       .orderBy('si.created_at', 'desc')
       .select(
-        'si.id', 'si.invoice_no', 'si.source', 'si.customer_name',
+        'si.id', 'si.invoice_no', 'si.source', 'si.sale_type', 'si.sale_id', 'si.customer_name',
         'si.subtotal', 'si.vat_standard', 'si.vat_exempt', 'si.vat_zero_rated',
         'si.vat_total', 'si.total_amount', 'si.created_at',
         'sr.id as receipt_id', 'sr.receipt_no', 'sr.amount_paid', 'sr.payment_method'
@@ -1423,6 +1423,30 @@ router.get('/book', authenticate, async (req, res) => {
         inputVat: asNum(row.input_vat_sum),
       };
     }
+
+    // ── Patch COGS for online retail invoices where items had cost_price=0 ──
+    // These were created as a lump-sum "Retail income" item; real cost lives in
+    // retail_order_items × retail_products.
+    try {
+      const onlineRetailInvs = invoices.filter(
+        inv => inv.source === 'retail' && inv.sale_type === 'online' &&
+               (cogsByInvoice[inv.id]?.cogs || 0) === 0
+      );
+      for (const inv of onlineRetailInvs) {
+        const realItems = await knex('retail_order_items as roi')
+          .join('retail_products as rp', 'roi.product_id', 'rp.id')
+          .where('roi.order_id', inv.sale_id)
+          .select(knex.raw('SUM(roi.quantity * COALESCE(rp.cost_price, 0)) as real_cogs'))
+          .first();
+        const realCogs = asNum(realItems?.real_cogs);
+        if (realCogs > 0 && cogsByInvoice[inv.id]) {
+          cogsByInvoice[inv.id].cogs = realCogs;
+          cogsByInvoice[inv.id].selling = asNum(inv.subtotal);
+        } else if (realCogs > 0) {
+          cogsByInvoice[inv.id] = { selling: asNum(inv.subtotal), cogs: realCogs, outputVat: 0, inputVat: 0 };
+        }
+      }
+    } catch (_) { /* ignore enrichment errors */ }
 
     const invoiceRows = invoices.map(inv => {
       const agg = cogsByInvoice[inv.id] || { selling: 0, cogs: 0, outputVat: 0, inputVat: 0 };
@@ -1537,6 +1561,74 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
       });
       outputVat = round2(outputVat);
 
+      // ── Enrich with data from the originating source table ──
+      let customerPhone = null, customerEmail = null, salesManagerName = inv.created_by_name || null;
+      try {
+        const saleId = inv.sale_id;
+        if (inv.source === 'retail') {
+          if (inv.sale_type === 'online') {
+            const row = await knex('retail_orders as ro')
+              .where('ro.id', saleId)
+              .select('ro.customer_phone', 'ro.customer_email')
+              .first();
+            if (row) { customerPhone = row.customer_phone; customerEmail = row.customer_email; }
+            
+            // Enrich actual product items instead of generic 'Retail income'
+            const realItems = await knex('retail_order_items as roi')
+              .join('retail_products as rp', 'roi.product_id', 'rp.id')
+              .where('roi.order_id', saleId)
+              .select('rp.name', 'roi.quantity', 'roi.unit_price', 'roi.subtotal', 'rp.cost_price');
+            
+            if (realItems && realItems.length > 0) {
+              enrichedItems.length = 0; // clear generic items
+              totalSelling = 0; totalCogs = 0;
+              for (const rItem of realItems) {
+                const qty = asNum(rItem.quantity);
+                const up = asNum(rItem.unit_price);
+                const cp = rItem.cost_price != null ? asNum(rItem.cost_price) : 0;
+                totalSelling += round2(qty * up);
+                totalCogs += round2(qty * cp);
+                enrichedItems.push({
+                   name: rItem.name, qty, unit_price: up, cost_price: cp,
+                   line_total: round2(qty * up), cogs: round2(qty * cp),
+                   gross_profit: round2(qty * up - qty * cp), vat_amount: 0, treatment: 'standard'
+                });
+              }
+            }
+          } else {
+            const row = await knex('retail_transactions as rt')
+              .leftJoin('retail_shifts as rs', 'rt.shift_id', 'rs.id')
+              .leftJoin('users as u', 'rs.cashier_id', 'u.id')
+              .where('rt.id', saleId)
+              .select('rt.customer_phone', 'u.full_name as manager_name')
+              .first();
+            if (row) { customerPhone = row.customer_phone; salesManagerName = row.manager_name || salesManagerName; }
+          }
+        } else if (inv.source === 'pos') {
+          const row = await knex('pos_sales as ps')
+            .leftJoin('customers as c', 'ps.customer_id', 'c.id')
+            .leftJoin('users as u', 'ps.cashier_id', 'u.id')
+            .where('ps.id', saleId)
+            .select('c.phone as customer_phone', 'c.email as customer_email', 'u.full_name as manager_name')
+            .first();
+          if (row) { customerPhone = row.customer_phone; customerEmail = row.customer_email; salesManagerName = row.manager_name || salesManagerName; }
+        } else if (inv.source === 'printing') {
+          const row = await knex('printing_orders as po')
+            .leftJoin('users as u', 'po.user_id', 'u.id')
+            .where('po.id', saleId)
+            .select('po.customer_phone', 'po.customer_email', 'u.full_name as manager_name')
+            .first();
+          if (row) { customerPhone = row.customer_phone; customerEmail = row.customer_email; salesManagerName = row.manager_name || salesManagerName; }
+        } else if (inv.source === 'car_rental') {
+          const row = await knex('car_rental_orders as cr')
+            .leftJoin('users as u', 'cr.user_id', 'u.id')
+            .where('cr.id', saleId)
+            .select('cr.customer_phone', 'cr.customer_email', 'u.full_name as manager_name')
+            .first();
+          if (row) { customerPhone = row.customer_phone; customerEmail = row.customer_email; salesManagerName = row.manager_name || salesManagerName; }
+        }
+      } catch (_) { /* ignore enrichment errors */ }
+
       const totalAmount = asNum(inv.total_amount);
       const amountPaid = receipt ? asNum(receipt.amount_paid) : 0;
       const isPaid = !!receipt;
@@ -1545,6 +1637,9 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
 
       const receivable = {
         id, customer_name: inv.customer_name || 'Walk-in Customer',
+        customer_phone: customerPhone,
+        customer_email: customerEmail,
+        sales_manager_name: salesManagerName,
         invoice_no: inv.invoice_no, invoice_date: inv.created_at, due_date: inv.created_at,
         department_source: SOURCE_LABEL[inv.source] || inv.source,
         total_amount: totalAmount, amount_paid: amountPaid,
@@ -1569,6 +1664,10 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
         transactions: [{ id: inv.id, receipt_no: receipt ? receipt.receipt_no : inv.invoice_no,
           sale_type: 'SALE', total_amount: totalAmount,
           payment_method: receipt ? receipt.payment_method : 'Pending',
+          worker_name: salesManagerName,
+          recipient_name: inv.customer_name,
+          recipient_phone: customerPhone,
+          customer_email: customerEmail,
           created_at: inv.created_at, items: enrichedItems }],
         systemTotal: totalAmount, transactionCount: 1
       }});
