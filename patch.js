@@ -1,0 +1,15 @@
+const fs = require('fs');
+let content = fs.readFileSync('frontend/src/pages/finance/FinanceEV.jsx', 'utf8');
+content = content.replace(/const \[referenceNo, setReferenceNo\] = useState\(''\);/, 'const [referenceNo, setReferenceNo] = useState(() => \'REF-\' + Math.floor(100000 + Math.random() * 900000));');
+content = content.replace(/const \[checkedBy, setCheckedBy\]           = useState\(''\);\r?\n/, '');
+content = content.replace(/const \[checkedSig, setCheckedSig\]         = useState\(null\);\r?\n/, '');
+content = content.replace(/setPreparedBy\(''\); setCheckedBy\(''\); setReceiverName\(''\);/g, 'setPreparedBy(\'\'); setReceiverName(\'\');');
+content = content.replace(/setPreparedSig\(null\); setCheckedSig\(null\); setReceiverSig\(null\);/g, 'setPreparedSig(null); setReceiverSig(null);');
+content = content.replace(/preparedBy, checkedBy, receiverName,/g, 'preparedBy, receiverName,');
+content = content.replace(/preparedSignature: preparedSig, checkedSignature:  checkedSig, receiverSignature: receiverSig,/g, 'preparedSignature: preparedSig, receiverSignature: receiverSig,');
+content = content.replace(/setAmount\(''\); setAmountWords\(''\); setReferenceNo\(''\);/, 'setAmount(\'\'); setAmountWords(\'\'); setReferenceNo(\'REF-\' + Math.floor(100000 + Math.random() * 900000));');
+content = content.replace(/<PrintSigBlock label=\"Checked By\" name=\{submitted.checkedBy\} sigImage=\{submitted.checkedSignature\} \/>\r?\n/, '');
+content = content.replace(/<div className=\"grid-3\">/, '<div className=\"grid-2\">');
+content = content.replace(/<div>\s*<input className=\"form-input\" required value=\{checkedBy\} onChange=\{e => setCheckedBy\(e.target.value\)\} placeholder=\"Manager Name\" style=\{\{ marginBottom: 12 \}\} \/>\s*<SigPad label=\"Checked By\" onSave=\{setCheckedSig\} \/>\s*<\/div>/, '');
+fs.writeFileSync('frontend/src/pages/finance/FinanceEV.jsx', content);
+console.log('Done');
