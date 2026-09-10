@@ -1203,6 +1203,23 @@
   box-shadow: none;
 }
 
+/* ── Spinner for submit button ── */
+.rsp-submit-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: rsp-spin 0.6s linear infinite;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+@keyframes rsp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Error Banner ── */
 .rsp-error-banner {
   margin: 0 1.5rem 1rem;
