@@ -473,7 +473,7 @@ export default function CustomerRetailOrders() {
                       </td>
                       <td className={styles.colRight}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
-                          {['DELIVERED', 'COMPLETED', 'delivered', 'completed'].includes(order.status) && (
+                          {['DELIVERED', 'COMPLETED', 'CANCELLED', 'delivered', 'completed', 'cancelled'].includes(order.status) && (
                             <button 
                               onClick={(e) => handleHideOrder(e, order.id, order.retail_order_number || order.invoice_number || `Order #${order.id}`)}
                               style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
