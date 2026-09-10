@@ -51,8 +51,6 @@ const FinanceDashboard = () => {
       ] },
     { type: 'divider' },
     { label: 'Accounts and reconciliation', path: '/finance/bank-accounts', icon: 'building', color: '#3b82f6' },
-
-    { label: 'Receipts', path: '/finance/invoices', icon: 'receipt', color: '#2563eb' },
     { type: 'divider' },
     { label: 'Revenue', icon: 'trending-up',
       children: [
