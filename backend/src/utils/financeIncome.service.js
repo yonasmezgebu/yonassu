@@ -69,6 +69,13 @@ const resolveLedgerAccount = async (conn, method, bankDetails = null, telebirrDe
     }
   }
 
+  if (method === 'Telebirr' && telebirrDetails) {
+    const teleNum = String(telebirrDetails.telebirrNumber || telebirrDetails.telebirr_number || '').toLowerCase();
+    for (const acc of active) {
+      if (teleNum && String(acc.account_number || '').toLowerCase() === teleNum) return acc;
+    }
+  }
+
   return active[0];
 };
 
