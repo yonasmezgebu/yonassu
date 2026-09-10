@@ -507,25 +507,59 @@ router.get('/live-income/:id/detail', authenticate, async (req, res) => {
     }
 
 
-    // For Retail dept — fetch submitted retail_transactions
+    // For Retail dept — fetch the specific order linked to this submission
     if (submission.department === 'Retail') {
-      const retailSales = await knex('retail_transactions as rt')
-        .leftJoin('users as u', 'rt.received_by', 'u.id')
-        .where('rt.is_submitted', true)
-        .select(
-          'rt.id', 'rt.invoice_number as receipt_no', 'rt.sale_type',
-          'rt.total_amount', 'rt.payment_method', 'rt.created_at',
-          'rt.sender_name as recipient_name', 'rt.sender_phone as recipient_phone',
-          'u.full_name as worker_name'
-        )
-        .orderBy('rt.created_at', 'asc');
+      let parsedDetails = null;
+      try {
+        parsedDetails = typeof submission.manual_details === 'string'
+          ? JSON.parse(submission.manual_details) : submission.manual_details;
+      } catch (_) {}
 
-      for (const sale of retailSales) {
-        const items = await knex('retail_transaction_items as rti')
-          .join('retail_products as p', 'rti.product_id', 'p.id')
-          .where('rti.transaction_id', sale.id)
-          .select('p.name as drug_name', 'rti.quantity', 'rti.unit_price', 'rti.line_total as total_price');
-        transactions.push({ ...sale, items });
+      const orderId = parsedDetails && parsedDetails.order_id;
+
+      if (orderId) {
+        // Fetch the specific retail order
+        const order = await knex('retail_orders').where('id', orderId).first();
+        if (order) {
+          const items = await knex('retail_order_items as roi')
+            .join('retail_products as p', 'roi.product_id', 'p.id')
+            .where('roi.order_id', orderId)
+            .select(
+              'p.name as drug_name',
+              'roi.quantity',
+              'roi.unit_price',
+              'roi.subtotal as total_price'
+            );
+
+          transactions.push({
+            id: order.id,
+            receipt_no: order.invoice_number,
+            sale_type: 'online',
+            total_amount: parseFloat(order.total_amount || 0),
+            payment_method: parsedDetails.paymentMethod || order.payment_method,
+            created_at: order.created_at,
+            recipient_name: order.customer_name || parsedDetails.receivedFrom || 'Customer',
+            recipient_phone: order.customer_phone || parsedDetails.phone || null,
+            reference_no: order.payment_ref || parsedDetails.paymentRef || null,
+            worker_name: order.customer_name || parsedDetails.receivedFrom || null,
+            items
+          });
+        }
+      } else {
+        // Fallback: show submission amount as a single synthetic transaction
+        transactions.push({
+          id: submission.id,
+          receipt_no: submission.reference_no,
+          sale_type: 'online',
+          total_amount: parseFloat(submission.amount || 0),
+          payment_method: parsedDetails ? parsedDetails.paymentMethod : null,
+          created_at: submission.created_at,
+          recipient_name: submission.submitted_by,
+          recipient_phone: parsedDetails ? parsedDetails.phone : null,
+          reference_no: parsedDetails ? parsedDetails.paymentRef : null,
+          worker_name: submission.submitted_by,
+          items: []
+        });
       }
     }
 
@@ -1340,95 +1374,267 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
             updated_at: knex.fn.now()
           });
         }
-      } catch (e) {
-        console.error('Failed to propagate printing rejection:', e.message);
-      }
-      sendPrintingNotification({
-        title: 'Income Rejected by Finance',
-        message: `ETB ${Number(submission.amount || 0).toLocaleString()} Printing income was rejected by Finance. Reason: ${reason}`,
-        type: 'payment_rejected',
-        link: '/printing-manager/reports/finance',
-        related_entity_id: submission.id
-      }, req.app?.get('io')).catch(e => console.error('Failed to notify printing:', e.message));
+      } catch (e) { console.error('Printing update fail:', e); }
     }
-    res.json({ success: true, message: 'Submission rejected.' });
+
+    res.json({ success: true, message: 'Submission rejected successfully.' });
   } catch (error) {
-    console.error('Error rejecting income submission:', error);
-    res.status(500).json({ success: false, message: 'Failed to reject submission' });
+    console.error('Error rejecting income:', error);
+    res.status(500).json({ success: false, message: 'Failed to reject income' });
   }
 });
 
-// ── GET all receivables (Receivables Book) ────────────────────────
+// ── GET all records (Revenue Book) ─────────────────────────────
 router.get('/book', authenticate, async (req, res) => {
+  const asNum = (v) => parseFloat(v || 0) || 0;
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const SOURCE_LABEL = { retail: 'Retail & POS', pharmacy: 'Pharmacy',
+    printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', manual: 'Manual Entry' };
   try {
-    const receivables = await knex('finance_receivables')
-      .orderBy('invoice_date', 'desc');
-    res.json({ success: true, data: receivables });
+    // 1. All sales invoices (Retail, Pharmacy, Printing, Car Rental, AgriRent, Manual)
+    const invoices = await knex('sales_invoices as si')
+      .leftJoin('sales_receipts as sr', 'sr.invoice_id', 'si.id')
+      .whereNot('si.status', 'cancelled')
+      .where(function () {
+        this.whereNull('sr.id').orWhereNot('sr.status', 'cancelled');
+      })
+      .orderBy('si.created_at', 'desc')
+      .select(
+        'si.id', 'si.invoice_no', 'si.source', 'si.customer_name',
+        'si.subtotal', 'si.vat_standard', 'si.vat_exempt', 'si.vat_zero_rated',
+        'si.vat_total', 'si.total_amount', 'si.created_at',
+        'sr.id as receipt_id', 'sr.receipt_no', 'sr.amount_paid', 'sr.payment_method'
+      );
+
+    // Aggregate COGS per invoice from items table
+    const cogsByInvoice = {};
+    const itemAgg = await knex('sales_invoice_items')
+      .select('invoice_id')
+      .select(knex.raw('SUM(`subtotal`) as selling_sum'))
+      .select(knex.raw('SUM(COALESCE(`cost_price`, 0) * `qty`) as cogs_sum'))
+      .select(knex.raw('SUM(`vat_amount`) as vat_sum'))
+      .select(knex.raw('SUM(CASE WHEN `treatment` = \'standard\' THEN (COALESCE(`cost_price`, 0) * `qty` * `rate`) ELSE 0 END) as input_vat_sum'))
+      .groupBy('invoice_id');
+    for (const row of itemAgg) {
+      cogsByInvoice[row.invoice_id] = {
+        selling: asNum(row.selling_sum),
+        cogs: asNum(row.cogs_sum),
+        outputVat: asNum(row.vat_sum),
+        inputVat: asNum(row.input_vat_sum),
+      };
+    }
+
+    const invoiceRows = invoices.map(inv => {
+      const agg = cogsByInvoice[inv.id] || { selling: 0, cogs: 0, outputVat: 0, inputVat: 0 };
+      const totalAmount = asNum(inv.total_amount);
+      const amountPaid = asNum(inv.amount_paid);
+      const isPaid = !!inv.receipt_id || amountPaid >= totalAmount - 0.01;
+      return {
+        id: inv.id,
+        _source_type: 'invoice',
+        invoice_no: inv.invoice_no,
+        receipt_no: inv.receipt_no || null,
+        customer_name: inv.customer_name || 'Walk-in Customer',
+        department_source: SOURCE_LABEL[inv.source] || inv.source,
+        invoice_date: inv.created_at,
+        due_date: inv.created_at,
+        selling_price: round2(agg.selling || asNum(inv.subtotal)),
+        cogs: round2(agg.cogs),
+        gross_profit: round2((agg.selling || asNum(inv.subtotal)) - agg.cogs),
+        subtotal: asNum(inv.subtotal),
+        input_vat: round2(agg.inputVat),
+        output_vat: round2(agg.outputVat || asNum(inv.vat_total)),
+        vat_standard: asNum(inv.vat_standard),
+        vat_exempt: asNum(inv.vat_exempt),
+        vat_zero_rated: asNum(inv.vat_zero_rated),
+        vat_total: asNum(inv.vat_total),
+        total_amount: totalAmount,
+        amount_paid: isPaid ? totalAmount : amountPaid,
+        outstanding_balance: isPaid ? 0 : round2(totalAmount - amountPaid),
+        status: isPaid ? 'Paid' : 'Unpaid',
+        payment_method: inv.payment_method || null,
+        manual_details: null,
+      };
+    });
+
+    // 2. Finance receivables (manual/ledger entries that are NOT already in sales_invoices)
+    const invoiceNos = invoiceRows.map(r => r.invoice_no).filter(Boolean);
+    let legacyQuery = knex('finance_receivables').orderBy('invoice_date', 'desc');
+    if (invoiceNos.length > 0) {
+      legacyQuery = legacyQuery.where(function () {
+        this.whereNull('invoice_no').orWhereNotIn('invoice_no', invoiceNos);
+      });
+    }
+    const legacyRows = await legacyQuery;
+    const legacyMapped = legacyRows.map(r => {
+      const total = asNum(r.total_amount);
+      const paid = asNum(r.amount_paid);
+      const isPaid = r.status === 'Paid' || paid >= total - 0.01;
+      return {
+        id: `rec-${r.id}`,
+        _source_type: 'receivable',
+        invoice_no: r.invoice_no,
+        receipt_no: null,
+        customer_name: r.customer_name,
+        department_source: r.department_source,
+        invoice_date: r.invoice_date,
+        due_date: r.due_date,
+        selling_price: total,
+        cogs: 0,
+        gross_profit: total,
+        subtotal: total,
+        input_vat: 0,
+        output_vat: 0,
+        vat_standard: 0,
+        vat_exempt: 0,
+        vat_zero_rated: 0,
+        vat_total: 0,
+        total_amount: total,
+        amount_paid: paid,
+        outstanding_balance: isPaid ? 0 : round2(total - paid),
+        status: isPaid ? 'Paid' : (r.status || 'Unpaid'),
+        payment_method: null,
+        manual_details: r.manual_details,
+      };
+    });
+
+    const all = [...invoiceRows, ...legacyMapped].sort(
+      (a, b) => new Date(b.invoice_date) - new Date(a.invoice_date)
+    );
+    res.json({ success: true, data: all });
   } catch (error) {
-    console.error('Error fetching receivables:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch receivables' });
+    console.error('Error fetching revenue book:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch revenue book' });
   }
 });
 
-// ── GET detail of a receivable book entry ─────────────────────────
+// ── GET detail of a revenue book entry ───────────────────────────
 router.get('/book/:id/detail', authenticate, async (req, res) => {
+  const asNum = (v) => parseFloat(v || 0) || 0;
+  const round2 = (n) => Math.round(n * 100) / 100;
   try {
     const { id } = req.params;
-    const receivable = await knex('finance_receivables').where({ id }).first();
-    
+
+    // invoice-based entry (id = sales_invoices.id)
+    const inv = await knex('sales_invoices').where('id', id).first();
+    if (inv) {
+      const receipt = await knex('sales_receipts')
+        .where('invoice_id', id).andWhereNot('status', 'cancelled').first();
+      const items = await knex('sales_invoice_items').where('invoice_id', id);
+
+      let totalCogs = 0, totalSelling = 0, outputVat = 0;
+      const enrichedItems = items.map(item => {
+        const qty = asNum(item.qty);
+        const up = asNum(item.unit_price);
+        const cp = item.cost_price != null ? asNum(item.cost_price) : 0;
+        const vat = asNum(item.vat_amount);
+        totalSelling += round2(qty * up);
+        totalCogs += round2(qty * cp);
+        outputVat += vat;
+        return { name: item.name, qty, unit_price: up, cost_price: cp,
+          line_total: round2(qty * up), cogs: round2(qty * cp),
+          gross_profit: round2(qty * up - qty * cp), vat_amount: vat, treatment: item.treatment };
+      });
+      outputVat = round2(outputVat);
+
+      const totalAmount = asNum(inv.total_amount);
+      const amountPaid = receipt ? asNum(receipt.amount_paid) : 0;
+      const isPaid = !!receipt;
+      const SOURCE_LABEL = { retail: 'Retail & POS', pharmacy: 'Pharmacy',
+        printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', manual: 'Manual Entry' };
+
+      const receivable = {
+        id, customer_name: inv.customer_name || 'Walk-in Customer',
+        invoice_no: inv.invoice_no, invoice_date: inv.created_at, due_date: inv.created_at,
+        department_source: SOURCE_LABEL[inv.source] || inv.source,
+        total_amount: totalAmount, amount_paid: amountPaid,
+        outstanding_balance: isPaid ? 0 : round2(totalAmount - amountPaid),
+        status: isPaid ? 'Paid' : 'Unpaid',
+        selling_price: round2(totalSelling), cogs: round2(totalCogs),
+        gross_profit: round2(totalSelling - totalCogs),
+        subtotal: asNum(inv.subtotal), output_vat: outputVat, input_vat: 0,
+        vat_standard: asNum(inv.vat_standard), vat_exempt: asNum(inv.vat_exempt),
+        vat_zero_rated: asNum(inv.vat_zero_rated), vat_total: asNum(inv.vat_total),
+        manual_details: receipt ? JSON.stringify({
+          paymentMethod: receipt.payment_method,
+          receivedFrom: inv.customer_name || 'Walk-in Customer',
+          amount: amountPaid, reference: receipt.payment_reference,
+          crvNumber: receipt.receipt_no,
+          department: SOURCE_LABEL[inv.source] || inv.source,
+        }) : null,
+      };
+
+      return res.json({ success: true, data: {
+        receivable,
+        transactions: [{ id: inv.id, receipt_no: receipt ? receipt.receipt_no : inv.invoice_no,
+          sale_type: 'SALE', total_amount: totalAmount,
+          payment_method: receipt ? receipt.payment_method : 'Pending',
+          created_at: inv.created_at, items: enrichedItems }],
+        systemTotal: totalAmount, transactionCount: 1
+      }});
+    }
+
+    // Finance receivable (manual/ledger entry)
+    let legacyId = id;
+    if (String(id).startsWith('rec-')) {
+      legacyId = String(id).replace('rec-', '');
+    }
+    const receivable = await knex('finance_receivables').where('id', legacyId).first();
     if (!receivable) {
-      return res.status(404).json({ success: false, message: 'Receivable not found' });
+      return res.status(404).json({ success: false, message: 'Record not found' });
     }
 
     let transactions = [];
     if (receivable.department_source === 'Pharmacy') {
-      // In this system, pharmacy sales are aggregated. We fetch the submitted ones.
-      // Ideally, they should be linked by a submission ID, but this is the current behavior.
       const sales = await knex('pharmacy_sales as ps')
         .leftJoin('pharmacy_workers as pw', 'ps.worker_id', 'pw.id')
         .leftJoin('pharmacy_branches as pb', 'ps.branch_id', 'pb.id')
         .leftJoin('pharmacy_payments as pp', 'ps.id', 'pp.sale_id')
         .where('ps.is_submitted', true)
-        .select(
-          'ps.id',
-          'ps.receipt_no',
-          'ps.sale_type',
-          'ps.recipient_name',
-          'ps.recipient_phone',
-          'ps.total_products',
-          'ps.total_amount',
-          'ps.created_at',
-          'pw.name as worker_name',
-          'pb.name as branch_name',
-          'pp.payment_method',
-          'pp.bank_name',
-          'pp.account_holder',
-          'pp.account_number',
-          'pp.telbir_number',
-          'pp.recipient_name as pp_recipient_name',
-          'pp.recipient_phone as pp_recipient_phone'
-        )
+        .select('ps.id', 'ps.receipt_no', 'ps.sale_type', 'ps.recipient_name', 'ps.recipient_phone',
+          'ps.total_products', 'ps.total_amount', 'ps.created_at',
+          'pw.name as worker_name', 'pb.name as branch_name',
+          'pp.payment_method', 'pp.bank_name', 'pp.account_holder', 'pp.account_number',
+          'pp.telbir_number', 'pp.recipient_name as pp_recipient_name', 'pp.recipient_phone as pp_recipient_phone')
         .orderBy('ps.created_at', 'asc');
-
       for (const sale of sales) {
-        const items = await knex('pharmacy_sale_items')
-          .where('sale_id', sale.id)
+        const items = await knex('pharmacy_sale_items').where('sale_id', sale.id)
           .select('drug_name', 'quantity', 'unit_price', 'total_price');
         transactions.push({ ...sale, items });
       }
     }
+    // Map legacy receivable to standard format expected by UI
+    const mappedReceivable = {
+      ...receivable,
+      id, // restore the 'rec-' prefix
+      customer_name: receivable.customer_name || 'Manual Entry',
+      invoice_no: receivable.invoice_no,
+      invoice_date: receivable.invoice_date,
+      due_date: receivable.due_date,
+      department_source: receivable.department_source,
+      total_amount: asNum(receivable.total_amount),
+      amount_paid: asNum(receivable.amount_paid),
+      outstanding_balance: asNum(receivable.outstanding_balance),
+      status: receivable.status,
+      selling_price: asNum(receivable.total_amount),
+      cogs: 0,
+      gross_profit: asNum(receivable.total_amount),
+      subtotal: asNum(receivable.total_amount),
+      output_vat: 0,
+      input_vat: 0,
+      vat_standard: 0,
+      vat_exempt: 0,
+      vat_zero_rated: 0,
+      vat_total: 0,
+      manual_details: receivable.manual_details
+    };
 
-    res.json({
-      success: true,
-      data: {
-        receivable,
-        transactions,
-        systemTotal: parseFloat(receivable.total_amount),
-        transactionCount: transactions.length
-      }
-    });
+    res.json({ success: true, data: {
+      receivable: mappedReceivable, transactions,
+      systemTotal: parseFloat(mappedReceivable.total_amount), transactionCount: transactions.length
+    }});
   } catch (error) {
-    console.error('Error fetching receivable detail:', error);
+    console.error('Error fetching revenue book detail:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch detail' });
   }
 });
