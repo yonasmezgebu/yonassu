@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
+import { amountInWordsBirr } from '../../utils/amountInWords';
 import { triggerNotification } from '../../utils/ceoNotifications';
 import {
   TrendingUp, Download, Search, CheckCircle2, AlertCircle,
@@ -8,6 +9,16 @@ import {
   ArrowLeft, Printer, User, Phone, Package, CreditCard, Hash, Smartphone, Eye, X, Receipt
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+
+const getPaymentMethodName = (val) => {
+  const s = String(val || '').toUpperCase();
+  if (s === '1' || s.includes('CASH')) return 'Cash';
+  if (s === '2' || s.includes('BANK')) return 'Bank Transfer';
+  if (s === '3' || s.includes('CARD') || s.includes('POS')) return 'Credit/Debit Card';
+  if (s === '4' || s.includes('TELE') || s.includes('TELBIR')) return 'Telebirr';
+  if (s === '5') return 'Check';
+  return s.replace(/_/g, ' ');
+};
 
 const fmt = (num) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
 const fmtD = (dateStr) => {
@@ -110,6 +121,14 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
     }, []);
   }
 
+  // Row calculations based on the main table
+  const rowInputVat = parseFloat(receivable.input_vat || 0);
+  const rowOutputVat = parseFloat(receivable.output_vat || receivable.vat_total || 0);
+  const rowPayableVat = rowOutputVat - rowInputVat;
+  const isPaid = receivable.status === 'Paid';
+  const isReceipt = isPaid && receivable.receipt_no;
+
+
   return (
     <div style={{ width: '100%', padding: '0 0 40px', boxSizing: 'border-box' }}>
       {/* Detail Nav Bar */}
@@ -161,10 +180,137 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
               </div>
             ))}
           </div>
+
+          <div style={{ marginTop: 24, padding: 16, background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ledger Record Details</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+              {[
+                { label: 'Source / Reference', value: receivable.department_source || 'N/A' },
+                { label: 'Date', value: fmtD(receivable.invoice_date) },
+                { label: 'Selling Price', value: `ETB ${fmt(receivable.selling_price || receivable.subtotal || receivable.total_amount)}` },
+                { label: 'COGS', value: `ETB ${fmt(receivable.cogs || 0)}` },
+                { label: 'Input VAT', value: `ETB ${fmt(rowInputVat)}` },
+                { label: 'Output VAT', value: `ETB ${fmt(rowOutputVat)}` },
+                { label: 'Payable VAT', value: `ETB ${fmt(rowPayableVat)}` },
+                { label: 'Total', value: `ETB ${fmt(receivable.total_amount)}` },
+                { label: 'Status', value: isPaid ? (isReceipt ? 'Receipt / Paid' : 'Paid') : 'Invoice / Unpaid' }
+              ].map(f => (
+                <div key={f.label}>
+                  <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>{f.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', marginTop: 4 }}>{f.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
+        {/* ── Receipt Data & Additional Info ── */}
+        {(isReceipt || (transactions && transactions.length > 0)) && (
+          <div className="ror-card" style={{ marginBottom: 16 }}>
+             <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              <Receipt size={16} color="#16A34A" /> Receipt Data & Items
+            </div>
+
+            {transactions && transactions.map((txn, idx) => {
+              const saleItems = txn.items || [];
+              const subtotal = saleItems.reduce((sum, it) => sum + (parseFloat(it.unit_price) * parseFloat(it.quantity || 1)), 0);
+              const totalVat = parseFloat(txn.total_amount || 0) - subtotal; // Approx if exact vat isn't in txn
+              
+              return (
+                <div key={txn.id} style={{ marginBottom: 24, paddingBottom: 24, borderBottom: idx < transactions.length - 1 ? '1px dashed #E5E7EB' : 'none' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Receipt No</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#16A34A', fontFamily: 'monospace' }}>{txn.receipt_no || receivable.receipt_no || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Payment Method</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{getPaymentMethodName(txn.payment_method)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Sales Manager / Cashier</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+                        {txn.worker_name || receivable.sales_manager_name || '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Customer Name</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+                        {txn.recipient_name || receivable.customer_name || '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Customer Phone</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+                        {txn.recipient_phone || txn.pp_recipient_phone || receivable.customer_phone || '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Customer Email</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+                        {txn.customer_email || receivable.customer_email || '—'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {saleItems.length > 0 && (
+                    <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #E5E7EB' }}>
+                        <thead style={{ background: '#F8FAFC' }}>
+                          <tr>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #E5E7EB' }}>Item / Product</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'right', borderBottom: '1px solid #E5E7EB' }}>Qty</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'right', borderBottom: '1px solid #E5E7EB' }}>Unit Price</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'right', borderBottom: '1px solid #E5E7EB' }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {saleItems.map((item, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                              <td style={{ padding: '8px 12px', fontWeight: 600 }}>{item.name || item.drug_name || item.product_name || '—'}</td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right' }}>{item.qty ?? item.quantity}</td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right' }}>{fmt(item.unit_price)}</td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#16A34A' }}>{fmt(item.line_total || item.total_price || (item.unit_price * (item.qty ?? item.quantity)))}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot style={{ background: '#F8FAFC' }}>
+                          <tr>
+                            <td colSpan={3} style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>Subtotal:</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>ETB {fmt(subtotal)}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>Total VAT:</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>ETB {fmt(totalVat > 0 ? totalVat : 0)}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#111827' }}>TOTAL RECEIVED:</td>
+                            <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: '#16A34A' }}>ETB {fmt(txn.total_amount)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+
+                  <div style={{ background: '#F0FDF4', padding: 12, borderRadius: 8, border: '1px solid #BBF7D0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                       <div style={{ fontSize: 11, color: '#166534', fontWeight: 600, textTransform: 'uppercase' }}>Amount Received (in words)</div>
+                       <div style={{ fontSize: 14, fontWeight: 700, color: '#14532D' }}>{amountInWordsBirr(txn.total_amount)}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                       <div style={{ fontSize: 11, color: '#166534', fontWeight: 600, textTransform: 'uppercase' }}>Balance Remaining</div>
+                       <div style={{ fontSize: 16, fontWeight: 800, color: '#14532D' }}>ETB 0.00</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        
         {/* ── Transaction Breakdown ── */}
-        {transactions && transactions.length > 0 && (
+
+        {transactions && transactions.length > 0 && receivable?.department_source !== 'Retail & POS' && (
           <div className="ror-card" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
               <FileText size={16} color="#2563EB" /> Transaction Breakdown ({transactionCount} Records)
@@ -277,7 +423,7 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
             <div className="ror-meta-grid" style={{ marginBottom: 18 }}>
               <div style={{ background: '#F5F6FA', padding: 16, border: '1px solid #E5E7EB', borderRadius: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 500, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>Payment Method</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>{manualDetails.paymentMethod}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>{getPaymentMethodName(manualDetails.paymentMethod)}</div>
               </div>
               <div style={{ background: '#F5F6FA', padding: 16, border: '1px solid #E5E7EB', borderRadius: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 500, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>Received From</div>
