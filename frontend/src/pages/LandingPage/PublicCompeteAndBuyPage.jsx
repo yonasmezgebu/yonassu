@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../../services/apiClient';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Calendar, Clock, Tag, ArrowRight, Flame, Award,
   TrendingUp, Shield, ChevronDown, ChevronUp,
-  Phone, FileText, Star, Gavel, Info,
+  Phone, FileText, Star, Gavel, Info, Lock, User,
 } from 'lucide-react';
 import { PublicNav } from './PublicNavFooter';
 import tenderHero from '../../assets/hero-section/tender_animated_clean.png';
@@ -120,9 +121,12 @@ const TenderCard = ({ t, onClick, index }) => {
 // =========================================================================
 const PublicCompeteAndBuyPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, user, logout } = useAuth();
   const [tenders, setTenders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openFaq, setOpenFaq] = useState(null);
+  const [roleWarning, setRoleWarning] = useState(false);
 
   const FAQS = [
     { q: 'How do I place a bid?', a: 'Log in to your SUTANA account, browse to the desired open tender, and click "Submit Bid". Enter the value you are willing to pay and confirm your offer. You can only submit one bid per tender unless stated otherwise.' },
@@ -156,6 +160,18 @@ const PublicCompeteAndBuyPage = () => {
   }, []);
 
   const filtered = tenders.filter(t => t.status === 'open');
+
+  // Starting a bid on this marketplace requires signing in as a Customer
+  // account — staff and other roles must sign out and sign in with a customer
+  // account to participate.
+  const handleOpenTender = (tenderId) => {
+    const userRoles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toLowerCase()) : [];
+    if (isAuthenticated && !userRoles.includes('customer')) {
+      setRoleWarning(true);
+      return;
+    }
+    navigate(`/tenders/${tenderId}`);
+  };
 
   return (
     <div className="pcab-root">
@@ -217,7 +233,7 @@ const PublicCompeteAndBuyPage = () => {
                     key={t.id}
                     t={t}
                     index={i}
-                    onClick={() => navigate(`/tenders/${t.id}`)}
+                    onClick={() => handleOpenTender(t.id)}
                   />
                 ))}
               </div>
@@ -360,6 +376,36 @@ const PublicCompeteAndBuyPage = () => {
           ))}
         </div>
       </section>
+
+      {/* ── Customer-Only Warning Modal ── */}
+      {roleWarning && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }} onClick={() => setRoleWarning(false)}>
+          <div style={{ background: 'hsl(var(--background))', borderRadius: '1rem', maxWidth: '28rem', width: '100%', textAlign: 'center', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', border: '1px solid hsl(var(--border))', padding: '2.5rem 2rem', position: 'relative', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: 'linear-gradient(90deg, hsl(var(--primary)), #fbbf24, #a855f7)' }} />
+            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🔒</div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'hsl(var(--foreground))', margin: '0 0 0.75rem' }}>Customer Account Required</h2>
+            <p style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', margin: '0 0 1.75rem', lineHeight: 1.625 }}>
+              You're currently signed in as <strong>{user?.fullName || user?.full_name || user?.name || 'a staff account'}</strong>.
+              Bidding on this marketplace is available only to <strong>Customer</strong> accounts.
+              Please <strong>sign out</strong> and log in as a customer to start bidding.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '16rem', margin: '0 auto' }}>
+              <button
+                className="pcab-btn-primary"
+                onClick={() => { setRoleWarning(false); logout(); navigate('/login', { state: { from: location.pathname } }); }}
+              >
+                <User size={16} /> Sign Out &amp; Switch to Customer
+              </button>
+              <button
+                style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => setRoleWarning(false)}
+              >
+                Not Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
