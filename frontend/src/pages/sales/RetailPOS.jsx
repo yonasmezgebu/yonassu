@@ -463,13 +463,16 @@ const addToCart = (item) => {
     if (posCart.length === 0) { showToast('Cart is empty', 'warning'); return; }
     if (!posPaymentMethod) { showToast('Please select a payment method', 'warning'); return; }
 
-    if (posPaymentMethod !== 'CASH') {
+    const isVerifiedOnline = (saleType === 'ONLINE' && paymentStatus === 'PAID');
+
+    // If it's not a CASH transaction, AND it's NOT a verified online order, send to Finance
+    if (posPaymentMethod !== 'CASH' && !isVerifiedOnline) {
       await handleSubmitToFinance();
       return;
     }
     
     if (!cartSignature) {
-      showToast('Sales Manager Digital Signature is required for CASH transactions', 'error');
+      showToast('Sales Manager Digital Signature is required to send to store', 'error');
       return;
     }
 
@@ -1518,16 +1521,60 @@ const addToCart = (item) => {
                             <CheckCircle size={16} /> Continue Process
                           </button>
                         )}
-                        {item.status === 'rejected' && (
-                          <div style={{ flex: 2, fontSize: 14, color: 'var(--danger)', fontWeight: 700, padding: '10px 16px', background: '#FFFFFF', border: '2px solid var(--danger)', borderRadius: 8 }}>
-                            Reason: {item.reject_reason || 'No reason given'}
+                        {item.status === 'rejected' && item.type === 'store' && (
+                          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 700, padding: '10px 16px', background: '#FFF1F2', border: '2px solid var(--danger)', borderRadius: 8 }}>
+                              ❌ Store Rejected — Reason: {item.reject_reason || 'No reason given'}
+                            </div>
+                            <button
+                              onClick={async () => {
+                                if (!item.cartSignature) {
+                                  showToast('No signature found on this cart. Cannot resubmit.', 'error');
+                                  return;
+                                }
+                                setLoading(true);
+                                try {
+                                  const newCartCode = `CART-${Date.now().toString(36).toUpperCase()}`;
+                                  const res = await apiClient.post('/pos/cart/sign-store', {
+                                    cart_code: newCartCode,
+                                    customer_name: item.payerName || item.customer_name || 'Walk-in Customer',
+                                    customer_phone: item.payerPhone || '',
+                                    items: item.items,
+                                    total_amount: item.total,
+                                    payment_method: item.payment_method,
+                                    payment_amount: item.total,
+                                    txn_id: item.txnId || '',
+                                    signature: item.cartSignature,
+                                    notes: item.reject_reason ? `Resubmit after rejection: ${item.reject_reason}` : 'Resubmitted to store',
+                                    cashier_name: user?.fullName || user?.name || 'Cashier',
+                                  });
+                                  // Delete old rejected cart
+                                  try { await apiClient.delete(`/pos/cart/${item.id}`); } catch(e) {}
+                                  removeFromQueue(item.id);
+                                  await loadPendingQueue();
+                                  showToast('✅ Resubmitted to General Store!', 'success');
+                                } catch (err) {
+                                  showToast(err?.response?.data?.message || 'Failed to resubmit', 'error');
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }}
+                              disabled={loading}
+                              style={{ flex: 1, padding: '14px 0', minHeight: 44, background: 'var(--primary)', color: 'white', border: 'none', borderBottom: '4px solid var(--primary-hover)', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 900, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}
+                            >
+                              <RefreshCw size={16} /> Resubmit to General Store
+                            </button>
+                          </div>
+                        )}
+                        {item.status === 'rejected' && item.type === 'finance' && (
+                          <div style={{ flex: 2, fontSize: 13, color: 'var(--danger)', fontWeight: 700, padding: '10px 16px', background: '#FFF1F2', border: '2px solid var(--danger)', borderRadius: 8 }}>
+                            ❌ Finance Rejected — Reason: {item.reject_reason || 'No reason given'}
                           </div>
                         )}
                         {item.status === 'pending' && item.type === 'finance' && (
                           <button
                             onClick={async () => {
                               showToast('Checking status with finance...', 'info');
-                              // Real check: block the cashier from bypassing finance approval.
                               setTimeout(() => {
                                 showToast('Still waiting for finance approval...', 'info');
                               }, 1000);
@@ -1537,12 +1584,15 @@ const addToCart = (item) => {
                             <RefreshCw size={16} /> Check Finance Status
                           </button>
                         )}
-                        <button
-                          onClick={() => setDismissTarget(item)}
-                          style={{ padding: '14px 32px', minHeight: 44, background: '#FFFFFF', color: 'var(--danger)', border: '2px solid var(--danger)', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', transition: 'all 0.15s' }}
-                        >
-                          Dismiss
-                        </button>
+                        {/* Dismiss — not shown for store-rejected (must resubmit, not dismiss) */}
+                        {!(item.status === 'rejected' && item.type === 'store') && (
+                          <button
+                            onClick={() => setDismissTarget(item)}
+                            style={{ padding: '14px 32px', minHeight: 44, background: '#FFFFFF', color: 'var(--danger)', border: '2px solid var(--danger)', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', transition: 'all 0.15s' }}
+                          >
+                            Dismiss
+                          </button>
+                        )}
                       </div>
                     </div>
                   );})}
@@ -2115,38 +2165,53 @@ const addToCart = (item) => {
                     {posCart.length > 0 && (
                       <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, padding: '20px', marginTop: 16, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
 
-                        {/* Payment Method Selection with flow labels */}
-                        <div>
-                          <span className="sect-lbl">💳 Select Payment Method</span>
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {[
-                              { value: 'CASH', label: 'Cash', icon: '💵', route: '→ Store Direct', routeColor: '#1D4ED8' },
-                              { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: '🏦', route: '→ Finance First', routeColor: '#1565C0' },
-                              { value: 'TELBIR', label: 'Telebirr', icon: '📱', route: '→ Finance First', routeColor: '#7B1FA2' },
-                            ].map((pm, idx) => (
-                              <button
-                                key={pm.value}
-                                type="button"
-                                onClick={() => setPosPaymentMethod(pm.value)}
-                                className={`pay-method${posPaymentMethod === pm.value ? ' active' : ''}`}
-                                style={{
-                                  flex: 1, minWidth: 110,
-                                  background: posPaymentMethod === pm.value
-                                    ? (pm.value === 'CASH' ? '#EFF6FF' : pm.value === 'BANK_TRANSFER' ? '#E3F2FD' : '#F3E5F5')
-                                    : 'white',
-                                  border: posPaymentMethod === pm.value
-                                    ? `1.5px solid ${pm.value === 'CASH' ? '#2563EB' : pm.value === 'BANK_TRANSFER' ? '#1565C0' : '#7B1FA2'}`
-                                    : '1px solid #D1D5DB',
-                                  boxShadow: posPaymentMethod === pm.value ? '0 0 0 3px rgba(37,99,235,0.08)' : 'none',
-                                }}
-                              >
-                                <span style={{ fontSize: 20 }}>{pm.icon}</span>
-                                <span style={{ fontWeight: 700, fontSize: 13, color: posPaymentMethod === pm.value ? pm.routeColor : '#374151' }}>{pm.label}</span>
-                                <span style={{ fontSize: 10, fontWeight: 600, color: pm.routeColor, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{pm.route}</span>
-                              </button>
-                            ))}
+                        {/* Payment Method — locked if Finance already verified */}
+                        {(saleType === 'ONLINE' && paymentStatus === 'PAID') ? (
+                          <div>
+                            <span className="sect-lbl">💳 Payment Method</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#F9FAFB', border: '1.5px solid #D1D5DB', borderRadius: 8, marginTop: 6 }}>
+                              <span style={{ fontSize: 18 }}>🔒</span>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: 14, color: '#374151' }}>
+                                  {posPaymentMethod === 'CASH' ? '💵 Cash' : posPaymentMethod === 'BANK_TRANSFER' ? '🏦 Bank Transfer' : posPaymentMethod === 'TELBIR' ? '📱 Telebirr' : posPaymentMethod}
+                                </div>
+                                <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Locked — verified by Finance. Cannot be changed.</div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div>
+                            <span className="sect-lbl">💳 Select Payment Method</span>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              {[
+                                { value: 'CASH', label: 'Cash', icon: '💵', route: '→ Store Direct', routeColor: '#1D4ED8' },
+                                { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: '🏦', route: '→ Finance First', routeColor: '#1565C0' },
+                                { value: 'TELBIR', label: 'Telebirr', icon: '📱', route: '→ Finance First', routeColor: '#7B1FA2' },
+                              ].map((pm, idx) => (
+                                <button
+                                  key={pm.value}
+                                  type="button"
+                                  onClick={() => setPosPaymentMethod(pm.value)}
+                                  className={`pay-method${posPaymentMethod === pm.value ? ' active' : ''}`}
+                                  style={{
+                                    flex: 1, minWidth: 110,
+                                    background: posPaymentMethod === pm.value
+                                      ? (pm.value === 'CASH' ? '#EFF6FF' : pm.value === 'BANK_TRANSFER' ? '#E3F2FD' : '#F3E5F5')
+                                      : 'white',
+                                    border: posPaymentMethod === pm.value
+                                      ? `1.5px solid ${pm.value === 'CASH' ? '#2563EB' : pm.value === 'BANK_TRANSFER' ? '#1565C0' : '#7B1FA2'}`
+                                      : '1px solid #D1D5DB',
+                                    boxShadow: posPaymentMethod === pm.value ? '0 0 0 3px rgba(37,99,235,0.08)' : 'none',
+                                  }}
+                                >
+                                  <span style={{ fontSize: 20 }}>{pm.icon}</span>
+                                  <span style={{ fontWeight: 700, fontSize: 13, color: posPaymentMethod === pm.value ? pm.routeColor : '#374151' }}>{pm.label}</span>
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: pm.routeColor, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{pm.route}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* ── CASH FLOW ── */}
                         {posPaymentMethod === 'CASH' && (
@@ -2180,112 +2245,149 @@ const addToCart = (item) => {
                         {/* ── BANK TRANSFER FLOW ── */}
                         {posPaymentMethod === 'BANK_TRANSFER' && (
                           <div>
-                            {/* Info banner */}
-                            <div style={{ background: '#E3F2FD', border: '1px solid #90CAF9', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <span style={{ fontSize: 16 }}>🏦</span>
-                              <div>
-                                <div style={{ fontWeight: 700, fontSize: 12, color: '#1565C0', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Bank Transfer Flow: Finance Verification Required</div>
-                                <div style={{ fontSize: 11, color: '#374151' }}>Submit → Finance verifies bank transfer → Writes to Receivable Book → Sends to Store → Store releases → Audit record only (not in cash transactions)</div>
-                              </div>
-                            </div>
-                            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16 }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                                <div>
-                                  <label className="field-lbl">Amount (ETB) *</label>
-                                  <input className="nature-input" type="number" step="0.01" min="0" value={paymentAmount}
-                                    onChange={e => setPaymentAmount(e.target.value)} />
+                            {(saleType === 'ONLINE' && paymentStatus === 'PAID') ? (
+                              /* ── READ-ONLY: Finance already verified ── */
+                              <div style={{ background: '#E3F2FD', border: '1.5px solid #90CAF9', borderRadius: 10, padding: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                  <span style={{ fontSize: 16 }}>🔒</span>
+                                  <span style={{ fontWeight: 700, fontSize: 12, color: '#1565C0', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Payment Verified by Finance — Read Only</span>
                                 </div>
-                                <div>
-                                  <label className="field-lbl">Select Finance Account</label>
-                                  <select className="nature-input" onChange={(e) => {
-                                    const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
-                                    if (acc) { setBankName(acc.bank_provider || ''); setAccountHolder(acc.account_name || ''); setAccountNumber(acc.account_number || ''); }
-                                  }}>
-                                    <option value="">— Select —</option>
-                                    {financeAccounts.filter(a => a.account_type === 'Bank').map(a => (
-                                      <option key={a.id} value={a.id}>{a.account_name} ({a.bank_provider})</option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="field-lbl">Bank Name *</label>
-                                  <input className="nature-input" type="text" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. CBE" />
-                                </div>
-                                <div>
-                                  <label className="field-lbl">Account Holder *</label>
-                                  <input className="nature-input" type="text" value={accountHolder} onChange={e => setAccountHolder(e.target.value)} placeholder="Full name" />
-                                </div>
-                                <div>
-                                  <label className="field-lbl">Account Number *</label>
-                                  <input className="nature-input" type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="Account No." />
-                                </div>
-                                <div>
-                                  <label className="field-lbl">Transaction ID / Reference *</label>
-                                  <input className="nature-input" type="text" value={txnId} onChange={e => setTxnId(e.target.value)} placeholder="Bank Ref ID" />
-                                </div>
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                  <label className="field-lbl">Payment Proof Screenshot (Recommended)</label>
-                                  <input className="nature-input" type="file" accept="image/*"
-                                    onChange={e => setTxnScreenshot(e.target.files[0])}
-                                    style={{ padding: '8px 12px', cursor: 'pointer' }} />
-                                  {txnScreenshot && <div style={{ fontSize: 11, color: '#1565C0', marginTop: 4, fontWeight: 600 }}>✓ {txnScreenshot.name}</div>}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                                  <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>AMOUNT (ETB)</div><div style={{ fontSize: 14, fontWeight: 700, color: '#1E3A5F', background: '#EFF6FF', borderRadius: 6, padding: '8px 12px' }}>{paymentAmount}</div></div>
+                                  {bankName && <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>BANK NAME</div><div style={{ fontSize: 14, fontWeight: 700, color: '#1E3A5F', background: '#EFF6FF', borderRadius: 6, padding: '8px 12px' }}>{bankName}</div></div>}
+                                  {accountHolder && <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>ACCOUNT HOLDER</div><div style={{ fontSize: 14, fontWeight: 700, color: '#1E3A5F', background: '#EFF6FF', borderRadius: 6, padding: '8px 12px' }}>{accountHolder}</div></div>}
+                                  {accountNumber && <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>ACCOUNT NUMBER</div><div style={{ fontSize: 14, fontWeight: 700, color: '#1E3A5F', background: '#EFF6FF', borderRadius: 6, padding: '8px 12px' }}>{accountNumber}</div></div>}
+                                  {txnId && <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>TRANSACTION ID / REFERENCE</div><div style={{ fontSize: 14, fontWeight: 700, color: '#1E3A5F', background: '#EFF6FF', borderRadius: 6, padding: '8px 12px' }}>{txnId}</div></div>}
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              /* ── EDITABLE: Normal flow ── */
+                              <>
+                                <div style={{ background: '#E3F2FD', border: '1px solid #90CAF9', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 16 }}>🏦</span>
+                                  <div>
+                                    <div style={{ fontWeight: 700, fontSize: 12, color: '#1565C0', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Bank Transfer Flow: Finance Verification Required</div>
+                                    <div style={{ fontSize: 11, color: '#374151' }}>Submit → Finance verifies bank transfer → Writes to Receivable Book → Sends to Store → Store releases → Audit record only (not in cash transactions)</div>
+                                  </div>
+                                </div>
+                                <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16 }}>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+                                    <div>
+                                      <label className="field-lbl">Amount (ETB) *</label>
+                                      <input className="nature-input" type="number" step="0.01" min="0" value={paymentAmount}
+                                        onChange={e => setPaymentAmount(e.target.value)} />
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Select Finance Account</label>
+                                      <select className="nature-input" onChange={(e) => {
+                                        const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
+                                        if (acc) { setBankName(acc.bank_provider || ''); setAccountHolder(acc.account_name || ''); setAccountNumber(acc.account_number || ''); }
+                                      }}>
+                                        <option value="">— Select —</option>
+                                        {financeAccounts.filter(a => a.account_type === 'Bank').map(a => (
+                                          <option key={a.id} value={a.id}>{a.account_name} ({a.bank_provider})</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Bank Name *</label>
+                                      <input className="nature-input" type="text" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. CBE" />
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Account Holder *</label>
+                                      <input className="nature-input" type="text" value={accountHolder} onChange={e => setAccountHolder(e.target.value)} placeholder="Full name" />
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Account Number *</label>
+                                      <input className="nature-input" type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="Account No." />
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Transaction ID / Reference *</label>
+                                      <input className="nature-input" type="text" value={txnId} onChange={e => setTxnId(e.target.value)} placeholder="Bank Ref ID" />
+                                    </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                      <label className="field-lbl">Payment Proof Screenshot (Recommended)</label>
+                                      <input className="nature-input" type="file" accept="image/*"
+                                        onChange={e => setTxnScreenshot(e.target.files[0])}
+                                        style={{ padding: '8px 12px', cursor: 'pointer' }} />
+                                      {txnScreenshot && <div style={{ fontSize: 11, color: '#1565C0', marginTop: 4, fontWeight: 600 }}>✓ {txnScreenshot.name}</div>}
+                                    </div>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
 
                         {/* ── TELEBIRR FLOW ── */}
                         {posPaymentMethod === 'TELBIR' && (
                           <div>
-                            {/* Info banner */}
-                            <div style={{ background: '#F3E5F5', border: '1px solid #CE93D8', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <span style={{ fontSize: 16 }}>📱</span>
-                              <div>
-                                <div style={{ fontWeight: 700, fontSize: 12, color: '#7B1FA2', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Telebirr Flow: Finance Verification Required</div>
-                                <div style={{ fontSize: 11, color: '#374151' }}>Submit → Finance verifies Telebirr transfer → Writes to Receivable Book → Sends to Store → Store releases → Audit record only (not in cash transactions)</div>
-                              </div>
-                            </div>
-                            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16 }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                                <div>
-                                  <label className="field-lbl">Amount (ETB) *</label>
-                                  <input className="nature-input" type="number" step="0.01" min="0" value={paymentAmount}
-                                    onChange={e => setPaymentAmount(e.target.value)} />
+                            {(saleType === 'ONLINE' && paymentStatus === 'PAID') ? (
+                              /* ── READ-ONLY: Finance already verified ── */
+                              <div style={{ background: '#F3E5F5', border: '1.5px solid #CE93D8', borderRadius: 10, padding: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                  <span style={{ fontSize: 16 }}>🔒</span>
+                                  <span style={{ fontWeight: 700, fontSize: 12, color: '#7B1FA2', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Payment Verified by Finance — Read Only</span>
                                 </div>
-                                <div>
-                                  <label className="field-lbl">Select Telebirr Account</label>
-                                  <select className="nature-input" onChange={(e) => {
-                                    const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
-                                    if (acc) { setTelbirNumber(acc.account_number || ''); setPayerName(acc.account_name || ''); }
-                                  }}>
-                                    <option value="">— Select —</option>
-                                    {financeAccounts.filter(a => a.bank_provider === 'telebirr' || a.account_type === 'Mobile Wallet').map(a => (
-                                      <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="field-lbl">Telebirr Number *</label>
-                                  <input className="nature-input" type="text" value={telbirNumber} onChange={e => setTelbirNumber(e.target.value)} placeholder="09XXXXXXXX" />
-                                </div>
-                                <div>
-                                  <label className="field-lbl">Sender Full Name *</label>
-                                  <input className="nature-input" type="text" value={payerName} onChange={e => setPayerName(e.target.value)} placeholder="Sender name" />
-                                </div>
-                                <div>
-                                  <label className="field-lbl">Transaction ID / Reference *</label>
-                                  <input className="nature-input" type="text" value={txnId} onChange={e => setTxnId(e.target.value)} placeholder="Telebirr Ref ID" />
-                                </div>
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                  <label className="field-lbl">Payment Screenshot (Recommended)</label>
-                                  <input className="nature-input" type="file" accept="image/*"
-                                    onChange={e => setTxnScreenshot(e.target.files[0])}
-                                    style={{ padding: '8px 12px', cursor: 'pointer' }} />
-                                  {txnScreenshot && <div style={{ fontSize: 11, color: '#7B1FA2', marginTop: 4, fontWeight: 600 }}>✓ {txnScreenshot.name}</div>}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                                  <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>AMOUNT (ETB)</div><div style={{ fontSize: 14, fontWeight: 700, color: '#4A148C', background: '#FDF7FD', borderRadius: 6, padding: '8px 12px' }}>{paymentAmount}</div></div>
+                                  {telbirNumber && <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>TELEBIRR NUMBER</div><div style={{ fontSize: 14, fontWeight: 700, color: '#4A148C', background: '#FDF7FD', borderRadius: 6, padding: '8px 12px' }}>{telbirNumber}</div></div>}
+                                  {payerName && <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>SENDER FULL NAME</div><div style={{ fontSize: 14, fontWeight: 700, color: '#4A148C', background: '#FDF7FD', borderRadius: 6, padding: '8px 12px' }}>{payerName}</div></div>}
+                                  {txnId && <div><div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>TRANSACTION ID / REFERENCE</div><div style={{ fontSize: 14, fontWeight: 700, color: '#4A148C', background: '#FDF7FD', borderRadius: 6, padding: '8px 12px' }}>{txnId}</div></div>}
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              /* ── EDITABLE: Normal flow ── */
+                              <>
+                                <div style={{ background: '#F3E5F5', border: '1px solid #CE93D8', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 16 }}>📱</span>
+                                  <div>
+                                    <div style={{ fontWeight: 700, fontSize: 12, color: '#7B1FA2', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Telebirr Flow: Finance Verification Required</div>
+                                    <div style={{ fontSize: 11, color: '#374151' }}>Submit → Finance verifies Telebirr transfer → Writes to Receivable Book → Sends to Store → Store releases → Audit record only (not in cash transactions)</div>
+                                  </div>
+                                </div>
+                                <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16 }}>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+                                    <div>
+                                      <label className="field-lbl">Amount (ETB) *</label>
+                                      <input className="nature-input" type="number" step="0.01" min="0" value={paymentAmount}
+                                        onChange={e => setPaymentAmount(e.target.value)} />
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Select Telebirr Account</label>
+                                      <select className="nature-input" onChange={(e) => {
+                                        const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
+                                        if (acc) { setTelbirNumber(acc.account_number || ''); setPayerName(acc.account_name || ''); }
+                                      }}>
+                                        <option value="">— Select —</option>
+                                        {financeAccounts.filter(a => a.bank_provider === 'telebirr' || a.account_type === 'Mobile Wallet').map(a => (
+                                          <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Telebirr Number *</label>
+                                      <input className="nature-input" type="text" value={telbirNumber} onChange={e => setTelbirNumber(e.target.value)} placeholder="09XXXXXXXX" />
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Sender Full Name *</label>
+                                      <input className="nature-input" type="text" value={payerName} onChange={e => setPayerName(e.target.value)} placeholder="Sender name" />
+                                    </div>
+                                    <div>
+                                      <label className="field-lbl">Transaction ID / Reference *</label>
+                                      <input className="nature-input" type="text" value={txnId} onChange={e => setTxnId(e.target.value)} placeholder="Telebirr Ref ID" />
+                                    </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                      <label className="field-lbl">Payment Screenshot (Recommended)</label>
+                                      <input className="nature-input" type="file" accept="image/*"
+                                        onChange={e => setTxnScreenshot(e.target.files[0])}
+                                        style={{ padding: '8px 12px', cursor: 'pointer' }} />
+                                      {txnScreenshot && <div style={{ fontSize: 11, color: '#7B1FA2', marginTop: 4, fontWeight: 600 }}>✓ {txnScreenshot.name}</div>}
+                                    </div>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
 
@@ -2334,10 +2436,10 @@ const addToCart = (item) => {
                           </>
                         )}
 
-                        {/* Signature — CASH only */}
-                        {posPaymentMethod === 'CASH' && (
+                        {/* Signature — Store Release Required */}
+                        {(posPaymentMethod === 'CASH' || (saleType === 'ONLINE' && paymentStatus === 'PAID')) && (
                           <div>
-                            <span className="sect-lbl">✍️ Sales Manager Signature (Required for Cash)</span>
+                            <span className="sect-lbl">✍️ Sales Manager Signature (Required for Store Release)</span>
                             <div style={{ fontSize: 11, color: 'var(--earth)', marginBottom: 8 }}>
                               By signing, you authorize release of the following items from the General Store.
                             </div>
@@ -2367,13 +2469,13 @@ const addToCart = (item) => {
                         {posPaymentMethod && (
                           <button
                             type="button"
-                            disabled={loading || !paymentStatus || (posPaymentMethod === 'CASH' && !cartSignature)}
+                            disabled={loading || !paymentStatus || ((posPaymentMethod === 'CASH' || (saleType === 'ONLINE' && paymentStatus === 'PAID')) && !cartSignature)}
                             onClick={handleProcessPayment}
                             style={{
                               width: '100%',
                               padding: '14px 24px',
                               minHeight: 48,
-                              background: posPaymentMethod === 'CASH'
+                              background: (posPaymentMethod === 'CASH' || (saleType === 'ONLINE' && paymentStatus === 'PAID'))
                                 ? 'var(--primary)'
                                 : posPaymentMethod === 'BANK_TRANSFER' ? '#1565C0' : '#7B1FA2',
                               color: 'white',
@@ -2382,7 +2484,7 @@ const addToCart = (item) => {
                               fontWeight: 700,
                               fontSize: 14,
                               cursor: loading ? 'not-allowed' : 'pointer',
-                              opacity: (loading || !paymentStatus || (posPaymentMethod === 'CASH' && !cartSignature)) ? 0.55 : 1,
+                              opacity: (loading || !paymentStatus || ((posPaymentMethod === 'CASH' || (saleType === 'ONLINE' && paymentStatus === 'PAID')) && !cartSignature)) ? 0.55 : 1,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2395,6 +2497,8 @@ const addToCart = (item) => {
                           >
                             {loading ? (
                               <><SegmentedSpinner size={18} /> Processing...</>
+                            ) : (saleType === 'ONLINE' && paymentStatus === 'PAID') ? (
+                              <><Package size={18} /> Send Verified Online Order to Store — {posCartTotal > 0 ? posCartTotal.toLocaleString() : '0'} ETB</>
                             ) : posPaymentMethod === 'CASH' ? (
                               <><Package size={18} /> Send to Store (Cash) — {posCartTotal > 0 ? posCartTotal.toLocaleString() : '0'} ETB</>
                             ) : posPaymentMethod === 'BANK_TRANSFER' ? (
