@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from '../../services/apiClient';
+import authService from '../../services/authService';
 import confetti from 'canvas-confetti';
 import clumpSound from '../../assets/notification/clump.mp3';
 import {
@@ -16,7 +17,7 @@ import './TenderDetailPage.css';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
-/* ─── Celebration Modal ─── */
+/* â”€â”€â”€ Celebration Modal â”€â”€â”€ */
 const CelebrationModal = ({ onClose }) => {
   useEffect(() => {
     // Play clump sound
@@ -45,7 +46,7 @@ const CelebrationModal = ({ onClose }) => {
         <h2 className="tdp-celebration-title">Bid Submitted!</h2>
 
         <p style={{ fontSize: 17, fontWeight: 700, color: 'hsl(var(--foreground))', margin: '0 0 12px' }}>
-          Congratulations! 🎉
+          Congratulations! ðŸŽ‰
         </p>
         <p style={{ fontSize: 14, color: 'hsl(var(--foreground))', lineHeight: 1.7, margin: '0 0 28px' }}>
           Your bid has been successfully received by <strong>SUTANA</strong>.<br/>
@@ -98,6 +99,7 @@ export default () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [message, setMessage] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [roleWarning, setRoleWarning] = useState(false);
   const [itemBids, setItemBids] = useState({});
   const [vatCtx, setVatCtx] = useState(null);
   
@@ -109,6 +111,13 @@ export default () => {
     const u = localStorage.getItem('user');
     if (u) try { setUser(JSON.parse(u)); } catch {}
   }, []);
+
+  // Only Customer accounts may submit bids on this marketplace.
+  const userRoles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toLowerCase()) : [];
+  const isCustomerBidder = user ? userRoles.includes('customer') : false;
+  useEffect(() => {
+    if (user && !isCustomerBidder) setRoleWarning(true);
+  }, [user, isCustomerBidder]);
 
   useEffect(() => {
     const load = async () => {
@@ -180,6 +189,12 @@ export default () => {
 
   const handleBidSubmit = async (e) => {
     e.preventDefault();
+    // Bids may only be submitted by Customer accounts.
+    const submitRoles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toLowerCase()) : [];
+    if (user && !submitRoles.includes('customer')) {
+      setRoleWarning(true);
+      return;
+    }
     if (submitting) return; // block double-click
     setSubmitting(true);
     setMessage(null);
@@ -204,6 +219,12 @@ export default () => {
 
   const handleMultiItemBidSubmit = async (e, items) => {
     e.preventDefault();
+    // Bids may only be submitted by Customer accounts.
+    const submitRoles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toLowerCase()) : [];
+    if (user && !submitRoles.includes('customer')) {
+      setRoleWarning(true);
+      return;
+    }
     if (submitting) return; // block double-click
     setSubmitting(true);
     setMessage(null);
@@ -278,8 +299,38 @@ export default () => {
     <div className="tdp-root">
       <PublicNav />
 
-      {/* 🎉 Celebration Modal */}
+      {/* ðŸŽ‰ Celebration Modal */}
       {showCelebration && <CelebrationModal onClose={() => setShowCelebration(false)} />}
+
+      {/* ðŸ”’ Customer-Only Warning Modal */}
+      {roleWarning && (
+        <div className="tdp-modal-overlay" onClick={() => setRoleWarning(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'hsl(var(--background))', borderRadius: '1rem', maxWidth: '28rem', width: '100%', textAlign: 'center', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', border: '1px solid hsl(var(--border))', padding: '2.5rem 2rem', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: 'linear-gradient(90deg, hsl(var(--primary)), #fbbf24, #a855f7)' }} />
+            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>ðŸ”’</div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'hsl(var(--foreground))', margin: '0 0 0.75rem' }}>Customer Account Required</h2>
+            <p style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', margin: '0 0 1.75rem', lineHeight: 1.625 }}>
+              You're currently signed in as <strong>{user?.fullName || user?.full_name || user?.name || 'a staff account'}</strong>.
+              Bidding on this tender is available only to <strong>Customer</strong> accounts.
+              Please <strong>sign out</strong> and log in as a customer to start bidding.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '16rem', margin: '0 auto' }}>
+              <button
+                className="tdp-btn-primary"
+                onClick={() => { setRoleWarning(false); authService.logout(); navigate(`/login?redirect=${encodeURIComponent(`/tenders/${tender?.id || id}`)}`); }}
+              >
+                <User size={16} /> Sign Out &amp; Switch to Customer
+              </button>
+              <button
+                style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => setRoleWarning(false)}
+              >
+                Not Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="tdp-container">
         {loading ? (
@@ -299,7 +350,7 @@ export default () => {
               <ArrowLeft size={16} /> All Tenders
             </button>
             
-            {/* ─── Main Layout ─── */}
+            {/* â”€â”€â”€ Main Layout â”€â”€â”€ */}
             <div className={`tdp-layout ${isMultiTender ? 'multi' : ''}`}>
               {/* Left Column */}
               <div className="tdp-card">
@@ -370,7 +421,7 @@ export default () => {
                     <div className="tdp-stat-box">
                       <div className="tdp-stat-label">Deadline</div>
                       <div className="tdp-stat-value" style={{ fontSize: '0.875rem' }}>
-                        {tender.deadline ? new Date(tender.deadline).toLocaleDateString('en-CA') : '—'}
+                        {tender.deadline ? new Date(tender.deadline).toLocaleDateString('en-CA') : 'â€”'}
                       </div>
                     </div>
                   </div>
@@ -399,10 +450,10 @@ export default () => {
                     if (!items.length) return null;
                     return (
                       <div className="tdp-section">
-                        <h3 className="tdp-section-title"><Package size={18} /> Tender Items — Fill Your Bid Price ({items.length} items)</h3>
-                        {isOpen && user && (
+                        <h3 className="tdp-section-title"><Package size={18} /> Tender Items â€” Fill Your Bid Price ({items.length} items)</h3>
+                        {isOpen && isCustomerBidder && (
                           <div className="tdp-alert info">
-                            📝 Enter your bid price for each item below, then click <strong>Submit Multi-Item Bid</strong>.
+                            ðŸ“ Enter your bid price for each item below, then click <strong>Submit Multi-Item Bid</strong>.
                           </div>
                         )}
                         <form onSubmit={e => handleMultiItemBidSubmit(e, items)}>
@@ -426,14 +477,14 @@ export default () => {
                                   return (
                                     <tr key={idx} className={idx % 2 === 0 ? 'alt' : ''}>
                                       <td style={{ fontWeight: 700, color: 'hsl(var(--muted-foreground))' }}>{idx + 1}</td>
-                                      <td style={{ fontWeight: 600 }}>{item.objectType || item.object_type || '—'}</td>
-                                      <td>{item.unit || '—'}</td>
+                                      <td style={{ fontWeight: 600 }}>{item.objectType || item.object_type || 'â€”'}</td>
+                                      <td>{item.unit || 'â€”'}</td>
                                       <td className="right" style={{ fontWeight: 700, color: 'hsl(var(--primary))' }}>{item.quantity}</td>
                                       <td className="right" style={{ fontWeight: 800 }}>
-                                        {item.startPrice ? parseFloat(item.startPrice).toLocaleString() + ' ETB' : '—'}
+                                        {item.startPrice ? parseFloat(item.startPrice).toLocaleString() + ' ETB' : 'â€”'}
                                       </td>
                                       <td className="right">
-                                        {isOpen && user ? (
+                                        {isOpen && isCustomerBidder ? (
                                           <input
                                             type="number" step="0.01"
                                             min={item.startPrice ? parseFloat(item.startPrice) : 0}
@@ -443,10 +494,10 @@ export default () => {
                                             placeholder={item.startPrice ? `Min: ${parseFloat(item.startPrice).toLocaleString()}` : '0'}
                                             className={`tdp-input-table ${isError ? 'error' : ''}`}
                                           />
-                                        ) : <span style={{ color: 'hsl(var(--muted-foreground))' }}>—</span>}
+                                        ) : <span style={{ color: 'hsl(var(--muted-foreground))' }}>â€”</span>}
                                       </td>
                                       <td className="right">
-                                        {isOpen && user ? (
+                                        {isOpen && isCustomerBidder ? (
                                           <input
                                             type="number" min="0" max="99" step="1"
                                             value={itemBids[`cent_${idx}`] || ''}
@@ -454,10 +505,10 @@ export default () => {
                                             placeholder="0"
                                             className="tdp-input-table"
                                           />
-                                        ) : <span style={{ color: 'hsl(var(--muted-foreground))' }}>—</span>}
+                                        ) : <span style={{ color: 'hsl(var(--muted-foreground))' }}>â€”</span>}
                                       </td>
                                       <td className="right" style={{ fontWeight: 700, color: totalBirr > 0 ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>
-                                        {totalBirr > 0 ? totalBirr.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' ETB' : '—'}
+                                        {totalBirr > 0 ? totalBirr.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' ETB' : 'â€”'}
                                       </td>
                                     </tr>
                                   );
@@ -476,7 +527,7 @@ export default () => {
                               const v = getVatForItem(vatCtx, 'tender_sell', item.id != null ? item.id : idx, unitBid * qty);
                               return (
                                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', padding: '0.25rem 0', color: 'hsl(var(--foreground))' }}>
-                                  <span>{item.objectType || item.object_type || `Item ${idx + 1}`} — VAT ({fmtPct(v.rate)})</span>
+                                  <span>{item.objectType || item.object_type || `Item ${idx + 1}`} â€” VAT ({fmtPct(v.rate)})</span>
                                   <span style={{ fontWeight: 700, color: 'hsl(var(--primary))' }}>{v.vat.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETB</span>
                                 </div>
                               );
@@ -493,7 +544,7 @@ export default () => {
                             </div>
                           </div>
 
-                          {isOpen && user && (
+{isOpen && isCustomerBidder && (
                             <div style={{ marginTop: '2rem' }}>
                               <h4 style={{ margin: '0 0 1rem', fontSize: '1.125rem', fontWeight: 700, color: 'hsl(var(--foreground))' }}>Competitor Details</h4>
                               
@@ -558,7 +609,7 @@ export default () => {
                           {!isOpen && <div className="tdp-status closed">This tender is closed. No new bids can be submitted.</div>}
 
                           {/* CTA Section */}
-                          {isOpen && (
+                          {isOpen && (!user || isCustomerBidder) && (
                             <div style={{ background: 'linear-gradient(135deg, hsl(142 76% 25%), hsl(142 76% 18%))', borderRadius: '0.75rem', padding: '1.75rem', textAlign: 'center', marginTop: '1.5rem' }}>
                               <Award size={32} color="rgba(255,255,255,0.85)" style={{ marginBottom: '0.75rem' }} />
                               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '0 0 0.5rem' }}>Ready to Submit Your Bid?</h3>
@@ -595,7 +646,7 @@ export default () => {
                                     </div>
                                   )}
                                   <button type="submit" disabled={submitting} className="tdp-btn-primary" style={{ background: 'white', color: 'hsl(var(--primary))', fontWeight: 800 }}>
-                                    {submitting ? '⏳ Submitting...' : <><Award size={18} /> Submit Multi-Item Bid <ChevronRight size={16} /></>}
+                                    {submitting ? 'â³ Submitting...' : <><Award size={18} /> Submit Multi-Item Bid <ChevronRight size={16} /></>}
                                   </button>
                                 </div>
                               )}
@@ -660,8 +711,8 @@ export default () => {
                         </h3>
                         {[
                           { key: <><Calendar size={13} /> Published</>, val: new Date(tender.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) },
-                          { key: <><Clock size={13} /> Deadline</>, val: tender.deadline ? new Date(tender.deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—' },
-                          { key: <><Tag size={13} /> Category</>, val: tender.category || '—' },
+                          { key: <><Clock size={13} /> Deadline</>, val: tender.deadline ? new Date(tender.deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'â€”' },
+                          { key: <><Tag size={13} /> Category</>, val: tender.category || 'â€”' },
                           { key: <><Building2 size={13} /> Status</>, val: <span className={`tdp-status ${tender.status}`} style={{ fontSize: '0.6875rem', padding: '0.125rem 0.625rem' }}>{tender.status.replace('_', ' ')}</span> },
                           { key: <><TrendingUp size={13} /> Min. Price</>, val: <span style={{ color: 'hsl(var(--primary))', fontWeight: 800 }}>{parseFloat(tender.starting_bid_price).toLocaleString()} ETB</span> },
                         ].map(({ key, val }, i) => (
@@ -673,8 +724,8 @@ export default () => {
                       </div>
                     </div>
 
-                    {/* Bid Section — Logged In User */}
-                    {isOpen && user && (
+                    {/* Bid Section â€” Logged In User */}
+                    {isOpen && isCustomerBidder && (
                       <div className="tdp-card tdp-card-sidebar">
                         <div className="tdp-bid-header">
                           <div className="tdp-bid-header-subtitle">
@@ -764,14 +815,14 @@ export default () => {
                               </div>
                             </div>
                             <button type="submit" className="tdp-btn-primary" disabled={submitting}>
-                              {submitting ? '⏳ Submitting...' : myBid ? <><CheckCircle size={16} /> Update My Bid</> : <><Award size={16} /> Submit Bid</>}
+                              {submitting ? 'â³ Submitting...' : myBid ? <><CheckCircle size={16} /> Update My Bid</> : <><Award size={16} /> Submit Bid</>}
                             </button>
                           </form>
                         </div>
                       </div>
                     )}
 
-                    {/* Sign-in CTA — Not Logged In */}
+                    {/* Sign-in CTA â€” Not Logged In */}
                     {!user && isOpen && (
                       <div className="tdp-card tdp-card-sidebar">
                         <div className="tdp-signin-header">
@@ -815,7 +866,7 @@ export default () => {
                 {!isOpen && tender.status !== 'open' && (
                   <div className="tdp-card tdp-card-sidebar" style={{ textAlign: 'center', padding: '1.5rem' }}>
                     <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>
-                      {tender.status === 'awarded' ? '🏆' : tender.status === 'cancelled' ? '❌' : '🔒'}
+                      {tender.status === 'awarded' ? 'ðŸ†' : tender.status === 'cancelled' ? 'âŒ' : 'ðŸ”’'}
                     </div>
                     <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'hsl(var(--foreground))', margin: '0 0 0.375rem' }}>
                       {tender.status === 'awarded' ? 'Tender Awarded' : tender.status === 'cancelled' ? 'Tender Cancelled' : 'Bidding Closed'}
