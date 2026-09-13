@@ -1574,10 +1574,27 @@ const FinanceLiveIncome = () => {
                   {pendingList.map((sub, idx) => {
                     let md = null;
                     try { md = sub.manual_details ? JSON.parse(sub.manual_details) : null; } catch (_) {}
-                    const pm = md?.paymentMethod || '';
-                    const isTelebirr = /telebirr/i.test(pm);
-                    const isBank = /bank|transfer|cbe|awash/i.test(pm);
-                    const isCashPay = !isTelebirr && !isBank;
+                    // Collect every payment method string this submission used —
+                    // manual_details.paymentMethod (Walk-In/Printing/Retail/Car Rental/
+                    // Agrirent), manual_details.payment_method (POS Retail Sales) and
+                    // the per-sale methods in the Pharmacy snapshot — then classify
+                    // exactly like the Detail view so the list shows the same
+                    // Telebirr / Bank / Cash identity as the detail.
+                    const methods = [];
+                    if (md?.paymentMethod) methods.push(md.paymentMethod);
+                    if (md?.payment_method) methods.push(md.payment_method);
+                    if (Array.isArray(md?.sales)) {
+                      md.sales.forEach(s => { if (s.payment_method) methods.push(s.payment_method); });
+                    }
+                    if (methods.length === 0 && md?.methodBreakdown) {
+                      Object.keys(md.methodBreakdown).forEach(k => methods.push(k));
+                    }
+                    const pm = methods.join(' ').replace(/[/_#-]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+                    const hasMeta = methods.length > 0;
+                    const isCashRaw = pm === 'cash' || /cash on|cash_on|in person|in-person|delivered/.test(pm) || pm.includes('cash');
+                    const isTelebirr = hasMeta && !/cbe/.test(pm) && !isCashRaw && /telebirr?|tele birr|telbir|wallet|mobile|chapa|amole/.test(pm);
+                    const isBank = hasMeta && (/cbe|awash/.test(pm) || /bank|transfer|credit/.test(pm));
+                    const isCashPay = !isTelebirr && !isBank && (hasMeta ? isCashRaw : true);
                     const typePill = isTelebirr
                       ? { bg: '#FEF3C7', color: '#D97706', label: '📱 Telebirr' }
                       : isBank
