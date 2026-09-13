@@ -50,7 +50,7 @@ const CelebrationModal = ({ onClose, name }) => {
 // MAIN PAGE COMPONENT
 // =========================================================================
 const PublicCompeteAndSellPage = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -58,6 +58,7 @@ const PublicCompeteAndSellPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTender, setSelectedTender] = useState(null);
   const [biddingStep, setBiddingStep] = useState(0); // 0: list, 2: bid form, 3: celebration
+  const [roleWarning, setRoleWarning] = useState(false);
 
   // Bid form state
   const [bidItems, setBidItems] = useState({});
@@ -109,6 +110,13 @@ const PublicCompeteAndSellPage = () => {
   const handleStartBidding = async () => {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: location.pathname, tenderId: selectedTender.id } });
+      return;
+    }
+    // Bidding is available only to Customer accounts — staff and other roles
+    // must sign out and sign in with a customer account to participate.
+    const userRoles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toLowerCase()) : [];
+    if (!userRoles.includes('customer')) {
+      setRoleWarning(true);
       return;
     }
     // Reset form defaults from user profile
@@ -172,6 +180,13 @@ const PublicCompeteAndSellPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Defensive guard — bids may only be submitted by Customer accounts.
+    const submitRoles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toLowerCase()) : [];
+    if (!submitRoles.includes('customer')) {
+      setBidError('⚠️ Only customer accounts can submit bids. Please sign out and log in as a customer.');
+      setRoleWarning(true);
+      return;
+    }
     setSubmitting(true);
     setBidError(null);
 
@@ -257,6 +272,32 @@ const PublicCompeteAndSellPage = () => {
       {/* ===== Celebration Overlay ===== */}
       {biddingStep === 3 && (
         <CelebrationModal onClose={handleCelebrationClose} name={competitorName} />
+      )}
+
+      {/* ===== Customer-Only Warning Overlay ===== */}
+      {roleWarning && (
+        <div className="pcas-overlay" onClick={() => setRoleWarning(false)}>
+          <div className="pcas-celebrate-card" style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div className="pcas-emoji-lg" style={{ position: 'static', animation: 'none' }}>🔒</div>
+            <h2 className="pcas-celebrate-title">Customer Account Required</h2>
+            <p className="pcas-celebrate-desc">
+              You're currently signed in as <strong>{user?.fullName || user?.full_name || user?.name || 'a staff account'}</strong>.
+              Bidding on SUTANA tenders is available only to <strong>Customer</strong> accounts.<br />
+              Please <strong>sign out</strong> and log in as a customer to start bidding.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '17rem', margin: '0 auto' }}>
+              <button className="pcas-btn-primary" onClick={() => { setRoleWarning(false); logout(); }}>
+                <User size={16} /> Sign Out &amp; Switch to Customer
+              </button>
+              <button
+                style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => setRoleWarning(false)}
+              >
+                Not Now
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ===== Hero ===== */}
@@ -357,7 +398,7 @@ const PublicCompeteAndSellPage = () => {
                             className="pcas-btn-primary"
                             onClick={() => handleSelectTender(tender)}
                           >
-                            <Award size={18} /> Start Bidding
+                            <FileText size={18} /> View Tender Details <ChevronRight size={15} />
                           </button>
                         </div>
                       </div>
