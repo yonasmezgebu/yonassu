@@ -5,6 +5,31 @@ const notificationRepository = require('../../repositories/notification.reposito
 const { sendNotification } = require('../../services/notification.service');
 const { log } = require('../../services/salesAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
+const { ensureTenderIncomeSubmission } = require('../../utils/tenderIncome.service');
+
+// After a winning bid is selected, create a Pending finance_income_submissions
+// entry so Finance verifies the payment on Revenue Live Income (like every
+// other income module). Never throws — bid awarding must not fail because of a
+// finance record.
+const submitTenderIncomeSubmissions = async (req, bids, tender) => {
+  try {
+    let added = 0;
+    for (const b of bids) {
+      const created = await ensureTenderIncomeSubmission({ bid: b, tender });
+      if (created) added += 1;
+    }
+    if (added > 0) {
+      await sendNotification('Finance', null, {
+        title: '💰 Tender Income Pending Verification',
+        message: `${added} Compete & Buy winning bid(s) for ${tender.reference_number} recorded on Revenue Live Income — verify the payment to post to the Revenue Book.`,
+        type: 'REQUEST_APPROVED',
+        link: '/finance/pharmacy-sales?tab=list'
+      });
+    }
+  } catch (e) {
+    console.error('Failed to create tender income submissions:', e.message);
+  }
+};
 
 exports.submitBid = catchAsync(async (req, res) => {
   const { bid_price_per_unit, quantity_requested, proposed_pickup_date, notes, items,
@@ -222,6 +247,10 @@ exports.award = catchAsync(async (req, res) => {
     status: 'awarded', awarded_bid_id: firstBid.id, updated_at: db.fn.now(),
   });
 
+  // Winning bids become Pending income for Finance to verify (Live Income) — the
+  // Revenue Book is only written once Finance approves the payment.
+  await submitTenderIncomeSubmissions(req, bids, tender);
+
   for (const b of bids) {
     await notificationRepository.create({ userId: b.customer_id, title: 'Bid Awarded!', message: `Congratulations! Your bid on ${tender.reference_number} — ${tender.title} has been selected.` });
   }
@@ -296,6 +325,18 @@ exports.ceoApprove = catchAsync(async (req, res) => {
         status: 'rejected',
         updated_at: db.fn.now()
       });
+    }
+  }
+
+  // Approved bids become Pending income for Finance to verify on Revenue Live
+  // Income — the Revenue Book is only written once the payment is verified.
+  if (req.params.tenderId) {
+    const approvedBids = await db('bids')
+      .where('tender_id', req.params.tenderId)
+      .where({ status: 'awarded', ceo_approval_status: 'approved' });
+    const tender = await db('tenders').where('id', req.params.tenderId).first();
+    if (approvedBids.length && tender) {
+      await submitTenderIncomeSubmissions(req, approvedBids, tender);
     }
   }
 
