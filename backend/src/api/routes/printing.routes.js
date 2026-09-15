@@ -1,5 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 const { body, query, param } = require('express-validator');
 const PrintingController = require('../controllers/printing.controller');
 const { validate } = require('../middleware/validate.middleware');
@@ -107,6 +111,59 @@ const orderIdParamValidation = [
     .isInt().withMessage('Order ID must be a valid integer')
     .toInt()
 ];
+// ── Upload Work (the finished job file shown to the customer) ────────────
+// Allowed: images (JPG/PNG/GIF/WEBP/BMP), PDF, DOC/DOCX, ZIP. Max 25MB per
+// file, up to 5 files per upload request. Validated here (server-side) — the
+// frontend also validates before sending so the user gets instant feedback.
+const WORK_UPLOAD_DIR = './uploads/orders';
+const WORK_MAX_MB = 25;
+const WORK_MAX_FILES = 5;
+const WORK_ALLOWED_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/zip', 'application/x-zip-compressed'
+];
+const WORK_ALLOWED_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.pdf', '.doc', '.docx', '.zip'];
+const workStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (!fs.existsSync(WORK_UPLOAD_DIR)) fs.mkdirSync(WORK_UPLOAD_DIR, { recursive: true });
+    cb(null, WORK_UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.bin';
+    cb(null, `${Date.now()}-${uuidv4().substring(0, 8)}${ext}`);
+  }
+});
+const workFileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (WORK_ALLOWED_TYPES.includes(file.mimetype) || WORK_ALLOWED_EXT.includes(ext)) {
+    return cb(null, true);
+  }
+  return cb(new Error('Invalid file type. Allowed: JPG, PNG, GIF, WEBP, BMP, PDF, DOC/DOCX, ZIP.'));
+};
+const workUpload = multer({
+  storage: workStorage,
+  fileFilter: workFileFilter,
+  limits: { fileSize: WORK_MAX_MB * 1024 * 1024, files: WORK_MAX_FILES }
+});
+const handleWorkUploadError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ status: 'error', message: `File too large. Max: ${WORK_MAX_MB}MB per file.` });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ status: 'error', message: `Too many files. Max: ${WORK_MAX_FILES} files at once.` });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ status: 'error', message: 'Unexpected form field name — use "files" (upload) or "file" (replace).' });
+    }
+    return res.status(400).json({ status: 'error', message: err.message });
+  }
+  if (err) return res.status(400).json({ status: 'error', message: err.message });
+  next();
+};
 const printTaxReceiptValidation = [
   param('orderId')
     .isInt().withMessage('Order ID must be a valid integer')
@@ -242,6 +299,48 @@ router.get(
   orderIdParamValidation,
   validate,
   PrintingController.getOrderHistory
+);
+// ── Uploaded Work (job output files for the customer) ─────────────────────
+router.get(
+  '/works',
+  authenticate,
+  authorize(['orders:read']),
+  PrintingController.getAllWorks
+);
+router.get(
+  '/orders/:id/works',
+  authenticate,
+  authorize(['orders:read']),
+  orderIdParamValidation,
+  validate,
+  PrintingController.getOrderWorks
+);
+router.post(
+  '/orders/:id/works',
+  authenticate,
+  authorize(['orders:update']),
+  orderIdParamValidation,
+  workUpload.array('files', WORK_MAX_FILES),
+  handleWorkUploadError,
+  PrintingController.uploadWorks
+);
+router.put(
+  '/works/:workId',
+  authenticate,
+  authorize(['orders:update']),
+  param('workId').isInt().toInt(),
+  validate,
+  workUpload.single('file'),
+  handleWorkUploadError,
+  PrintingController.updateWork
+);
+router.delete(
+  '/works/:workId',
+  authenticate,
+  authorize(['orders:update']),
+  param('workId').isInt().toInt(),
+  validate,
+  PrintingController.deleteWork
 );
 router.get(
   '/tax-receipts/remaining/:orderId',
