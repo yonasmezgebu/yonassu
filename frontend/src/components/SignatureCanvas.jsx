@@ -9,14 +9,16 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
  *   width            – canvas width in px (default 460)
  *   height           – canvas height in px (default 160)
  *   label            – heading text
+ *   subtitle         – helper text shown under the heading
  */
-const SignatureCanvas = ({ onSave, onClear, width = 460, height = 160, label = 'Pharmacy Manager Signature' }) => {
+const SignatureCanvas = ({ onSave, onClear, width = 460, height = 160, label = 'Signatory Signature', subtitle = 'Sign inside the box below — required before submission', autoSave = false }) => {
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [preview, setPreview] = useState(null);
   const lastPos = useRef(null);
+  const hasDrawnRef = useRef(false);
 
   const getPos = (e, canvas) => {
     const rect = canvas.getBoundingClientRect();
@@ -80,13 +82,18 @@ const SignatureCanvas = ({ onSave, onClear, width = 460, height = 160, label = '
 
     lastPos.current = pos;
     setHasDrawn(true);
+    hasDrawnRef.current = true;
   };
 
-  const endDraw = () => setDrawing(false);
+  const endDraw = () => {
+    setDrawing(false);
+    if (autoSave && hasDrawnRef.current && !accepted) handleAccept();
+  };
 
   const handleClear = () => {
     setAccepted(false);
     setHasDrawn(false);
+    hasDrawnRef.current = false;
     setPreview(null);
     initCanvas();
     if (onClear) onClear();
@@ -116,7 +123,7 @@ const SignatureCanvas = ({ onSave, onClear, width = 460, height = 160, label = '
             ✍️ {label}
           </div>
           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-            {accepted ? '✅ Signature accepted' : 'Sign inside the box below — required before submission'}
+            {accepted ? '✅ Signature accepted' : subtitle}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -199,7 +206,7 @@ const SignatureCanvas = ({ onSave, onClear, width = 460, height = 160, label = '
           marginTop: 8, fontSize: 11, color: '#059669', fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: 6
         }}>
-          <span>✅</span> Digital signature captured — will appear on the document
+          <span>✅</span> Hand signature captured — will appear on the document
         </div>
       )}
     </div>
