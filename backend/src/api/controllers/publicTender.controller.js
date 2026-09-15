@@ -3,6 +3,8 @@ const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const TenderModel = require('../../models/Tender.model');
 const BidModel = require('../../models/Bid.model');
+const { ensureTenderIncomeSubmission } = require('../../utils/tenderIncome.service');
+const { sendNotification } = require('../../services/notification.service');
 
 // ─── Helper: attach items to tenders ───────────────────────────────────────
 const attachItems = async (tenders) => {
@@ -116,6 +118,54 @@ exports.approveTender = catchAsync(async (req, res) => {
     }
   } catch (e) {
     console.error('Failed to notify about tender award', e);
+  }
+
+  // Create Finance income submissions for each winning bid so Finance can verify payment
+  if (Array.isArray(bidIds) && bidIds.length > 0) {
+    try {
+      const winningBids = await db('public_bids').whereIn('id', bidIds).select();
+      let added = 0;
+      for (const wb of winningBids) {
+        const totalCents = (parseInt(wb.total_birr || 0) * 100) + parseInt(wb.total_cent || 0);
+        const amount = totalCents / 100;
+        const referenceNo = `PUB-BID-${wb.id}`;
+        const exists = await db('finance_income_submissions').where('reference_no', referenceNo).first();
+        if (!exists && amount > 0) {
+          await db('finance_income_submissions').insert({
+            department: 'Tender',
+            submitted_by: wb.competitor_name || wb.email || 'Supplier',
+            amount,
+            reference_no: referenceNo,
+            description: `Public Tender award — ${tender.tender_number}: ${tender.title || ''}`,
+            status: 'Pending',
+            manual_details: JSON.stringify({
+              type: 'public_tender',
+              tenderId: tender.id,
+              tenderNumber: tender.tender_number,
+              tenderTitle: tender.title || '',
+              bidId: wb.id,
+              bidderName: wb.competitor_name || null,
+              bidderEmail: wb.email || null,
+              bidderPhone: wb.phone || null,
+              amount,
+              paymentMethod: wb.payment_method || 'Bank',
+              receivedFrom: wb.competitor_name || wb.email || 'Supplier'
+            })
+          });
+          added++;
+        }
+      }
+      if (added > 0) {
+        await sendNotification('Finance', null, {
+          title: '💰 Public Tender Payment Pending Verification',
+          message: `${added} Public Tender winning bid(s) for ${tender.tender_number} need payment verification on Revenue Live Income.`,
+          type: 'REQUEST_APPROVED',
+          link: '/finance/pharmacy-sales?tab=list'
+        });
+      }
+    } catch (e) {
+      console.error('Failed to create public tender income submissions:', e.message);
+    }
   }
 
   res.json({ status: 'success', message: 'Tender awarded and completed' });
@@ -439,6 +489,7 @@ exports.getBidsForTender = catchAsync(async (req, res) => {
         'public_bids.payment_terms',
         'public_bids.payment_method',
         'public_bids.bid_status',
+        'public_bids.payment_status',
         'public_bids.recommendation_reason',
         'public_bids.created_at as bid_submitted_at'
       )
@@ -490,5 +541,48 @@ exports.getCustomerBids = catchAsync(async (req, res) => {
   }
 
   res.json({ status: 'success', data: bids });
+});
+
+// ─── CUSTOMER: CANCEL OWN BID ────────────────────────────────────────────────
+exports.cancelBid = catchAsync(async (req, res) => {
+  const { bidId } = req.params;
+  const { email } = req.user;
+
+  const bid = await db('public_bids').where({ id: bidId, email }).first();
+  if (!bid) throw AppError.notFound('Bid not found');
+
+  const cancellableStatuses = ['pending', 'under_review', 'winner', 'awarded', 'recommended'];
+  if (!cancellableStatuses.includes((bid.bid_status || '').toLowerCase())) {
+    throw AppError.badRequest('This bid cannot be cancelled at its current status');
+  }
+
+  await db('public_bids').where({ id: bidId }).update({
+    customer_cancelled: true,
+    bid_status: 'cancelled',
+    updated_at: db.fn.now(),
+  });
+
+  res.json({ status: 'success', message: 'Bid cancelled successfully' });
+});
+
+// ─── FINANCE / PURCHASE: CONFIRM OR REJECT BID PAYMENT ──────────────────────
+exports.updateBidPaymentStatus = catchAsync(async (req, res) => {
+  const { bidId } = req.params;
+  const { payment_status } = req.body; // 'confirmed' | 'rejected' | 'pending'
+
+  const allowed = ['pending', 'confirmed', 'rejected'];
+  if (!allowed.includes(payment_status)) {
+    throw AppError.badRequest(`Invalid payment_status. Must be one of: ${allowed.join(', ')}`);
+  }
+
+  const bid = await db('public_bids').where({ id: bidId }).first();
+  if (!bid) throw AppError.notFound('Bid not found');
+
+  await db('public_bids').where({ id: bidId }).update({
+    payment_status,
+    updated_at: db.fn.now(),
+  });
+
+  res.json({ status: 'success', message: `Bid payment status updated to '${payment_status}'` });
 });
 
