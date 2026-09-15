@@ -15,10 +15,7 @@ import PrintingFinishing from './PrintingFinishing';
 import PrintingDelivery from './PrintingDelivery';
 import PrintingHistory from './PrintingHistory';
 
-// Design & Files (9-13)
-import PrintingDesignRequests from './PrintingDesignRequests';
-import PrintingUploadArtwork from './PrintingUploadArtwork';
-import PrintingFileReview from './PrintingFileReview';
+import PrintingUploadWork from './PrintingUploadWork';
 
 import PrintingProdMachines from './PrintingProdMachines';
 import PrintingProdMaterials from './PrintingProdMaterials';
@@ -43,17 +40,10 @@ const PrintingDashboard = () => {
     { type: 'divider' },
     { label: 'Jobs', icon: 'printer',
       children: [
-        { label: 'Job Process',            path: '/printing-manager/jobs/queue',     icon: 'list',         color: '#228B22' },
+        { label: 'Job Process',            path: '/printing-manager/jobs/queue',     icon: 'list',         color: '#228B22', altActiveOn: ['/printing-manager/orders'] },
         { label: 'Job History',            path: '/printing-manager/jobs/history',    icon: 'archive',      color: '#1B5E20' },
         { label: 'Redo Request',           path: '/printing-manager/prod/reprints',   icon: 'rotate-ccw',   color: '#6B8E23' },
-      ]
-    },
-    { type: 'divider' },
-    { label: 'Design & Files', icon: 'image',
-      children: [
-        { label: 'Design Requests',        path: '/printing-manager/design/requests', icon: 'inbox',        color: '#2E8B57' },
-        { label: 'Upload Artwork',         path: '/printing-manager/design/upload',   icon: 'upload-cloud', color: '#4CAF50' },
-        { label: 'File Review',            path: '/printing-manager/design/review',   icon: 'eye',          color: '#8BC34A' },
+        { label: 'Uploaded Work',        path: '/printing-manager/jobs/upload-work', icon: 'upload',     color: '#2563EB' },
       ]
     },
     { type: 'divider' },
@@ -107,11 +97,7 @@ const PrintingDashboard = () => {
             <Route path="jobs/finishing" element={<PrintingFinishing />} />
             <Route path="jobs/delivery" element={<PrintingDelivery />} />
             <Route path="jobs/history" element={<PrintingHistory />} />
-
-            {/* Design & Files */}
-            <Route path="design/requests" element={<PrintingDesignRequests />} />
-            <Route path="design/upload" element={<PrintingUploadArtwork />} />
-            <Route path="design/review" element={<PrintingFileReview />} />
+            <Route path="jobs/upload-work" element={<PrintingUploadWork />} />
 
             {/* Production */}
             <Route path="prod/machines" element={<PrintingProdMachines />} />
