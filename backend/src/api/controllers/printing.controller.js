@@ -1,13 +1,18 @@
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/appError');
+const path = require('path');
+const fs = require('fs');
 const { db } = require('../../config/database');
 const { audit } = require('../../config/logger');
+const config = require('../../config/env');
 const OrderModel = require('../../models/Order.model');
 const { generateOrderNumber, generateInvoiceNumber } = require('../../utils/orderNumber');
 const vatConfigService = require('../../services/vatConfig.service');
 const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
 const { sendFinanceNotification, sendPrintingNotification, sendCustomerNotification } = require('../../services/notification.service');
-const deleteFile = (path) => console.log('Deleted file:', path);
+const { sendEmail } = require('../../services/email.service');
+const { sendSMS } = require('../../services/sms.service');
+const { deleteFile } = require('../../config/multer');
 const calculatePrintingPrice = (params) => {
   const model = new OrderModel({
     paperType: params.paperType,
@@ -74,7 +79,7 @@ exports.getAllOrders = catchAsync(async (req, res) => {
       'po.payment_status', 'po.payment_method', 'po.payment_reference',
       'po.created_at', 'po.completed_at', 'po.updated_at',
       'os.status_name', 'os.status_code', 'os.color_hex',
-      'c.name as customer_name', 'c.phone as customer_phone',
+      'c.name as customer_name', 'c.phone as customer_phone', 'c.email as customer_email',
       'u.full_name as created_by_name'
     )
     .whereNull('po.deleted_at');
@@ -754,6 +759,304 @@ exports.deleteAttachment = catchAsync(async (req, res) => {
     message: 'Attachment deleted successfully'
   });
 });
+/*
+ * ─────────────────────────────────────────────────────────────────────
+ * UPLOADED WORK (finished job files customers review on Public Track)
+ * Endpoints: GET  /printing/orders/:id/works
+ *            POST /printing/orders/:id/works      (multipart "files")
+ *            PUT  /printing/works/:workId         (multipart "file")
+ *            DELETE /printing/works/:workId
+ * ─────────────────────────────────────────────────────────────────────
+ */
+const WORK_PUBLIC_PREFIX = '/uploads/orders';
+const WORK_ATTACH_MAX_BYTES = 10 * 1024 * 1024; // attach to email only up to 10MB
+
+const serializeWork = (work) => ({
+  id: work.id,
+  filename: work.filename,
+  originalName: work.original_name,
+  size: work.size,
+  mimeType: work.mime_type,
+  url: work.file_url || `${WORK_PUBLIC_PREFIX}/${work.filename}`,
+  uploadedAt: work.uploaded_at,
+  updatedAt: work.updated_at
+});
+
+const getOrderForWork = async (orderId) => {
+  const order = await db('printing_orders as po')
+    .leftJoin('customers as c', 'po.customer_id', 'c.id')
+    .select(
+      'po.*',
+      'c.name as customer_name',
+      'c.email as customer_email',
+      'c.phone as customer_phone'
+    )
+    .where('po.id', orderId)
+    .whereNull('po.deleted_at')
+    .first();
+  if (!order) throw new AppError('Order not found', 404);
+  return order;
+};
+
+// Notify the customer (email with the uploaded files + SMS link). The SMS
+// currently runs through sms.service which safely logs a mock when the
+// provider is not enabled yet — it will send for real once integrated.
+const notifyWorkUploaded = async (req, order, works) => {
+  if (!works || works.length === 0) return;
+  const apiBase = `${req.protocol}://${req.get('host')}`;
+  const trackUrl = `${config.frontendUrl}/printing/track/${order.order_number}`;
+  const fileRows = [];
+
+  for (const w of works) {
+    const attachments = [];
+    const fullPath = w.file_path && !path.isAbsolute(w.file_path)
+      ? path.join(process.cwd(), w.file_path)
+      : w.file_path;
+    if (fullPath && fs.existsSync(fullPath) && w.size <= WORK_ATTACH_MAX_BYTES) {
+      attachments.push({
+        filename: w.original_name,
+        content: fs.readFileSync(fullPath),
+        type: w.mime_type || 'application/octet-stream'
+      });
+    }
+    fileRows.push({
+      name: w.original_name,
+      size: w.size,
+      url: `${apiBase}${WORK_PUBLIC_PREFIX}/${w.filename}`,
+      attached: attachments.length > 0 || (fullPath && fs.existsSync(fullPath) && w.size > WORK_ATTACH_MAX_BYTES)
+    });
+  }
+
+  if (order.customer_email) {
+    const filesHtml = fileRows.map(f => `
+      <tr>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a">📄 ${f.name}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#64748b">${(f.size / 1024 / 1024).toFixed(2)} MB</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:right">
+          <a href="${f.url}" style="color:#059669;font-weight:700;text-decoration:none" target="_blank">View / Download</a>
+        </td>
+      </tr>`).join('');
+    const attachments = [];
+    for (const w of works) {
+      const fullPath = w.file_path && !path.isAbsolute(w.file_path)
+        ? path.join(process.cwd(), w.file_path)
+        : w.file_path;
+      if (fullPath && fs.existsSync(fullPath) && w.size <= WORK_ATTACH_MAX_BYTES) {
+        attachments.push({
+          filename: w.original_name,
+          content: fs.readFileSync(fullPath),
+          type: w.mime_type || 'application/octet-stream'
+        });
+      }
+    }
+    await sendEmail({
+      to: order.customer_email,
+      subject: `Your work is ready to review — Order ${order.order_number}`,
+      html: `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
+  <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.08)">
+    <div style="background:linear-gradient(135deg,#166534,#059669);padding:30px 36px;text-align:center">
+      <h1 style="color:#fff;margin:0;font-size:22px">University Print Center</h1>
+      <p style="color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px">Your uploaded work is ready to review</p>
+    </div>
+    <div style="padding:32px 36px">
+      <p style="color:#334155;font-size:15px;line-height:1.7;margin:0 0 8px">Dear <strong>${order.customer_name || 'Customer'}</strong>,</p>
+      <p style="color:#334155;font-size:15px;line-height:1.7;margin:0 0 20px">The work for your order <strong>${order.order_number}</strong> has been uploaded. Open it in your browser to review:</p>
+      <table style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;margin:0 0 24px">
+        <thead><tr><th style="text-align:left;padding:10px 14px;background:#f8fafc;font-size:12px;color:#475569;text-transform:uppercase">File</th><th style="text-align:left;padding:10px 14px;background:#f8fafc;font-size:12px;color:#475569;text-transform:uppercase">Size</th><th style="padding:10px 14px;background:#f8fafc"></th></tr></thead>
+        <tbody>
+          ${filesHtml}
+        </tbody>
+      </table>
+      <p style="color:#334155;font-size:14px;line-height:1.7;margin:0 0 24px">You can also track your order's progress any time, or see the files again, from the link below:</p>
+      <div style="text-align:center;margin:0 0 8px">
+        <a href="${trackUrl}" style="display:inline-block;background:#059669;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Track My Order</a>
+      </div>
+      <p style="text-align:center;font-size:13px;color:#94a3b8;margin:14px 0 0">Order number: <strong>${order.order_number}</strong></p>
+    </div>
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 36px;text-align:center">
+      <p style="color:#94a3b8;font-size:12px;margin:2px 0">University Print Center &nbsp;|&nbsp; Questions? Visit us on campus or reply to this email.</p>
+    </div>
+  </div>
+</body></html>`,
+      attachments
+    }).catch(err => console.error('Failed to email uploaded work:', err.message));
+  }
+  if (order.customer_phone) {
+    await sendSMS({
+      to: order.customer_phone,
+      message: `Your work for order ${order.order_number} has been uploaded. Review it and continue tracking at ${trackUrl}`
+    }).catch(err => console.error('Failed to SMS uploaded work:', err.message));
+  }
+};
+
+exports.getAllWorks = catchAsync(async (req, res) => {
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 25, 1), 100);
+  const { search, orderNumber } = req.query;
+  const offset = (page - 1) * limit;
+  const q = db('printing_order_works as w')
+    .leftJoin('printing_orders as po', 'w.order_id', 'po.id')
+    .leftJoin('customers as c', 'po.customer_id', 'c.id')
+    .leftJoin('users as u', 'w.uploaded_by', 'u.id')
+    .select(
+      'w.*',
+      'po.order_number', 'po.status_id',
+      'c.name as customer_name', 'c.email as customer_email', 'c.phone as customer_phone',
+      'u.full_name as uploaded_by_name'
+    );
+  if (orderNumber) q.where('po.order_number', 'like', `%${orderNumber}%`);
+  if (search) {
+    q.where(function () {
+      this.where('w.original_name', 'like', `%${search}%`)
+        .orWhere('po.order_number', 'like', `%${search}%`)
+        .orWhere('c.name', 'like', `%${search}%`);
+    });
+  }
+  const total = await q.clone().clearSelect().count('w.id as count').first();
+  const rows = await q.orderBy('w.uploaded_at', 'desc').limit(limit).offset(offset);
+  const works = rows.map(r => ({
+    ...serializeWork(r),
+    orderId: r.order_id,
+    orderNumber: r.order_number,
+    customerName: r.customer_name,
+    customerEmail: r.customer_email,
+    customerPhone: r.customer_phone,
+    uploadedByName: r.uploaded_by_name
+  }));
+  res.json({
+    status: 'success',
+    data: {
+      works,
+      pagination: {
+        page, limit,
+        total: parseInt(total.count) || 0,
+        totalPages: Math.max(Math.ceil((parseInt(total.count) || 0) / limit), 1)
+      }
+    }
+  });
+});
+
+exports.getOrderWorks = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const order = await getOrderForWork(id);
+  const works = await db('printing_order_works')
+    .where('order_id', id)
+    .orderBy('uploaded_at', 'desc');
+  res.json({
+    status: 'success',
+    data: {
+      order: {
+        id: order.id,
+        order_number: order.order_number,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone
+      },
+      works: works.map(serializeWork)
+    }
+  });
+});
+
+exports.uploadWorks = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  const ip = req.ip;
+  const order = await getOrderForWork(id);
+  if (!req.files || req.files.length === 0) {
+    throw new AppError('Select at least one file to upload', 400);
+  }
+  const rows = req.files.map(file => ({
+    order_id: id,
+    filename: file.filename,
+    original_name: file.originalname,
+    size: file.size,
+    mime_type: file.mimetype || 'application/octet-stream',
+    file_path: file.path,
+    file_url: `${WORK_PUBLIC_PREFIX}/${file.filename}`,
+    uploaded_by: userId,
+    uploaded_at: db.fn.now(),
+    updated_at: db.fn.now()
+  }));
+  const ids = await db('printing_order_works').insert(rows);
+  const inserted = await db('printing_order_works')
+    .whereIn('id', ids)
+    .orderBy('uploaded_at', 'desc');
+  await audit('PRINTING_ORDER_WORK_UPLOADED', userId, {
+    ip,
+    resourceId: id,
+    details: {
+      fileCount: inserted.length,
+      filenames: inserted.map(w => w.original_name)
+    }
+  });
+  if (req.res) req.res.locals.__centralAudited = true;
+  await notifyWorkUploaded(req, order, inserted);
+  res.json({
+    status: 'success',
+    message: `${inserted.length} work file(s) uploaded and sent to the customer`,
+    data: { works: inserted.map(serializeWork) }
+  });
+});
+
+exports.updateWork = catchAsync(async (req, res) => {
+  const { workId } = req.params;
+  const userId = req.user.id;
+  const ip = req.ip;
+  if (!req.file) {
+    throw new AppError('Select a file to update the work', 400);
+  }
+  const work = await db('printing_order_works').where('id', workId).first();
+  if (!work) {
+    throw new AppError('Work file not found', 404);
+  }
+  const order = await getOrderForWork(work.order_id);
+  try { if (work.file_path) deleteFile(work.file_path); } catch (e) { /* ignore */ }
+  await db('printing_order_works').where('id', workId).update({
+    filename: req.file.filename,
+    original_name: req.file.originalname,
+    size: req.file.size,
+    mime_type: req.file.mimetype || 'application/octet-stream',
+    file_path: req.file.path,
+    file_url: `${WORK_PUBLIC_PREFIX}/${req.file.filename}`,
+    updated_at: db.fn.now()
+  });
+  const updated = await db('printing_order_works').where('id', workId).first();
+  await audit('PRINTING_ORDER_WORK_UPDATED', userId, {
+    ip,
+    resourceId: work.order_id,
+    details: { workId, filename: updated.original_name }
+  });
+  if (req.res) req.res.locals.__centralAudited = true;
+  await notifyWorkUploaded(req, order, [updated]);
+  res.json({
+    status: 'success',
+    message: 'Work file updated and re-sent to the customer',
+    data: { work: serializeWork(updated) }
+  });
+});
+
+exports.deleteWork = catchAsync(async (req, res) => {
+  const { workId } = req.params;
+  const userId = req.user.id;
+  const ip = req.ip;
+  const work = await db('printing_order_works').where('id', workId).first();
+  if (!work) {
+    throw new AppError('Work file not found', 404);
+  }
+  try { if (work.file_path) deleteFile(work.file_path); } catch (e) { /* ignore */ }
+  const filename = work.original_name;
+  await db('printing_order_works').where('id', workId).del();
+  await audit('PRINTING_ORDER_WORK_DELETED', userId, {
+    ip,
+    resourceId: work.order_id,
+    details: { workId, filename }
+  });
+  if (req.res) req.res.locals.__centralAudited = true;
+  res.json({ status: 'success', message: 'Work file deleted' });
+});
+
 exports.getOrderHistory = catchAsync(async (req, res) => {
   const { id } = req.params;
   const order = await db('printing_orders')
@@ -1319,16 +1622,17 @@ exports.closeShift = catchAsync(async (req, res) => {
 // ── PUBLIC: Track order by order number (no auth required) ────────
 exports.trackOrder = catchAsync(async (req, res) => {
   const { orderNumber } = req.params;
+  const phoneQ = String(req.query.phone || '').replace(/[\s-]/g, '');
   const order = await db('printing_orders as po')
     .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
     .leftJoin('customers as c', 'po.customer_id', 'c.id')
     .select(
-      'po.order_number', 'po.product_type', 'po.quantity', 'po.paper_type',
+      'po.id', 'po.order_number', 'po.product_type', 'po.quantity', 'po.paper_type',
       'po.color_printing', 'po.binding_type', 'po.due_date', 'po.total_price',
       'po.payment_status', 'po.payment_method', 'po.payment_reference',
       'po.created_at', 'po.completed_at', 'po.updated_at',
       'os.status_name', 'os.status_code', 'os.color_hex', 'os.sort_order',
-      'c.name as customer_name'
+      'c.name as customer_name', 'c.phone as customer_phone'
     )
     .where('po.order_number', orderNumber)
     .whereNull('po.deleted_at')
@@ -1368,8 +1672,22 @@ exports.trackOrder = catchAsync(async (req, res) => {
     };
   });
 
+  // Uploaded work files are only exposed when the mobile number on file for
+  // the order is provided too — so the documents stay private to that customer.
+  let works = [];
+  if (phoneQ) {
+    const customerPhone = String(order.customer_phone || '').replace(/[\s-]/g, '');
+    if (customerPhone && customerPhone === phoneQ) {
+      works = await db('printing_order_works')
+        .where('order_id', order.id)
+        .orderBy('uploaded_at', 'desc');
+    }
+  }
+  delete order.customer_phone;
+  delete order.id;
+
   res.json({
     status: 'success',
-    data: { order, steps }
+    data: { order, steps, works: works.map(serializeWork) }
   });
 });
