@@ -710,6 +710,20 @@
   overflow: hidden;
 }
 
+/* Read-only Terms & Conditions announced on the tender by the Purchase team */
+.pcas-terms-readonly {
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: hsl(var(--foreground));
+  max-height: 320px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
 .pcas-error-box {
   background-color: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
