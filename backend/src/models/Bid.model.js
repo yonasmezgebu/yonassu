@@ -7,6 +7,8 @@ class BidModel {
     this.phone = data.phone || '';
     this.deliveryTime = data.delivery_time || data.deliveryTime || '';
     this.paymentTerms = data.payment_terms || data.paymentTerms || '';
+    this.paymentMethod = data.payment_method || data.paymentMethod || '';
+    this.termsConditions = data.terms_conditions || data.termsConditions || '';
     this.digitalSignatureText = data.digital_signature_text || data.digitalSignatureText || '';
     this.handSignaturePath = data.hand_signature_path || data.handSignaturePath || '';
     this.bidStatus = data.bid_status || data.bidStatus || 'pending'; // pending, recommended, rejected, winner
@@ -43,6 +45,8 @@ class BidModel {
       phone: this.phone,
       deliveryTime: this.deliveryTime,
       paymentTerms: this.paymentTerms,
+      paymentMethod: this.paymentMethod,
+      termsConditions: this.termsConditions,
       digitalSignatureText: this.digitalSignatureText,
       handSignaturePath: this.handSignaturePath,
       bidStatus: this.bidStatus,
@@ -79,6 +83,8 @@ class BidModel {
       phone: data.phone,
       deliveryTime: data.deliveryTime,
       paymentTerms: data.paymentTerms,
+      paymentMethod: data.paymentMethod,
+      termsConditions: data.termsConditions,
       digitalSignatureText: data.digitalSignatureText,
       handSignaturePath: data.handSignaturePath,
       items: data.items || []
