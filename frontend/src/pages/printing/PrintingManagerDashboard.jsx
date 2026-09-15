@@ -7,6 +7,7 @@ import PrintingCreateOrder from './PrintingCreateOrder';
 import PrintingOrderDetail from './PrintingOrderDetail';
 import PrintingTaxReceipts from './PrintingTaxReceipts';
 import PrintingPublicPageSettings from './PrintingPublicPageSettings';
+import PrintingUploadWork from './PrintingUploadWork';
 
 const PrintingManagerDashboard = () => {
   const menuItems = [
@@ -17,13 +18,7 @@ const PrintingManagerDashboard = () => {
         { label: 'Job Process',          path: '/printing-manager/create-order', icon: 'file-plus',    color: '#22c55e' },
         { label: 'Job History',          path: '/printing-manager/orders',        icon: 'clock',       color: '#64748b' },
         { label: 'Redo Request',         path: '/printing-manager/orders',        icon: 'rotate-ccw',  color: '#ec4899' },
-      ] },
-    { type: 'divider' },
-    { label: 'Design & Files', icon: 'layers',
-      children: [
-        { label: 'Design Requests',       path: '/printing-manager/orders',        icon: 'file-text' },
-        { label: 'Upload Artwork',        path: '/printing-manager/create-order',  icon: 'upload' },
-        { label: 'File Review / Approval', path: '/printing-manager/orders',       icon: 'check-circle' },
+        { label: 'Upload Work',            path: '/printing-manager/upload-work',   icon: 'upload', color: '#2563EB' },
       ] },
     { type: 'divider' },
     { label: 'Production', icon: 'settings',
@@ -65,6 +60,7 @@ const PrintingManagerDashboard = () => {
         <Route path="create-order"    element={<PrintingCreateOrder />} />
         <Route path="tax-receipts"    element={<PrintingTaxReceipts />} />
         <Route path="public-settings" element={<PrintingPublicPageSettings />} />
+        <Route path="upload-work" element={<PrintingUploadWork />} />
         <Route path="/"               element={<Navigate to="overview" replace />} />
       </Routes>
     </DashboardLayout>
