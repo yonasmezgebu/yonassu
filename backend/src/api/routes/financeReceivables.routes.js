@@ -1170,6 +1170,66 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
           console.error('Failed to update car rental order payment status:', e);
         }
       }
+
+      // ── Update Tender bid payment_status when finance approves ─────
+      if (submission.department === 'Tender' && submission.reference_no) {
+        try {
+          // Sales Tender: reference format TND-BID-{bidId} => bids table
+          const salesBidMatch = String(submission.reference_no).match(/TND-BID-(\d+)/);
+          // Public Tender: reference format PUB-BID-{bidId} => public_bids table
+          const pubBidMatch = String(submission.reference_no).match(/PUB-BID-(\d+)/);
+
+          if (salesBidMatch) {
+            const bidId = parseInt(salesBidMatch[1]);
+            const bid = await trx('bids').where({ id: bidId }).first();
+            if (bid) {
+              await trx('bids').where({ id: bidId }).update({
+                payment_status: 'confirmed',
+                updated_at: trx.fn.now()
+              });
+              if (bid.customer_id) {
+                try {
+                  const { notificationRepository } = require('../../../repositories/notification.repository');
+                  await notificationRepository.create({
+                    userId: bid.customer_id,
+                    title: '✅ Payment Confirmed — Tender Award',
+                    message: `Finance has confirmed your payment for Sales Tender Bid #${bidId}. Your award is now fully processed.`
+                  });
+                } catch (notifErr) {
+                  console.error('Failed to notify customer of tender payment:', notifErr.message);
+                }
+              }
+            }
+          } else if (pubBidMatch) {
+            const bidId = parseInt(pubBidMatch[1]);
+            const bid = await trx('public_bids').where({ id: bidId }).first();
+            if (bid) {
+              await trx('public_bids').where({ id: bidId }).update({
+                payment_status: 'confirmed',
+                updated_at: trx.fn.now()
+              });
+              // Public bids use email-based customer lookup
+              if (bid.email) {
+                try {
+                  const user = await trx('users').where({ email: bid.email }).first();
+                  if (user) {
+                    const { notificationRepository } = require('../../../repositories/notification.repository');
+                    await notificationRepository.create({
+                      userId: user.id,
+                      title: '✅ Payment Confirmed — Public Tender',
+                      message: `Finance has confirmed your payment for Public Tender bid. Your award is now fully processed.`
+                    });
+                  }
+                } catch (notifErr) {
+                  console.error('Failed to notify customer of public tender payment:', notifErr.message);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Failed to update tender bid payment status on approval:', e);
+        }
+      }
     });
 
     sendFinanceNotification({
@@ -1375,6 +1435,63 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
           });
         }
       } catch (e) { console.error('Printing update fail:', e); }
+    }
+
+    // ── Update Tender bid payment_status when finance rejects ─────
+    if (String(submission.department || '').toLowerCase() === 'tender' && submission.reference_no) {
+      try {
+        const salesBidMatch = String(submission.reference_no).match(/TND-BID-(\d+)/);
+        const pubBidMatch = String(submission.reference_no).match(/PUB-BID-(\d+)/);
+
+        if (salesBidMatch) {
+          const bidId = parseInt(salesBidMatch[1]);
+          const bid = await knex('bids').where({ id: bidId }).first();
+          if (bid) {
+            await knex('bids').where({ id: bidId }).update({
+              payment_status: 'rejected',
+              updated_at: knex.fn.now()
+            });
+            if (bid.customer_id) {
+              try {
+                const { notificationRepository } = require('../../../repositories/notification.repository');
+                await notificationRepository.create({
+                  userId: bid.customer_id,
+                  title: '❌ Payment Rejected — Tender Award',
+                  message: `Finance has rejected your payment for Sales Tender Bid #${bidId}. Reason: ${reason}. Please contact the finance department.`
+                });
+              } catch (notifErr) {
+                console.error('Failed to notify customer of tender payment rejection:', notifErr.message);
+              }
+            }
+          }
+        } else if (pubBidMatch) {
+          const bidId = parseInt(pubBidMatch[1]);
+          const bid = await knex('public_bids').where({ id: bidId }).first();
+          if (bid) {
+            await knex('public_bids').where({ id: bidId }).update({
+              payment_status: 'rejected',
+              updated_at: knex.fn.now()
+            });
+            if (bid.email) {
+              try {
+                const user = await knex('users').where({ email: bid.email }).first();
+                if (user) {
+                  const { notificationRepository } = require('../../../repositories/notification.repository');
+                  await notificationRepository.create({
+                    userId: user.id,
+                    title: '❌ Payment Rejected — Public Tender',
+                    message: `Finance has rejected your payment for a Public Tender bid. Reason: ${reason}. Please contact the finance department.`
+                  });
+                }
+              } catch (notifErr) {
+                console.error('Failed to notify customer of public tender payment rejection:', notifErr.message);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to update tender bid payment status on rejection:', e);
+      }
     }
 
     res.json({ success: true, message: 'Submission rejected successfully.' });
