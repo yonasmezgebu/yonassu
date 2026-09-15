@@ -66,15 +66,15 @@ const PublicCompeteAndSellPage = () => {
   const [bidderEmail, setBidderEmail] = useState('');
   const [bidderPhone, setBidderPhone] = useState('');
   const [bidError, setBidError] = useState(null);
-  const [digitalSignature, setDigitalSignature] = useState('');
   const [handSignature, setHandSignature] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [myExistingBid, setMyExistingBid] = useState(null); // existing bid for update mode
+  const [paymentMethod, setPaymentMethod] = useState(''); // Telebirr / Bank / Cash
   const [vatCtx, setVatCtx] = useState(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
-
   useEffect(() => { fetchTenders(); }, []);
 
   const fetchTenders = async () => {
@@ -121,10 +121,10 @@ const PublicCompeteAndSellPage = () => {
     }
     // Reset form defaults from user profile
     setBidItems({});
-    setDigitalSignature('');
     setHandSignature('');
     setDeliveryTime('');
     setPaymentTerms('');
+    setPaymentMethod('');
     setCompetitorName(user?.name || user?.full_name || '');
     setBidderEmail(user?.email || '');
     setBidderPhone(user?.phone || '');
@@ -143,12 +143,13 @@ const PublicCompeteAndSellPage = () => {
         setBidderPhone(existing.phone || user?.phone || '');
         setDeliveryTime(existing.delivery_time || '');
         setPaymentTerms(existing.payment_terms || '');
-        setDigitalSignature(existing.digital_signature_text || '');
+        setPaymentMethod(existing.payment_method || '');
+        setHandSignature(existing.hand_signature_path || '');
         // Pre-fill item bids if available
         if (existing.items?.length) {
           const prefilled = {};
           existing.items.forEach(bi => {
-            prefilled[bi.tender_item_id] = {
+            prefilled[bi.public_tender_item_id ?? bi.tender_item_id] = {
               priceBirr: String(bi.price_birr ?? ''),
               priceCent: String(bi.price_cent ?? ''),
               checkup: bi.checkup || '',
@@ -208,7 +209,7 @@ const PublicCompeteAndSellPage = () => {
       phone: bidderPhone,
       deliveryTime,
       paymentTerms,
-      digitalSignatureText: digitalSignature,
+      paymentMethod,
       handSignaturePath: handSignature,
       items: itemsPayload
     };
@@ -474,7 +475,7 @@ const PublicCompeteAndSellPage = () => {
                         'Unit price per item (in Ethiopian Birr and Cent)',
                         'Estimated delivery time',
                         'Your preferred payment terms',
-                        'Digital or hand-drawn signature',
+                        'Hand-drawn signature',
                       ].map(r => (
                         <li key={r} className="pcas-req-item">
                           <span className="pcas-req-icon"><Check size={16} /></span> {r}
@@ -590,6 +591,18 @@ const PublicCompeteAndSellPage = () => {
                             ))}
                           </tbody>
                         </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Terms & Conditions announced by SUTANA */}
+                  {selectedTender.terms_conditions && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'hsl(var(--foreground))' }}>
+                        <FileCheck size={16} /> Terms &amp; Conditions
+                      </h3>
+                      <div className="pcas-terms-readonly" style={{ whiteSpace: 'pre-wrap' }}>
+                        {selectedTender.terms_conditions}
                       </div>
                     </div>
                   )}
@@ -797,9 +810,35 @@ const PublicCompeteAndSellPage = () => {
                           </select>
                         </div>
                       </div>
+
+                      {/* Conditions set by SUTANA when the tender was posted */}
+                      <div style={{ marginTop: '0.25rem' }}>
+                        <label className="pcas-label">
+                          Announced Conditions (set by SUTANA at tender post)
+                        </label>
+                        <div className="pcas-terms-readonly">
+                          {selectedTender.terms_conditions
+                            ? selectedTender.terms_conditions
+                            : 'No additional conditions have been set for this tender.'}
+                        </div>
+                      </div>
+
+                      {/* Acceptance — marked on the public side only */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginTop: '0.75rem' }}>
+                        <input
+                          type="checkbox"
+                          id="pcas-agree-terms"
+                          checked={agreedToTerms}
+                          onChange={e => setAgreedToTerms(e.target.checked)}
+                          style={{ width: '1rem', height: '1rem', accentColor: 'hsl(var(--primary))', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="pcas-agree-terms" style={{ fontSize: '0.8125rem', color: 'hsl(var(--foreground))', cursor: 'pointer', fontWeight: 500 }}>
+                          I have read and accept the tender terms above, including the stated delivery and payment terms.
+                        </label>
+                      </div>
                     </div>
 
-                    {/* Competitor Details & Signature */}
+                    {/* Competitor Details & Hand Signature */}
                     <div className="pcas-form-section">
                       <h3 className="pcas-section-title-sm">Competitor Details</h3>
                       <div className="pcas-grid-2">
@@ -827,26 +866,64 @@ const PublicCompeteAndSellPage = () => {
                           />
                         </div>
                       </div>
-                      <div className="pcas-grid-2">
-                        <div>
-                          <label className="pcas-label">
-                            Digital Signature <span className="pcas-required">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={digitalSignature}
-                            onChange={e => setDigitalSignature(e.target.value)}
-                            className="pcas-input-field"
-                            style={{ fontFamily: 'cursive', fontSize: '1.25rem' }}
-                            placeholder="Type your signature..."
-                          />
-                        </div>
-                        <div>
-                          <label className="pcas-label">Signature with Hand</label>
-                          <div className="pcas-signature-pad">
-                            <SignatureCanvas onSave={dataUrl => setHandSignature(dataUrl)} />
+                      {/* ── Payment Summary + Method (above signature) ── */}
+                      {(() => {
+                        const grandTotal = selectedTender.items?.reduce((sum, item) => {
+                          const itemBid = bidItems[item.id] || {};
+                          const birr = parseInt(itemBid.priceBirr || 0, 10);
+                          const cent = parseInt(itemBid.priceCent || 0, 10);
+                          const unitPrice = (birr + cent / 100);
+                          const lineValue = unitPrice * parseFloat(item.quantity || 1);
+                          return sum + getVatForItem(vatCtx, 'tender_buy', item.id != null ? item.id : null, lineValue).total;
+                        }, 0) || 0;
+                        return (
+                          <div style={{ margin: '1.25rem 0', padding: '1.25rem', background: 'hsl(152 76% 97%)', border: '2px solid hsl(152 69% 75%)', borderRadius: '0.75rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                              <span style={{ fontWeight: 800, fontSize: '1rem', color: 'hsl(152 76% 25%)' }}>💵 Total Bid Payment (incl. VAT)</span>
+                              <span style={{ fontWeight: 900, fontSize: '1.25rem', color: 'hsl(152 76% 20%)', fontFamily: 'monospace' }}>
+                                ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div>
+                              <label className="pcas-label" style={{ marginBottom: '0.375rem', display: 'block' }}>
+                                Payment Method <span className="pcas-required">*</span>
+                              </label>
+                              <select
+                                required
+                                value={paymentMethod}
+                                onChange={e => setPaymentMethod(e.target.value)}
+                                className="pcas-input-field"
+                                style={{ maxWidth: '320px' }}
+                              >
+                                <option value="">-- Select Payment Method --</option>
+                                <option value="Telebirr">📱 Telebirr</option>
+                                <option value="Bank Transfer">🏦 Bank Transfer</option>
+                                <option value="Cash">💵 Cash</option>
+                                <option value="Cheque">📄 Cheque</option>
+                              </select>
+                              {!paymentMethod && <p style={{ fontSize: '0.75rem', color: 'hsl(0 72% 38%)', marginTop: '0.25rem' }}>Please select how you will make the payment if awarded.</p>}
+                            </div>
                           </div>
+                        );
+                      })()}
+
+                      {/* Hand signature only — signed as the competitor above */}
+                      <div>
+                        <label className="pcas-label">
+                          Hand Signature <span className="pcas-required">*</span>
+                        </label>
+                        <div className="pcas-signature-pad">
+                          <SignatureCanvas
+                            onSave={dataUrl => setHandSignature(dataUrl)}
+                            onClear={() => setHandSignature(null)}
+                            label={competitorName ? `Signature of ${competitorName}` : 'Competitor Signature'}
+                            subtitle={
+                              competitorName
+                                ? `Sign here with your hand — it will be captured automatically as you draw. By signing, ${competitorName} certifies that the prices, delivery time, payment terms and conditions stated in this bid are accurate and binding if awarded.`
+                                : 'Sign here with your hand — it will be captured automatically as you draw. Your signature certifies that the information in this bid is accurate.'
+                            }
+                            autoSave
+                          />
                         </div>
                       </div>
                     </div>
@@ -864,7 +941,7 @@ const PublicCompeteAndSellPage = () => {
                       <button
                         type="submit"
                         className="pcas-btn-primary"
-                        disabled={submitting || !competitorName || !digitalSignature || Object.keys(bidItems).length === 0}
+                        disabled={submitting || !competitorName || !handSignature || !agreedToTerms || !paymentMethod || Object.keys(bidItems).length === 0}
                         style={{ maxWidth: '18rem', marginLeft: 'auto' }}
                       >
                         {submitting
