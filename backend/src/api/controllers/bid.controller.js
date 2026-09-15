@@ -394,3 +394,31 @@ exports.markEmailSent = catchAsync(async (req, res) => {
   res.json({ status: 'success' });
 });
 
+exports.updateBidPaymentStatus = catchAsync(async (req, res) => {
+  const { payment_status, payment_method } = req.body;
+  const bid = await db('bids').where('id', req.params.bidId).first();
+  if (!bid) throw AppError.notFound('Bid not found');
+  
+  const updates = { updated_at: db.fn.now() };
+  if (payment_status) updates.payment_status = payment_status;
+  if (payment_method) updates.payment_method = payment_method;
+
+  await db('bids').where('id', req.params.bidId).update(updates);
+  const updated = await db('bids').where('id', req.params.bidId).first();
+  
+  log(req, 'Bid Payment Status Updated', `Bid #${req.params.bidId}`, bid, updated);
+  
+  if (payment_status) {
+    const title = payment_status === 'confirmed' ? '✅ Payment Confirmed' : '❌ Payment Rejected';
+    const message = payment_status === 'confirmed' 
+      ? `Finance confirmed payment for your awarded bid on Sales Tender #${bid.tender_id}.`
+      : `Finance rejected payment for your awarded bid on Sales Tender #${bid.tender_id}. Please contact finance.`;
+    await notificationRepository.create({ 
+      userId: bid.customer_id, 
+      title, 
+      message 
+    });
+  }
+
+  res.json({ status: 'success', data: updated });
+});
