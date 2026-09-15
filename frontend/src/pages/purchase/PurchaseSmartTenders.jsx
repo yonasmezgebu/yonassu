@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../../services/apiClient';
 import {
@@ -212,7 +212,7 @@ const PurchaseSmartTenders = () => {
 
   // Create Form
   const [newTender, setNewTender] = useState({
-    title: '', category: '', description: '', openingDate: '', closingDate: ''
+    title: '', category: '', description: '', termsConditions: '', openingDate: '', closingDate: ''
   });
   const [tenderItems, setTenderItems] = useState([
     { id: Date.now(), objectType: '', unit: '', quantity: 1 }
@@ -221,6 +221,18 @@ const PurchaseSmartTenders = () => {
   const [createMsg, setCreateMsg] = useState('');
   const [gpRequestId, setGpRequestId] = useState(null);
 
+  // Smart auto-growing Terms & Conditions editor (grows when text increases,
+  // shrinks when text decreases). Uses setProperty(..., 'important') so the
+  // page's `textarea { height:36px !important }` rule does not win.
+  const createTermsRef = useRef(null);
+  const editTermsRef = useRef(null);
+  const resizeTermsBox = (el) => {
+    if (!el) return;
+    el.style.setProperty('height', 'auto', 'important');
+    el.style.setProperty('height', `${Math.min(el.scrollHeight, 320)}px`, 'important');
+  };
+  useEffect(() => { resizeTermsBox(createTermsRef.current); }, [newTender.termsConditions]);
+
   // Auto-fill from GP if navigated with state
   useEffect(() => {
     if (location.state?.prefill) {
@@ -228,6 +240,7 @@ const PurchaseSmartTenders = () => {
         title: location.state.prefill.title || '',
         category: location.state.prefill.category || '',
         description: location.state.prefill.description || '',
+        termsConditions: '',
         openingDate: '',
         closingDate: ''
       });
@@ -263,6 +276,54 @@ const PurchaseSmartTenders = () => {
   const [selectedTendersForFund, setSelectedTendersForFund] = useState([]);
   const [submittingFund, setSubmittingFund] = useState(false);
   const [viewFundRequest, setViewFundRequest] = useState(null); // for detail modal
+
+  // ─── Edit Logic ────────────────────────────────────────────────────────────
+  const [editingTender, setEditingTender] = useState(null); // { id, ...editable fields }
+  useEffect(() => { resizeTermsBox(editTermsRef.current); }, [editingTender?.termsConditions]);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editMsg, setEditMsg] = useState('');
+
+  const toDateInput = (v) => {
+    if (!v) return '';
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10);
+  };
+
+  const handleStartEdit = (t) => {
+    setEditMsg('');
+    setEditingTender({
+      id: t.id,
+      title: t.title || '',
+      category: t.category || '',
+      description: t.description || '',
+      termsConditions: t.terms_conditions || '',
+      openingDate: toDateInput(t.opening_date),
+      closingDate: toDateInput(t.closing_date || t.closingDate)
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingTender) return;
+    if (!editingTender.title.trim()) { setEditMsg('⚠️ Tender title is required.'); return; }
+    setSavingEdit(true);
+    setEditMsg('');
+    try {
+      await api.put(`/public-tenders/internal/${editingTender.id}`, {
+        title: editingTender.title,
+        category: editingTender.category,
+        description: editingTender.description,
+        termsConditions: editingTender.termsConditions,
+        openingDate: editingTender.openingDate,
+        closingDate: editingTender.closingDate
+      });
+      showToast('✅ Tender updated (Terms & Conditions saved).', 'success');
+      setEditingTender(null);
+      fetchTenders();
+    } catch (err) {
+      setEditMsg('❌ ' + (err?.response?.data?.message || err.message || 'Error updating tender'));
+    } finally { setSavingEdit(false); }
+  };
 
   // ─── Fetch ────────────────────────────────────────────────────────────────
   useEffect(() => { fetchTenders(); fetchFundRequests(); }, []);
@@ -348,7 +409,7 @@ const PurchaseSmartTenders = () => {
       }
 
       setCreateMsg('✅ Tender posted to public page!');
-      setNewTender({ title: '', category: '', description: '', openingDate: '', closingDate: '' });
+      setNewTender({ title: '', category: '', description: '', termsConditions: '', openingDate: '', closingDate: '' });
       setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1 }]);
       setShowCreate(false);
       fetchTenders();
@@ -586,6 +647,12 @@ This is an official award notification from SUTANA's procurement system.
                           style={{ padding: '5px 10px', background: '#eff6ff', color: '#2563eb', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
                           Evaluate
                         </button>
+                        {(t.status === 'published' || t.status === 'draft') && (
+                          <button onClick={() => handleStartEdit(t)}
+                            style={{ padding: '5px 10px', background: '#fefce8', color: '#a16207', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                            Edit
+                          </button>
+                        )}
                         {t.status === 'published' && (
                           <button onClick={() => handleCloseTender(t.id)}
                             style={{ padding: '5px 10px', background: '#fef2f2', color: '#dc2626', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
@@ -645,6 +712,16 @@ This is an official award notification from SUTANA's procurement system.
                   onChange={e => setNewTender({ ...newTender, description: e.target.value })}
                   style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
                   placeholder="Provide detailed guidelines, requirements, and any special conditions for suppliers..." />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>
+                  Terms &amp; Conditions <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <textarea ref={createTermsRef} value={newTender.termsConditions}
+                  onChange={e => setNewTender({ ...newTender, termsConditions: e.target.value })}
+                  className="pst-terms-box"
+                  style={{ ...inputStyle, minHeight: '110px', resize: 'none', overflowY: 'auto', lineHeight: 1.6 }}
+                  placeholder="Write the binding conditions suppliers must accept when bidding — e.g. payment terms, delivery commitments, quality/acceptance standards, warranty, penalties, governing rules… These are filled in once at post time; suppliers simply accept them on the public page." />
               </div>
               <div>
                 <label style={labelStyle}>Opening Date</label>
@@ -790,6 +867,17 @@ This is an official award notification from SUTANA's procurement system.
                     <StatusBadge status={selectedTender.status} />
                   </div>
                 </div>
+                {selectedTender.terms_conditions && (
+                  <div style={{
+                    marginTop: '14px', padding: '14px 16px', background: '#fffbeb',
+                    border: '1px solid #fde68a', borderRadius: '10px', fontSize: '13px', color: '#78350f', lineHeight: 1.65
+                  }}>
+                    <div style={{ fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase', letterSpacing: '0.4px', fontSize: '11px' }}>
+                      <FileText size={13} /> Terms &amp; Conditions Suppliers Accepted
+                    </div>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{selectedTender.terms_conditions}</div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: '10px' }}>
                   {selectedTender.status === 'awarded' && !selectedTender.purchase_read && (
                     <button onClick={async () => {
@@ -865,7 +953,7 @@ This is an official award notification from SUTANA's procurement system.
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: '900px' }}>
                             <thead>
                               <tr style={{ background: '#f8fafc' }}>
-                                {['Rank', 'Supplier', 'Email / Phone', 'Price (Birr.Cent)', 'Total (Birr.Cent)', 'Delivery', 'Payment Terms', 'Status', 'Action'].map(h => (
+                                {['Rank', 'Supplier', 'Email / Phone', 'Price (Birr.Cent)', 'Total (Birr.Cent)', 'Delivery', 'Payment Terms', 'Payment Method', 'Status', 'Action'].map(h => (
                                   <th key={h} style={{ padding: '10px 14px', fontWeight: 600, color: '#64748b', fontSize: '11px', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
                                 ))}
                               </tr>
@@ -895,6 +983,17 @@ This is an official award notification from SUTANA's procurement system.
                                     </td>
                                     <td style={{ padding: '12px 14px', color: '#64748b' }}>{bid.delivery_time || '—'}</td>
                                     <td style={{ padding: '12px 14px', color: '#64748b' }}>{bid.payment_terms || '—'}</td>
+                                    <td style={{ padding: '12px 14px' }}>
+                                      {bid.payment_method ? (
+                                        <span style={{
+                                          padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
+                                          background: bid.payment_method === 'Telebirr' ? '#FEF3C7' : bid.payment_method === 'Bank Transfer' ? '#E0F2FE' : bid.payment_method === 'Cash' ? '#DCFCE7' : '#F3F4F6',
+                                          color: bid.payment_method === 'Telebirr' ? '#D97706' : bid.payment_method === 'Bank Transfer' ? '#0284C7' : bid.payment_method === 'Cash' ? '#16A34A' : '#475569'
+                                        }}>
+                                          {bid.payment_method === 'Telebirr' ? '📱' : bid.payment_method === 'Bank Transfer' ? '🏦' : bid.payment_method === 'Cash' ? '💵' : '📄'} {bid.payment_method}
+                                        </span>
+                                      ) : '—'}
+                                    </td>
                                     <td style={{ padding: '12px 14px' }}><BidStatusBadge status={bid.bid_status} /></td>
                                     <td style={{ padding: '12px 14px' }}>
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1220,6 +1319,83 @@ Official award notification from SUTANA's procurement system.
             <button onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
               style={{ flex: 1, padding: '12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
               Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ══════════════════════════════════════════════════
+        MODAL: EDIT TENDER (incl. Terms & Conditions)
+    ══════════════════════════════════════════════════ */}
+    {editingTender && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1150, backdropFilter: 'blur(4px)', padding: '24px', overflowY: 'auto' }}>
+        <div style={{ background: 'white', padding: '28px', borderRadius: '16px', width: '100%', maxWidth: '720px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileText size={20} color="#3b82f6" /> Edit Published Tender
+            </h3>
+            <button onClick={() => setEditingTender(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '34px', height: '34px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>×</button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Tender Title <span style={{ color: '#ef4444' }}>*</span></label>
+              <input value={editingTender.title}
+                onChange={e => setEditingTender({ ...editingTender, title: e.target.value })}
+                style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <select value={editingTender.category}
+                onChange={e => setEditingTender({ ...editingTender, category: e.target.value })}
+                style={inputStyle}>
+                <option value="">-- Select Category --</option>
+                {['Medical Supplies', 'IT Equipment', 'Office Supplies', 'Construction Materials',
+                  'Laboratory Equipment', 'Pharmaceuticals', 'Logistics & Transport', 'Other'].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Closing Date</label>
+              <input type="date" value={editingTender.closingDate}
+                onChange={e => setEditingTender({ ...editingTender, closingDate: e.target.value })}
+                style={inputStyle} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Description / Guidelines</label>
+              <textarea value={editingTender.description}
+                onChange={e => setEditingTender({ ...editingTender, description: e.target.value })}
+                style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>
+                Terms &amp; Conditions <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <textarea ref={editTermsRef} value={editingTender.termsConditions}
+                onChange={e => setEditingTender({ ...editingTender, termsConditions: e.target.value })}
+                className="pst-terms-box"
+                style={{ ...inputStyle, minHeight: '110px', resize: 'none', overflowY: 'auto', lineHeight: 1.6 }}
+                placeholder="Conditions suppliers must accept before bidding. Save to update the public Compete & Sell page immediately." />
+            </div>
+          </div>
+
+          {editMsg && (
+            <div style={{ padding: '10px 14px', borderRadius: '8px', marginBottom: '14px', fontWeight: 600, fontSize: '13px',
+              background: editMsg.startsWith('❌') ? '#fef2f2' : '#dcfce7', color: editMsg.startsWith('❌') ? '#991b1b' : '#166534', border: `1px solid ${editMsg.startsWith('❌') ? '#fecaca' : '#bbf7d0'}` }}>
+              {editMsg}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
+            <button onClick={() => setEditingTender(null)}
+              style={{ padding: '11px 22px', border: '1.5px solid #e2e8f0', background: 'white', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', color: '#64748b' }}>
+              Cancel
+            </button>
+            <button onClick={handleSaveEdit} disabled={savingEdit || !editingTender.title.trim()}
+              style={{ padding: '11px 26px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: savingEdit || !editingTender.title.trim() ? 0.6 : 1 }}>
+              <Save size={16} /> {savingEdit ? '⏳ Saving...' : '💾 Save Changes'}
             </button>
           </div>
         </div>
