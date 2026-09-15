@@ -30,6 +30,9 @@ router.delete('/customer/bids/:bidId/hide', authenticate, async (req, res) => {
   res.json({ message: 'Bid removed from your dashboard' });
 });
 
+// Customer: cancel own bid (cancellable while pending/awarded/recommended)
+router.put('/customer/bids/:bidId/cancel', publicTenderController.cancelBid);
+
 // Purchase / Admin: create, read, manage tenders
 router.post('/internal', authorizeRoles(['Purchase', 'Admin']), publicTenderController.createTender);
 router.get('/internal', authorizeRoles(['Purchase', 'CEO', 'Admin']), publicTenderController.getAllInternalTenders);
@@ -50,5 +53,8 @@ router.put('/internal/:id/submit-evaluation', authorizeRoles(['Purchase', 'Admin
 
 // CEO: approve final evaluation
 router.put('/internal/:id/approve', authorizeRoles(['CEO', 'Admin']), publicTenderController.approveTender);
+
+// Finance/Purchase: update bid payment_status (confirm/reject)
+router.put('/internal/bids/:bidId/payment-status', authorizeRoles(['Finance', 'Purchase', 'Admin']), publicTenderController.updateBidPaymentStatus);
 
 module.exports = router;
