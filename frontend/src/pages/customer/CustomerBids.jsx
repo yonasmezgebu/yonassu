@@ -4,7 +4,7 @@ import apiClient from '../../services/apiClient';
 import {
   FileText, Calendar, Clock, CheckCircle, XCircle, Activity,
   RefreshCw, Edit3, Save, X, ChevronDown, ChevronUp,
-  ExternalLink, User, Building, Trash2
+  ExternalLink, User, Building, Trash2, Ban, CreditCard, ShieldCheck, ShieldX, ShieldAlert
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './CustomerBids.module.css';
@@ -12,19 +12,43 @@ import styles from './CustomerBids.module.css';
 // ─── Status Badge helper ──────────────────────────────────────────────────
 const StatusBadge = ({ status }) => {
   const s = String(status).toLowerCase();
-  if (['awarded', 'accepted', 'approved'].includes(s)) {
+  if (['awarded', 'accepted', 'approved', 'winner'].includes(s)) {
     return <span className={`${styles.badge} ${styles.badgeSuccess}`}><CheckCircle size={12} /> {status}</span>;
   }
-  if (['pending', 'under_review'].includes(s)) {
+  if (['pending', 'under_review', 'recommended'].includes(s)) {
     return <span className={`${styles.badge} ${styles.badgeWarning}`}><Clock size={12} /> {status}</span>;
   }
-  if (['not_selected', 'disqualified', 'rejected'].includes(s)) {
+  if (['not_selected', 'disqualified', 'rejected', 'cancelled'].includes(s)) {
     return <span className={`${styles.badge} ${styles.badgeError}`}><XCircle size={12} /> {status}</span>;
   }
   if (['open'].includes(s)) {
     return <span className={`${styles.badge} ${styles.badgeInfo}`}><Activity size={12} /> {status}</span>;
   }
   return <span className={`${styles.badge} ${styles.badgeNeutral}`}>{status || 'Unknown'}</span>;
+};
+
+// ─── Payment Status Badge ─────────────────────────────────────────────────
+const PaymentStatusBadge = ({ status }) => {
+  const s = String(status || 'pending').toLowerCase();
+  if (s === 'confirmed') {
+    return (
+      <span className={`${styles.badge} ${styles.badgeSuccess}`} title="Finance confirmed this payment">
+        <ShieldCheck size={12} /> Payment Confirmed
+      </span>
+    );
+  }
+  if (s === 'rejected') {
+    return (
+      <span className={`${styles.badge} ${styles.badgeError}`} title="Finance rejected this payment">
+        <ShieldX size={12} /> Payment Rejected
+      </span>
+    );
+  }
+  return (
+    <span className={`${styles.badge} ${styles.badgeWarning}`} title="Finance is reviewing this payment">
+      <ShieldAlert size={12} /> Awaiting Confirmation
+    </span>
+  );
 };
 
 // ─── Update Form for a Public Tender Bid ───────────────────────────────────
@@ -238,10 +262,17 @@ const UpdateSaleBidForm = ({ bid, onClose, onSaved }) => {
 };
 
 // ─── Public Bid Card (General Tenders) ──────────────────────────────────────
-const PublicBidCard = ({ bid, onUpdate, onHide }) => {
+const PublicBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const canUpdate = bid.bid_status === 'pending';
+
+  const isAwarded = ['winner', 'awarded', 'recommended', 'accepted', 'approved'].includes(
+    (bid.bid_status || '').toLowerCase()
+  );
+  const canCancel = !['cancelled', 'rejected', 'not_selected', 'disqualified'].includes(
+    (bid.bid_status || '').toLowerCase()
+  );
 
   return (
     <>
@@ -262,7 +293,7 @@ const PublicBidCard = ({ bid, onUpdate, onHide }) => {
               </span>
             </div>
             <h4 className={styles.bidTitle}>{bid.tender_title}</h4>
-            
+
             <div className={styles.bidInfoRow}>
               <span className={styles.bidInfoItem}>
                 <Calendar size={14} color="hsl(var(--primary))" />
@@ -274,20 +305,40 @@ const PublicBidCard = ({ bid, onUpdate, onHide }) => {
               </span>
             </div>
           </div>
-          
+
           <div className={styles.bidActions}>
-            <StatusBadge status={bid.bid_status} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.375rem' }}>
+              <StatusBadge status={bid.bid_status} />
+              <PaymentStatusBadge status={bid.payment_status} />
+            </div>
             <div className={styles.bidActionBtns}>
               {canUpdate && (
                 <button onClick={() => setEditing(true)} className={styles.btnSmall}>
                   <Edit3 size={14} /> Update Bid
                 </button>
               )}
-              {['awarded', 'accepted', 'approved'].includes((bid.bid_status || '').toLowerCase()) && (
-                <button 
-                  onClick={(e) => onHide(e, bid.id)} 
-                  style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
-                  title="Delete from dashboard"
+              {canCancel && (
+                <button
+                  onClick={() => isAwarded && onCancel(bid.id, bid.tender_title || `Bid #${bid.id}`, 'public')}
+                  disabled={!isAwarded}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                    padding: '0.375rem 0.625rem', borderRadius: 8,
+                    border: '1.5px solid #e53e3e', background: 'none',
+                    color: '#e53e3e', fontWeight: 600, fontSize: '0.8rem',
+                    cursor: isAwarded ? 'pointer' : 'not-allowed',
+                    opacity: isAwarded ? 1 : 0.5
+                  }}
+                  title={isAwarded ? "Cancel this awarded bid" : "You can only cancel after being awarded"}
+                >
+                  <Ban size={13} /> Cancel
+                </button>
+              )}
+              {['awarded', 'accepted', 'approved', 'winner'].includes((bid.bid_status || '').toLowerCase()) && (
+                <button
+                  onClick={(e) => onHide(e, bid.id)}
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                  title="Remove from dashboard"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -298,6 +349,39 @@ const PublicBidCard = ({ bid, onUpdate, onHide }) => {
             </div>
           </div>
         </div>
+
+        {isAwarded && (
+          <div style={{
+            marginTop: '0.875rem', padding: '0.875rem 1rem',
+            background: bid.payment_status === 'confirmed'
+              ? 'linear-gradient(135deg,#dcfce7,#f0fdf4)'
+              : bid.payment_status === 'rejected'
+              ? 'linear-gradient(135deg,#fee2e2,#fff5f5)'
+              : 'linear-gradient(135deg,#fef9c3,#fefce8)',
+            borderRadius: 10,
+            border: bid.payment_status === 'confirmed' ? '1.5px solid #86efac'
+              : bid.payment_status === 'rejected' ? '1.5px solid #fca5a5'
+              : '1.5px solid #fde68a',
+            display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap',
+          }}>
+            <CreditCard size={18} style={{ flexShrink: 0, marginTop: 2, color: bid.payment_status === 'confirmed' ? '#16a34a' : bid.payment_status === 'rejected' ? '#dc2626' : '#d97706' }} />
+            <div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a' }}>Your bid was awarded</div>
+              <div style={{ fontSize: '0.8125rem', color: '#475569', marginTop: 2 }}>
+                {bid.payment_status === 'confirmed'
+                  ? 'Finance confirmed your payment. Proceed to fulfil the order.'
+                  : bid.payment_status === 'rejected'
+                  ? 'Finance rejected your payment. Contact the finance department.'
+                  : 'Finance is reviewing your payment. You will be notified once confirmed.'}
+              </div>
+              {bid.payment_method && (
+                <div style={{ fontSize: '0.8125rem', marginTop: 4, color: '#64748b' }}>
+                  <strong>Payment via:</strong> {bid.payment_method.replace('::', ' — Account ID: ')}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {expanded && bid.items && (
           <div className={styles.bidExpanded}>
@@ -315,8 +399,15 @@ const PublicBidCard = ({ bid, onUpdate, onHide }) => {
                 </div>
               ))}
             </div>
-            
             <div className={styles.detailGrid}>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Email</span>
+                <span className={styles.detailValue}>{bid.email || bid.bidder_email || '—'}</span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Phone</span>
+                <span className={styles.detailValue}>{bid.phone || bid.bidder_phone || '—'}</span>
+              </div>
               {bid.delivery_time && (
                 <div className={styles.detailItem}>
                   <span className={styles.detailLabel}>Delivery Time</span>
@@ -338,12 +429,14 @@ const PublicBidCard = ({ bid, onUpdate, onHide }) => {
 };
 
 // ─── Direct Sales Bid Card ────────────────────────────────────────────────
-const SalesBidCard = ({ bid, onUpdate, onHide }) => {
+const SalesBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
 
   const canUpdate = bid.status === 'pending' && bid.tender_status === 'open' && new Date(bid.deadline) > new Date();
+  const isAwarded = ['awarded', 'accepted', 'approved', 'winner'].includes((bid.status || '').toLowerCase());
+  const canCancel = !['cancelled', 'rejected', 'not_selected', 'disqualified'].includes((bid.status || '').toLowerCase());
 
   return (
     <>
@@ -376,11 +469,31 @@ const SalesBidCard = ({ bid, onUpdate, onHide }) => {
           </div>
           
           <div className={styles.bidActions}>
-            <StatusBadge status={bid.status} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.375rem' }}>
+              <StatusBadge status={bid.status} />
+              <PaymentStatusBadge status={bid.payment_status} />
+            </div>
             <div className={styles.bidActionBtns}>
               {canUpdate && (
                 <button onClick={() => setEditing(true)} className={styles.btnSmall}>
                   <Edit3 size={14} /> Update Bid
+                </button>
+              )}
+              {canCancel && (
+                <button
+                  onClick={() => isAwarded && onCancel(bid.id, bid.tender_title || `Bid #${bid.id}`, 'sales')}
+                  disabled={!isAwarded}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                    padding: '0.375rem 0.625rem', borderRadius: 8,
+                    border: '1.5px solid #e53e3e', background: 'none',
+                    color: '#e53e3e', fontWeight: 600, fontSize: '0.8rem',
+                    cursor: isAwarded ? 'pointer' : 'not-allowed',
+                    opacity: isAwarded ? 1 : 0.5
+                  }}
+                  title={isAwarded ? "Cancel this awarded bid" : "You can only cancel after being awarded"}
+                >
+                  <Ban size={13} /> Cancel
                 </button>
               )}
               {['awarded', 'accepted', 'approved'].includes((bid.status || '').toLowerCase()) && (
@@ -398,6 +511,39 @@ const SalesBidCard = ({ bid, onUpdate, onHide }) => {
             </div>
           </div>
         </div>
+
+        {isAwarded && (
+          <div style={{
+            marginTop: '0.875rem', padding: '0.875rem 1rem',
+            background: bid.payment_status === 'confirmed'
+              ? 'linear-gradient(135deg,#dcfce7,#f0fdf4)'
+              : bid.payment_status === 'rejected'
+              ? 'linear-gradient(135deg,#fee2e2,#fff5f5)'
+              : 'linear-gradient(135deg,#fef9c3,#fefce8)',
+            borderRadius: 10,
+            border: bid.payment_status === 'confirmed' ? '1.5px solid #86efac'
+              : bid.payment_status === 'rejected' ? '1.5px solid #fca5a5'
+              : '1.5px solid #fde68a',
+            display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap',
+          }}>
+            <CreditCard size={18} style={{ flexShrink: 0, marginTop: 2, color: bid.payment_status === 'confirmed' ? '#16a34a' : bid.payment_status === 'rejected' ? '#dc2626' : '#d97706' }} />
+            <div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a' }}>Your bid was awarded</div>
+              <div style={{ fontSize: '0.8125rem', color: '#475569', marginTop: 2 }}>
+                {bid.payment_status === 'confirmed'
+                  ? 'Finance confirmed your payment. Proceed to fulfil the order.'
+                  : bid.payment_status === 'rejected'
+                  ? 'Finance rejected your payment. Contact the finance department.'
+                  : 'Finance is reviewing your payment. You will be notified once confirmed.'}
+              </div>
+              {bid.payment_method && (
+                <div style={{ fontSize: '0.8125rem', marginTop: 4, color: '#64748b' }}>
+                  <strong>Payment via:</strong> {bid.payment_method.replace('::', ' — Account ID: ')}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {expanded && (
           <div className={styles.bidExpanded}>
@@ -448,10 +594,44 @@ export default function CustomerBids() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null); // { id, label, type }
+  const [confirmCancel, setConfirmCancel] = useState(null); // { id, label }
+  const [cancelling, setCancelling] = useState(false);
 
   const handleHideBid = (e, id, type, label) => {
     e.stopPropagation();
     setConfirmDelete({ id, type, label });
+  };
+
+  const handleCancelBid = (id, label, type = 'public') => {
+    setConfirmCancel({ id, label, type });
+  };
+
+  const confirmCancelBid = async () => {
+    if (!confirmCancel) return;
+    setCancelling(true);
+    try {
+      if (confirmCancel.type === 'public') {
+        await apiClient.put(`/public-tenders/customer/bids/${confirmCancel.id}/cancel`);
+        setPublicBids(prev => prev.map(b => b.id === confirmCancel.id
+          ? { ...b, bid_status: 'cancelled', customer_cancelled: true }
+          : b
+        ));
+      } else {
+        await apiClient.put(`/tenders/my-bids/${confirmCancel.id}/cancel`);
+        setSalesBids(prev => prev.map(b => b.id === confirmCancel.id
+          ? { ...b, status: 'cancelled', customer_cancelled: true }
+          : b
+        ));
+      }
+      setSuccessMessage('Bid cancelled successfully.');
+      setTimeout(() => setSuccessMessage(''), 4000);
+    } catch (err) {
+      setErrorMessage(err.response?.data?.message || 'Failed to cancel bid');
+      setTimeout(() => setErrorMessage(''), 4000);
+    } finally {
+      setCancelling(false);
+      setConfirmCancel(null);
+    }
   };
 
   const confirmHideBid = async () => {
@@ -570,7 +750,7 @@ export default function CustomerBids() {
             {showPublic && publicBids.length > 0 && (
               <div style={{ marginBottom: '2rem' }}>
                 {activeTab === 'all' && <h3 className={styles.sectionTitle} style={{ marginBottom: '1rem', fontSize: '1.125rem' }}>Compete & Sell Bids</h3>}
-                {publicBids.map(b => <PublicBidCard key={`pub-${b.id}`} bid={b} onUpdate={handleBidUpdated} onHide={(e, id) => handleHideBid(e, id, 'public', b.item_name || `Bid #${b.id}`)} />)}
+                {publicBids.map(b => <PublicBidCard key={`pub-${b.id}`} bid={b} onUpdate={handleBidUpdated} onCancel={handleCancelBid} onHide={(e, id) => handleHideBid(e, id, 'public', b.item_name || `Bid #${b.id}`)} />)}
               </div>
             )}
 
@@ -586,7 +766,7 @@ export default function CustomerBids() {
       </div>
     </div>
 
-    {/* ── In-app confirmation dialog ── */}
+    {/* ── In-app confirmation dialog for HIDE ── */}
     {confirmDelete && (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ background: '#fff', borderRadius: 16, padding: '2rem', maxWidth: 380, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
@@ -608,6 +788,37 @@ export default function CustomerBids() {
               style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: 'none', background: '#e53e3e', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}
             >
               Yes, Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Cancel Bid confirmation dialog ── */}
+    {confirmCancel && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '2rem', maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: '0.75rem' }}>⚠️</div>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Cancel This Bid?</h3>
+          <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+            Are you sure you want to cancel your bid for <strong>{confirmCancel.label}</strong>?<br />
+            This action cannot be undone and the bid will be marked as <strong>cancelled</strong>.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <button
+              onClick={() => setConfirmCancel(null)}
+              disabled={cancelling}
+              style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              Keep Bid
+            </button>
+            <button
+              onClick={confirmCancelBid}
+              disabled={cancelling}
+              style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              {cancelling ? <SegmentedSpinner size={16} /> : <Ban size={16} />}
+              {cancelling ? 'Cancelling...' : 'Yes, Cancel Bid'}
             </button>
           </div>
         </div>
