@@ -71,11 +71,24 @@ const PublicCompeteAndSellPage = () => {
   const [paymentTerms, setPaymentTerms] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [myExistingBid, setMyExistingBid] = useState(null); // existing bid for update mode
-  const [paymentMethod, setPaymentMethod] = useState(''); // Telebirr / Bank / Cash
+  const [paymentMethod, setPaymentMethod] = useState(''); // Telebirr / Bank
+  const [financeAccounts, setFinanceAccounts] = useState([]);
   const [vatCtx, setVatCtx] = useState(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
   useEffect(() => { fetchTenders(); }, []);
+
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const res = await api.get('/finance-bank');
+        setFinanceAccounts(res.data || []);
+      } catch (e) {
+        console.error('Failed to fetch finance accounts', e);
+      }
+    };
+    fetchAccounts();
+  }, []);
 
   const fetchTenders = async () => {
     try {
@@ -99,12 +112,23 @@ const PublicCompeteAndSellPage = () => {
     setLoading(false);
   };
 
+  const scrollToWorkArea = () => {
+    const el = document.getElementById('working-area');
+    if (el) {
+      // scroll slightly below the hero so the header doesn't cover it
+      const y = el.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const handleSelectTender = (tender) => {
     // Step 1: always show detail view first (no auth required)
     setSelectedTender(tender);
     setBidError(null);
     setBiddingStep(1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToWorkArea();
   };
 
   const handleStartBidding = async () => {
@@ -163,7 +187,7 @@ const PublicCompeteAndSellPage = () => {
     }
 
     setBiddingStep(2);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToWorkArea();
   };
 
   const handleBidItemChange = (itemId, field, value) => {
@@ -240,7 +264,7 @@ const PublicCompeteAndSellPage = () => {
       } catch (e) { console.warn('Audio blocked:', e); }
 
       setBiddingStep(3); // show celebration
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToWorkArea();
 
     } catch (err) {
       // If HTTP 409 Conflict — switch to update mode automatically
@@ -312,7 +336,7 @@ const PublicCompeteAndSellPage = () => {
         </div>
       </div>
 
-      <div className="pcas-main-layout">
+      <div id="working-area" className="pcas-main-layout">
         {loading ? (
           <div className="pcas-section-container" style={{ textAlign: 'center', color: 'hsl(215.4 16.3% 46.9%)' }}>
             ⏳ Loading Tenders...
@@ -876,6 +900,11 @@ const PublicCompeteAndSellPage = () => {
                           const lineValue = unitPrice * parseFloat(item.quantity || 1);
                           return sum + getVatForItem(vatCtx, 'tender_buy', item.id != null ? item.id : null, lineValue).total;
                         }, 0) || 0;
+
+                        const telebirrAccounts = financeAccounts.filter(a => a.status === 'Active' && a.account_type === 'Mobile Wallet');
+                        const bankAccounts = financeAccounts.filter(a => a.status === 'Active' && a.account_type === 'Bank');
+                        const selectedAccObj = financeAccounts.find(a => paymentMethod && paymentMethod === `${a.account_type === 'Mobile Wallet' ? 'Telebirr' : 'Bank Transfer'}::${a.id}`);
+
                         return (
                           <div style={{ margin: '1.25rem 0', padding: '1.25rem', background: 'hsl(152 76% 97%)', border: '2px solid hsl(152 69% 75%)', borderRadius: '0.75rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
@@ -885,23 +914,72 @@ const PublicCompeteAndSellPage = () => {
                               </span>
                             </div>
                             <div>
-                              <label className="pcas-label" style={{ marginBottom: '0.375rem', display: 'block' }}>
-                                Payment Method <span className="pcas-required">*</span>
+                              <label className="pcas-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
+                                Payment Method &amp; Account <span className="pcas-required">*</span>
                               </label>
                               <select
                                 required
                                 value={paymentMethod}
                                 onChange={e => setPaymentMethod(e.target.value)}
                                 className="pcas-input-field"
-                                style={{ maxWidth: '320px' }}
+                                style={{ maxWidth: '460px', fontWeight: 600 }}
                               >
-                                <option value="">-- Select Payment Method --</option>
-                                <option value="Telebirr">📱 Telebirr</option>
-                                <option value="Bank Transfer">🏦 Bank Transfer</option>
-                                <option value="Cash">💵 Cash</option>
-                                <option value="Cheque">📄 Cheque</option>
+                                <option value="">-- Select Account to Pay Into --</option>
+                                {telebirrAccounts.length > 0 && (
+                                  <optgroup label="📱 Telebirr Accounts">
+                                    {telebirrAccounts.map(acc => (
+                                      <option key={acc.id} value={`Telebirr::${acc.id}`}>
+                                        📱 Telebirr {`{${acc.account_number}}`} — {acc.account_name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                {bankAccounts.length > 0 && (
+                                  <optgroup label="🏦 Bank Transfer Accounts">
+                                    {bankAccounts.map(acc => (
+                                      <option key={acc.id} value={`Bank Transfer::${acc.id}`}>
+                                        🏦 Bank {`{${acc.account_number}}`} — {acc.account_name}{acc.bank_provider ? ` (${acc.bank_provider})` : ''}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                {telebirrAccounts.length === 0 && bankAccounts.length === 0 && (
+                                  <option value="" disabled>No accounts configured yet</option>
+                                )}
                               </select>
-                              {!paymentMethod && <p style={{ fontSize: '0.75rem', color: 'hsl(0 72% 38%)', marginTop: '0.25rem' }}>Please select how you will make the payment if awarded.</p>}
+                              {!paymentMethod && <p style={{ fontSize: '0.75rem', color: 'hsl(0 72% 38%)', marginTop: '0.25rem' }}>Select the account you will transfer your bid payment into if awarded.</p>}
+
+                              {selectedAccObj && (
+                                <div style={{ marginTop: '0.875rem', padding: '1rem 1.125rem', background: 'white', borderRadius: '0.625rem', border: '2px solid hsl(152 69% 60%)', boxShadow: '0 2px 8px rgba(16,185,129,0.12)' }}>
+                                  <div style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'hsl(152 76% 35%)', marginBottom: '0.625rem' }}>
+                                    ✅ Transfer Payment To This Account
+                                  </div>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.75rem', rowGap: '0.35rem', alignItems: 'center', fontSize: '0.875rem' }}>
+                                    <span style={{ fontWeight: 600, color: '#64748b' }}>Account Name</span>
+                                    <span style={{ fontWeight: 800, color: '#0f172a' }}>{selectedAccObj.account_name}</span>
+
+                                    <span style={{ fontWeight: 600, color: '#64748b' }}>Account No.</span>
+                                    <span style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: '1rem', color: 'hsl(152 76% 22%)', background: 'hsl(152 76% 95%)', padding: '0.15rem 0.5rem', borderRadius: '0.25rem', letterSpacing: '0.04em' }}>
+                                      {selectedAccObj.account_number}
+                                    </span>
+
+                                    {selectedAccObj.bank_provider && (
+                                      <>
+                                        <span style={{ fontWeight: 600, color: '#64748b' }}>Bank / Provider</span>
+                                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{selectedAccObj.bank_provider}</span>
+                                      </>
+                                    )}
+
+                                    <span style={{ fontWeight: 600, color: '#64748b' }}>Method</span>
+                                    <span style={{ fontWeight: 700, color: selectedAccObj.account_type === 'Mobile Wallet' ? '#D97706' : '#0284C7' }}>
+                                      {selectedAccObj.account_type === 'Mobile Wallet' ? '📱 Telebirr' : '🏦 Bank Transfer'}
+                                    </span>
+                                  </div>
+                                  <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'hsl(152 76% 30%)', fontWeight: 600, background: 'hsl(152 76% 94%)', padding: '0.4rem 0.75rem', borderRadius: '0.375rem' }}>
+                                    ⚠️ Finance will verify this payment against the above account before your bid is approved.
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
