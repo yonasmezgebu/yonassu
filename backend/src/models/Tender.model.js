@@ -5,6 +5,7 @@ class TenderModel {
     this.title = data.title || '';
     this.category = data.category || '';
     this.description = data.description || '';
+    this.termsConditions = data.terms_conditions || data.termsConditions || '';
     this.openingDate = data.opening_date || data.openingDate || null;
     this.closingDate = data.closing_date || data.closingDate || null;
     this.status = data.status || 'draft';
@@ -39,6 +40,7 @@ class TenderModel {
       title: this.title,
       category: this.category,
       description: this.description,
+      termsConditions: this.termsConditions,
       openingDate: this.openingDate,
       closingDate: this.closingDate,
       status: this.status,
@@ -74,6 +76,7 @@ class TenderModel {
       title: data.title,
       category: data.category,
       description: data.description,
+      termsConditions: data.termsConditions,
       openingDate: data.openingDate,
       closingDate: data.closingDate,
       contactPhone1: data.contactPhone1,
