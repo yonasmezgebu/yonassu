@@ -11,6 +11,10 @@ router.post('/public/:id/bid', publicTenderController.submitBid);
 // ─── Internal endpoints (require auth) ─────────────────────────────────────
 router.use(authenticate);
 
+// Customer: get / update own bid for a specific tender
+router.get('/public/:id/my-bid', publicTenderController.getMyPublicBid);
+router.put('/public/:id/bid', publicTenderController.updatePublicBid);
+
 // Customer: get own bids
 router.get('/customer/bids', publicTenderController.getCustomerBids);
 
@@ -31,6 +35,9 @@ router.post('/internal', authorizeRoles(['Purchase', 'Admin']), publicTenderCont
 router.get('/internal', authorizeRoles(['Purchase', 'CEO', 'Admin']), publicTenderController.getAllInternalTenders);
 router.get('/internal/recent-bids', authorizeRoles(['Purchase', 'CEO', 'Admin']), publicTenderController.getRecentBids);
 router.get('/internal/:id/bids', authorizeRoles(['Purchase', 'CEO', 'Admin']), publicTenderController.getBidsForTender);
+
+// Purchase: edit a published/draft tender (title, description, terms etc.)
+router.put('/internal/:id', authorizeRoles(['Purchase', 'Admin']), publicTenderController.updateTender);
 
 // Purchase: close tender
 router.put('/internal/:id/close', authorizeRoles(['Purchase', 'Admin']), publicTenderController.closeTender);
