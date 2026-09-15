@@ -4,7 +4,7 @@ const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const { audit } = require('../../utils/logger');
 const posService = require('../../services/pos.service');
-const { sendFinanceNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendNotification } = require('../../services/notification.service');
 const vatConfigService = require('../../services/vatConfig.service');
 const { generateOrderNumber, generateInvoiceNumber, generateReceiptNumber } = require('../../utils/orderNumber');
 const { sendEmail } = require('../../services/email.service');
@@ -2910,8 +2910,15 @@ exports.signAndRequestStore = async (req, res) => {
           payment_method: payment_method || 'CASH'
         });
       }
-      return cartId;
     });
+
+    // Send notification to General Store
+    sendNotification('General Store Keeper', null, {
+      title: 'New Store Request',
+      message: `Retail POS request ${request_code} needs release.`,
+      type: 'store_request',
+      link: '/general-store/issue'
+    }).catch(err => console.error('Failed to notify store:', err));
 
     res.json({ status: 'success', data: { cart_id: result, request_code } });
   } catch (error) {
