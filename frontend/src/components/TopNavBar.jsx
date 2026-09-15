@@ -62,29 +62,54 @@ export default function TopNavBar() {
     fetchAllNotifications();
   }, [isAuthenticated, fetchAllNotifications]);
 
-  /* ── Socket.io for real-time pharmacy notifications (Admin/CEO only) ── */
+  /* ── Socket.io for real-time notifications ── */
   useEffect(() => {
-    if (!isAuthenticated || !isAdminCEO) return;
+    if (!isAuthenticated || !user) return;
     const socket = io((import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', ''), { transports: ['websocket', 'polling'], withCredentials: true });
     socketRef.current = socket;
 
-    socket.on('new-prescription-request', (data) => {
+    // Join the socket room for role/id
+    if (user.roles && user.roles.length > 0) {
+      user.roles.forEach(role => socket.emit('join', { id: user.id, role }));
+    } else {
+      socket.emit('join', { id: user.id });
+    }
+
+    socket.on('notification', (data) => {
       setNotifications(prev => {
         const n = {
-          id: `rt-${data.id}-${Date.now()}`,
-          title: `New Prescription Request: ${data.request_number}`,
-          message: `${data.customer_name} ordered ${data.medication_name} x${data.quantity}`,
-          createdAt: new Date().toISOString(),
+          id: `sys-${data.related_entity_id || Date.now()}`,
+          title: data.title,
+          message: data.message,
+          createdAt: data.timestamp || new Date().toISOString(),
           isRead: false,
-          _type: 'pharmacy',
-          _refId: data.id,
+          _type: data.type || 'system',
+          _refId: data.related_entity_id,
+          _link: data.link
         };
         return [n, ...prev];
       });
     });
 
+    if (isAdminCEO) {
+      socket.on('new-prescription-request', (data) => {
+        setNotifications(prev => {
+          const n = {
+            id: `rt-${data.id}-${Date.now()}`,
+            title: `New Prescription Request: ${data.request_number}`,
+            message: `${data.customer_name} ordered ${data.medication_name} x${data.quantity}`,
+            createdAt: new Date().toISOString(),
+            isRead: false,
+            _type: 'pharmacy',
+            _refId: data.id,
+          };
+          return [n, ...prev];
+        });
+      });
+    }
+
     return () => { socket.disconnect(); socketRef.current = null; };
-  }, [isAuthenticated, isAdminCEO]);
+  }, [isAuthenticated, user, isAdminCEO]);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -188,6 +213,8 @@ export default function TopNavBar() {
                         if (t === 'purchase' || title.includes('purchase') || title.includes('procurement')) return '/ceo/purchase';
                         if (t === 'farming' || title.includes('farming') || title.includes('agri')) return '/ceo/farming';
                         if (t === 'hiring' || title.includes('hiring') || title.includes('applicant')) return '/ceo/applicants';
+                        if (t === 'store_request' || title.includes('store request') || msg.includes('store request') || msg.includes('needs release')) return '/general-store/issue';
+                        if (t === 'finance' || title.includes('finance') || msg.includes('finance')) return '/finance/pharmacy-sales';
                         return null;
                       };
                       const link = getLink();
