@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../../services/apiClient';
-import { ArrowLeft, Clock, User, FileText, Package, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Clock, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { StageStyles } from './printingStageStyles';
 
 // Real DB status flow matching order_statuses table
 const STATUS_FLOW = ['received', 'in_queue', 'in_design', 'file_check', 'in_printing', 'in_progress', 'finishing', 'ready', 'delivered'];
@@ -23,7 +24,7 @@ const statusBadge = (code) => {
     file_check: '#FF9800', in_printing: '#2E8B57', in_progress: '#059669',
     finishing: '#228B22', ready: '#4CAF50', delivered: '#1B5E20', cancelled: '#EF4444'
   };
-  return { background: (colors[code] || '#6B7280') + '20', color: colors[code] || '#6B7280' };
+  return { background: (colors[code] || '#6B7280') + '20', color: colors[code] || '#6B7280', border: 'none' };
 };
 
 
@@ -67,101 +68,112 @@ const PrintingOrderDetail = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem', color: '#64748b' }}>Loading order...</div>;
-  if (!order) return <div style={{ padding: '2rem', color: '#ef4444' }}>Order not found.</div>;
+  if (loading) return <div style={{ padding: '2rem', color: 'hsl(var(--muted-foreground))' }}>Loading order...</div>;
+  if (!order) return <div style={{ padding: '2rem', color: 'hsl(var(--danger))' }}>Order not found.</div>;
 
   const statusIdx = STATUS_FLOW.indexOf(order.status_code);
   const isDelivered = order.status_code === 'delivered';
   const isCancelled = order.status_code === 'cancelled';
 
   return (
-    <div style={{ padding: '2rem', maxWidth: 900, margin: '0 auto' }}>
-      <button onClick={() => navigate('/printing-manager/jobs/queue')}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, marginBottom: '1rem', padding: 0 }}>
+    <div className="stg-root">
+      <StageStyles />
+
+      <button onClick={() => navigate('/printing-manager/jobs/queue')} className="stg-btn stg-btn--ghost stg-btn--sm" style={{ marginBottom: '1.5rem' }}>
         <ArrowLeft size={16} /> Back to Orders
       </button>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+      <div className="stg-record-head">
         <div>
-          <h2 style={{ margin: 0, color: '#1e293b', fontSize: 22 }}>{order.order_number}</h2>
-          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+          <h2 className="stg-record-id">{order.order_number}</h2>
+          <p className="stg-sub">
             Created {new Date(order.created_at).toLocaleString()}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <span style={{
-            padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-            background: order.payment_status === 'Confirmed' ? '#dcfce7' : order.payment_status === 'Rejected' ? '#fee2e2' : '#ffedd5',
-            color: order.payment_status === 'Confirmed' ? '#16a34a' : order.payment_status === 'Rejected' ? '#ef4444' : '#ea580c',
-            border: `1px solid ${order.payment_status === 'Confirmed' ? '#86efac' : order.payment_status === 'Rejected' ? '#fca5a5' : '#fdba74'}`
-          }}>
+          <span className={order.payment_status === 'Confirmed' ? 'stg-pill stg-pill--success' : order.payment_status === 'Rejected' ? 'stg-pill stg-pill--danger' : 'stg-pill stg-pill--warning'}>
             {order.payment_status === 'Confirmed' ? '✅ Paid' : order.payment_status === 'Rejected' ? '❌ Payment Rejected' : '⏳ Payment Pending'}
           </span>
-          <span style={{ ...statusBadge(order.status_code), padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+          <span className="stg-pill" style={statusBadge(order.status_code)}>
             {order.status_name}
           </span>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ background: 'white', borderRadius: 10, padding: '1.25rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <h4 style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Customer</h4>
+      <div className="stg-detail-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        <div>
+          <h4 className="stg-note-label" style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 1 }}>Customer</h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <User size={14} color="#64748b" />
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{order.customer_name || 'Walk-in Customer'}</span>
+            <User size={14} className="stg-muted" />
+            <span className="stg-detail-value">{order.customer_name || 'Walk-in Customer'}</span>
           </div>
-          {order.customer_phone && <div style={{ fontSize: 13, color: '#475569', marginLeft: 22 }}>{order.customer_phone}</div>}
+          {order.customer_phone && <div className="stg-note" style={{ marginLeft: 22 }}>{order.customer_phone}</div>}
         </div>
-        <div style={{ background: 'white', borderRadius: 10, padding: '1.25rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <h4 style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Order Info</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: 13 }}>
-            <div><span style={{ color: '#94a3b8' }}>Product:</span> <span style={{ fontWeight: 600 }}>{order.product_type}</span></div>
-            <div><span style={{ color: '#94a3b8' }}>Paper:</span> <span style={{ fontWeight: 600 }}>{order.paper_type}</span></div>
-            <div><span style={{ color: '#94a3b8' }}>Pages:</span> <span style={{ fontWeight: 600 }}>{order.pages_per_copy}</span></div>
-            <div><span style={{ color: '#94a3b8' }}>Qty:</span> <span style={{ fontWeight: 600 }}>{order.quantity}</span></div>
-            <div><span style={{ color: '#94a3b8' }}>Binding:</span> <span style={{ fontWeight: 600 }}>{order.binding_type || 'None'}</span></div>
-            <div><span style={{ color: '#94a3b8' }}>Color:</span> <span style={{ fontWeight: 600 }}>{order.color_printing ? 'Yes (×2)' : 'No'}</span></div>
-            <div><span style={{ color: '#94a3b8' }}>Due:</span> <span style={{ fontWeight: 600 }}>{order.due_date ? new Date(order.due_date).toLocaleDateString() : '-'}</span></div>
-            <div><span style={{ color: '#94a3b8' }}>Created by:</span> <span style={{ fontWeight: 600 }}>{order.created_by_name || '-'}</span></div>
+        
+        <div>
+          <h4 className="stg-note-label" style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 1 }}>Order Info</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '1rem' }}>
+            <div><span className="stg-muted">Product:</span> <span className="stg-strong">{order.product_type}</span></div>
+            <div><span className="stg-muted">Paper:</span> <span className="stg-strong">{order.paper_type}</span></div>
+            <div><span className="stg-muted">Pages:</span> <span className="stg-strong">{order.pages_per_copy}</span></div>
+            <div><span className="stg-muted">Qty:</span> <span className="stg-strong">{order.quantity}</span></div>
+            <div><span className="stg-muted">Binding:</span> <span className="stg-strong">{order.binding_type || 'None'}</span></div>
+            <div><span className="stg-muted">Color:</span> <span className="stg-strong">{order.color_printing ? 'Yes (×2)' : 'No'}</span></div>
+            <div><span className="stg-muted">Due:</span> <span className="stg-strong">{order.due_date ? new Date(order.due_date).toLocaleDateString() : '-'}</span></div>
+            <div><span className="stg-muted">Created by:</span> <span className="stg-strong">{order.created_by_name || '-'}</span></div>
           </div>
-        </div>
-      </div>
-
-      <div style={{ background: 'white', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <h4 style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Pricing</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem' }}>
-          <div><span style={{ fontSize: 12, color: '#64748b' }}>Price/Unit</span><div style={{ fontSize: 16, fontWeight: 700 }}>{parseFloat(order.price_per_unit || 0).toFixed(2)} ETB</div></div>
-          <div><span style={{ fontSize: 12, color: '#64748b' }}>Binding Cost</span><div style={{ fontSize: 16, fontWeight: 700 }}>{parseFloat(order.binding_cost || 0).toFixed(2)} ETB</div></div>
-          <div><span style={{ fontSize: 12, color: '#64748b' }}>VAT Amount</span><div style={{ fontSize: 16, fontWeight: 700 }}>{parseFloat(order.vat_amount || 0).toFixed(2)} ETB</div></div>
-          <div><span style={{ fontSize: 12, color: '#64748b' }}>Total (incl. VAT)</span><div style={{ fontSize: 20, fontWeight: 700, color: '#059669' }}>{parseFloat(order.total_price || 0).toLocaleString()} ETB</div></div>
         </div>
       </div>
 
-      <div style={{ background: 'white', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <h4 style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Payment / Finance View</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
-          <div><span style={{ fontSize: 12, color: '#94a3b8' }}>Payment Status</span>
-            <div style={{ fontSize: 14, fontWeight: 700, color: order.payment_status === 'Confirmed' ? '#16a34a' : order.payment_status === 'Rejected' ? '#ef4444' : '#ea580c' }}>
-              {order.payment_status === 'Confirmed' ? '✅ Confirmed' : order.payment_status === 'Rejected' ? '❌ Rejected' : '⏳ Pending'}
-            </div>
+      <div className="stg-detail-grid">
+        <div>
+          <div className="stg-detail-label">Price/Unit</div>
+          <div className="stg-detail-value">{parseFloat(order.price_per_unit || 0).toFixed(2)} ETB</div>
+        </div>
+        <div>
+          <div className="stg-detail-label">Binding Cost</div>
+          <div className="stg-detail-value">{parseFloat(order.binding_cost || 0).toFixed(2)} ETB</div>
+        </div>
+        <div>
+          <div className="stg-detail-label">VAT Amount</div>
+          <div className="stg-detail-value">{parseFloat(order.vat_amount || 0).toFixed(2)} ETB</div>
+        </div>
+        <div>
+          <div className="stg-detail-label">Total (incl. VAT)</div>
+          <div className="stg-detail-value" style={{ color: 'hsl(var(--success))', fontWeight: 500 }}>{parseFloat(order.total_price || 0).toLocaleString()} ETB</div>
+        </div>
+      </div>
+
+      <div className="stg-detail-grid">
+        <div>
+          <div className="stg-detail-label">Payment Status</div>
+          <div className="stg-detail-value" style={{ color: order.payment_status === 'Confirmed' ? 'hsl(var(--success))' : order.payment_status === 'Rejected' ? 'hsl(var(--danger))' : 'hsl(var(--warning))' }}>
+            {order.payment_status === 'Confirmed' ? '✅ Confirmed' : order.payment_status === 'Rejected' ? '❌ Rejected' : '⏳ Pending'}
           </div>
-          <div><span style={{ fontSize: 12, color: '#94a3b8' }}>Payment Method</span><div style={{ fontSize: 14, fontWeight: 600 }}>{order.payment_method || '—'}</div></div>
-          <div><span style={{ fontSize: 12, color: '#94a3b8' }}>Payment Reference</span><div style={{ fontSize: 13, fontWeight: 600, fontFamily: 'monospace' }}>{order.payment_reference || '—'}</div></div>
-          <div><span style={{ fontSize: 12, color: '#94a3b8' }}>Amount (incl. VAT)</span><div style={{ fontSize: 16, fontWeight: 700, color: '#059669' }}>{parseFloat(order.total_price || 0).toLocaleString()} ETB</div></div>
+        </div>
+        <div>
+          <div className="stg-detail-label">Payment Method</div>
+          <div className="stg-detail-value">{order.payment_method || 'Not Specified'}</div>
+        </div>
+        <div>
+          <div className="stg-detail-label">Payment Reference</div>
+          <div className="stg-detail-value" style={{ fontFamily: 'monospace' }}>{order.payment_reference || 'N/A'}</div>
+        </div>
+        <div>
+          <div className="stg-detail-label">Amount (incl. VAT)</div>
+          <div className="stg-detail-value" style={{ color: 'hsl(var(--success))', fontWeight: 500 }}>{parseFloat(order.total_price || 0).toLocaleString()} ETB</div>
         </div>
       </div>
 
       {!isDelivered && !isCancelled && (
-        <div style={{ background: 'white', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <h4 style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Status Progress</h4>
+        <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', marginBottom: '2rem' }}>
+          <h4 className="stg-note-label" style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 1, marginBottom: '1rem' }}>Status Progress</h4>
           
-          {/* Payment status banner */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, marginBottom: 14,
-            background: order.payment_status === 'Confirmed' ? '#dcfce7' : '#fff7ed',
-            border: `1px solid ${order.payment_status === 'Confirmed' ? '#86efac' : '#fed7aa'}`
+          <div className="stg-alert" style={{ 
+            borderColor: order.payment_status === 'Confirmed' ? 'hsl(var(--success))' : 'hsl(var(--warning))',
+            color: order.payment_status === 'Confirmed' ? 'hsl(var(--success))' : 'hsl(var(--warning))'
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: order.payment_status === 'Confirmed' ? '#16a34a' : '#ea580c' }}>
+            <span style={{ fontWeight: 500 }}>
               {order.payment_status === 'Confirmed'
                 ? '✅ Payment Confirmed by Finance — Order can proceed to printing'
                 : '⏳ Awaiting Finance Payment Confirmation — Cannot proceed to In Progress until Finance approves'}
@@ -176,11 +188,12 @@ const PrintingOrderDetail = () => {
 
               return (
                 <button key={s} onClick={() => canProceed && updateStatus(s)} disabled={!canProceed || updating}
+                  className={done ? 'stg-btn stg-btn--success' : canProceed ? 'stg-btn stg-btn--primary' : 'stg-btn stg-btn--ghost'}
                   style={{
-                    padding: '8px 16px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 600,
-                    background: done ? '#059669' : (canProceed ? '#2563eb' : '#f1f5f9'),
-                    color: done ? 'white' : (canProceed ? 'white' : '#94a3b8'),
                     cursor: (canProceed && !updating) ? 'pointer' : 'not-allowed',
+                    opacity: (!done && !canProceed) ? 0.6 : 1,
+                    background: (!done && !canProceed) ? 'hsl(var(--muted))' : undefined,
+                    border: (!done && !canProceed) ? 'none' : undefined,
                   }}>
                   {STATUS_LABELS[s] || s.replace(/_/g, ' ')}
                 </button>
@@ -191,28 +204,28 @@ const PrintingOrderDetail = () => {
       )}
 
       {order.special_instructions && (
-        <div style={{ background: '#fffbeb', borderRadius: 10, padding: '1rem', marginBottom: '1.5rem', border: '1px solid #fde68a' }}>
-          <h4 style={{ margin: '0 0 0.5rem', fontSize: 12, color: '#92400e', textTransform: 'uppercase', letterSpacing: 1 }}>Special Instructions</h4>
-          <p style={{ margin: 0, fontSize: 13, color: '#78350f' }}>{order.special_instructions}</p>
+        <div className="stg-note-box" style={{ background: 'hsla(var(--warning), 0.1)', padding: '1rem', borderLeft: '4px solid hsl(var(--warning))' }}>
+          <h4 className="stg-note-label" style={{ fontSize: 12, color: 'hsl(var(--warning))', textTransform: 'uppercase', letterSpacing: 1 }}>Special Instructions</h4>
+          <p className="stg-note-text" style={{ color: 'hsl(var(--foreground))' }}>{order.special_instructions}</p>
         </div>
       )}
 
       <button onClick={() => setShowHistory(!showHistory)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, padding: 0 }}>
+        className="stg-btn stg-btn--ghost stg-btn--sm" style={{ border: 'none' }}>
         <Clock size={14} /> Status History {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
 
       {showHistory && (
-        <div style={{ marginTop: '0.75rem', background: 'white', borderRadius: 10, padding: '1rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="stg-note-box">
           {history.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#94a3b8' }}>No history recorded.</p>
+            <p className="stg-note">No history recorded.</p>
           ) : (
             history.map(h => (
-              <div key={h.id || h.created_at} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>
-                <div style={{ minWidth: 120, color: '#94a3b8' }}>{new Date(h.created_at || h.changed_at).toLocaleString()}</div>
-                <div style={{ fontWeight: 600 }}>{h.status_name || h.status_code}</div>
-                <div style={{ color: '#64748b' }}>{h.changed_by_name || '-'}</div>
-                {h.notes && <div style={{ color: '#94a3b8' }}>- {h.notes}</div>}
+              <div key={h.id || h.created_at} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid hsl(var(--border))', fontSize: '1rem' }}>
+                <div style={{ minWidth: 160, color: 'hsl(var(--muted-foreground))' }}>{new Date(h.created_at || h.changed_at).toLocaleString()}</div>
+                <div style={{ fontWeight: 500, color: 'hsl(var(--foreground))' }}>{h.status_name || h.status_code}</div>
+                <div style={{ color: 'hsl(var(--muted-foreground))' }}>{h.changed_by_name || '-'}</div>
+                {h.notes && <div className="stg-note">- {h.notes}</div>}
               </div>
             ))
           )}
