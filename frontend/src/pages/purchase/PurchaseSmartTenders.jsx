@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import api from '../../services/apiClient';
 import {
   PlusCircle, FileText, BarChart2, Star, X, CheckCircle,
-  Clock, AlertCircle, ChevronRight, TrendingDown, TrendingUp, Minus,
+  Clock, AlertCircle, ChevronRight, ChevronDown, TrendingDown, TrendingUp, Minus,
   Phone, Mail, Save, MessageCircle, Send, XCircle, Info, Wallet, Eye
 } from 'lucide-react';
 
@@ -39,6 +39,19 @@ const BidStatusBadge = ({ status }) => {
       background: s.bg, color: s.color
     }}>{s.label}</span>
   );
+};
+
+const PaymentStatusBadge = ({ status }) => {
+  if (!status || status === 'pending') return (
+    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#fef9c3', color: '#854d0e' }}>⏳ Awaiting Finance</span>
+  );
+  if (status === 'confirmed') return (
+    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#dcfce7', color: '#166534' }}>✅ Finance Confirmed</span>
+  );
+  if (status === 'rejected') return (
+    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#fee2e2', color: '#991b1b' }}>❌ Finance Rejected</span>
+  );
+  return <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#f1f5f9', color: '#475569' }}>{status}</span>;
 };
 
 // ─── Tab Button ──────────────────────────────────────────────────────────────
@@ -823,217 +836,292 @@ This is an official award notification from SUTANA's procurement system.
           TAB: EVALUATE BIDS
       ══════════════════════════════════════════════════ */}
       {activeTab === 'evaluate' && (
-        <div style={{ display: 'grid', gridTemplateColumns: selectedTender ? '340px 1fr' : '1fr', gap: '24px', alignItems: 'start' }}>
-
-          {/* Tender selector */}
-          <div className="pst-card">
-            <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={16} color="#3b82f6" /> Select Tender
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {tenders.map(t => (
-                <div key={t.id} onClick={() => loadBids(t)}
-                  style={{
-                    padding: '14px', border: '1.5px solid', cursor: 'pointer',
-                    borderColor: selectedTender?.id === t.id ? '#3b82f6' : '#e2e8f0',
-                    background: selectedTender?.id === t.id ? '#eff6ff' : 'white',
-                    borderRadius: '10px', transition: 'all 0.2s'
-                  }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#3b82f6' }}>{t.tender_number || `TND-${t.id}`}</span>
-                    <StatusBadge status={t.status} />
-                  </div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '14px', marginBottom: '4px' }}>{t.title}</div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>
-                    📦 {t.items?.length || 0} items · 📨 {t.bids_count || 0} bids
-                  </div>
-                </div>
-              ))}
-              {tenders.length === 0 && <p style={{ color: '#94a3b8', fontSize: '14px' }}>No tenders yet.</p>}
+        <div className="pst-card" style={{ overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BarChart2 size={16} color="#3b82f6" /> Evaluate Bids
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>
+                Click a tender row to open its evaluation detail below it.
+              </p>
             </div>
           </div>
 
-          {/* Bids Evaluation Panel */}
-          {selectedTender && (
-            <div>
-              {/* Header */}
-              <div className="pst-card">
-                <div>
-                  <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 700, fontFamily: 'monospace', marginBottom: '4px' }}>{selectedTender.tender_number || `TND-${selectedTender.id}`}</div>
-                  <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{selectedTender.title}</h2>
-                  <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', gap: '16px' }}>
-                    {selectedTender.category && <span>🏷️ {selectedTender.category}</span>}
-                    {selectedTender.closing_date && <span>📅 Closes: {new Date(selectedTender.closing_date).toLocaleDateString()}</span>}
-                    <StatusBadge status={selectedTender.status} />
-                  </div>
-                </div>
-                {selectedTender.terms_conditions && (
-                  <div style={{
-                    marginTop: '14px', padding: '14px 16px', background: '#fffbeb',
-                    border: '1px solid #fde68a', borderRadius: '10px', fontSize: '13px', color: '#78350f', lineHeight: 1.65
-                  }}>
-                    <div style={{ fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase', letterSpacing: '0.4px', fontSize: '11px' }}>
-                      <FileText size={13} /> Terms &amp; Conditions Suppliers Accepted
-                    </div>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{selectedTender.terms_conditions}</div>
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  {selectedTender.status === 'awarded' && !selectedTender.purchase_read && (
-                    <button onClick={async () => {
-                      try {
-                        await api.post('/erp/purchase-mark-read', { id: selectedTender.id });
-                        showToast('Marked as read', 'success');
-                        setSelectedTender(prev => ({ ...prev, purchase_read: 1 }));
-                        setTenders(prev => prev.map(t => t.id === selectedTender.id ? { ...t, purchase_read: 1 } : t));
-                        window.dispatchEvent(new Event('refreshNotifications'));
-                      } catch (err) {
-                        showToast('Error: ' + (err?.response?.data?.message || err.message), 'error');
-                      }
-                    }}
-                      style={{ padding: '9px 18px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <CheckCircle size={14} /> Mark as Read
-                    </button>
-                  )}
-                  {selectedTender.status === 'published' && (
-                    <button onClick={() => handleCloseTender(selectedTender.id)}
-                      style={{ padding: '9px 18px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}>
-                      🔒 Close Tender
-                    </button>
-                  )}
-                  <button onClick={handleSubmitCEO}
-                    style={{ padding: '9px 18px', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '13px', boxShadow: '0 3px 10px rgba(16,185,129,0.3)' }}>
-                    ✅ Submit to CEO
-                  </button>
-                </div>
-              </div>
+          <div style={{ overflowX: 'auto', width: '100%' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '760px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
+                  {['Tender No.', 'Title', 'Category', 'Items', 'Bids', 'Status', ''].map(h => (
+                    <th key={h} style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tenders.map(t => (
+                  <React.Fragment key={t.id}>
+                    <tr
+                      onClick={() => {
+                        if (selectedTender?.id === t.id) {
+                          setSelectedTender(null);
+                          setBidsData([]);
+                        } else {
+                          loadBids(t);
+                        }
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                        borderBottom: selectedTender?.id === t.id ? 'none' : '1px solid #f1f5f9',
+                        background: selectedTender?.id === t.id ? '#eff6ff' : 'white'
+                      }}
+                    >
+                      <td style={{ padding: '14px 16px', fontWeight: 700, color: '#3b82f6', fontFamily: 'monospace', fontSize: '13px' }}>{t.tender_number || `TND-${t.id}`}</td>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: '#0f172a' }}>{t.title}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748b' }}>{t.category || '—'}</td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span style={{ background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '12px', fontSize: '13px', fontWeight: 700 }}>{t.items?.length || 0}</span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span style={{ background: t.bids_count > 0 ? '#eff6ff' : '#f8fafc', color: t.bids_count > 0 ? '#2563eb' : '#94a3b8', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', fontSize: '13px' }}>
+                          {t.bids_count}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}><StatusBadge status={t.status} /></td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center', color: '#94a3b8' }}>
+                        <ChevronDown size={16} style={{ transform: selectedTender?.id === t.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                      </td>
+                    </tr>
 
-              {loadingBids ? (
-                <div className="segmented-spinner"></div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {bidsData.map(group => {
-                    const { tenderItem, bids, analytics } = group;
-                    return (
-                      <div key={tenderItem.id} style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                        {/* Item Header */}
-                        <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>Product</span>
-                            <h3 style={{ margin: '2px 0 0', color: 'white', fontSize: '17px', fontWeight: 700 }}>
-                              {tenderItem.object_type}
-                            </h3>
-                            <span style={{ fontSize: '12px', color: '#64748b' }}>
-                              Qty: {tenderItem.quantity} {tenderItem.unit}
-                            </span>
-                          </div>
-
-                          {/* Analytics strip */}
-                          {analytics && bids.length > 0 && (
-                            <div style={{ display: 'flex', gap: '16px' }}>
-                              {[
-                                { label: 'Lowest', value: analytics.lowest?.toFixed(2), icon: <TrendingDown size={14} />, color: '#34d399' },
-                                { label: 'Average', value: analytics.average?.toFixed(2), icon: <Minus size={14} />, color: '#fbbf24' },
-                                { label: 'Highest', value: analytics.highest?.toFixed(2), icon: <TrendingUp size={14} />, color: '#f87171' },
-                                { label: 'Variance', value: analytics.variance?.toFixed(2), icon: <BarChart2 size={14} />, color: '#a78bfa' },
-                              ].map(m => (
-                                <div key={m.label} style={{ textAlign: 'center' }}>
-                                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '2px' }}>{m.label}</div>
-                                  <div style={{ color: m.color, fontWeight: 800, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    {m.icon} {m.value}
+                    {selectedTender?.id === t.id && (
+                      <tr>
+                        <td colSpan={7} style={{ padding: 0, borderBottom: '1px solid #e2e8f0' }}>
+                          <div style={{ padding: '20px', background: '#f8fafc' }}>
+                            {/* Bids Evaluation Detail */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+                              {/* Header */}
+                              <div className="pst-card">
+                                <div>
+                                  <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 700, fontFamily: 'monospace', marginBottom: '4px' }}>{selectedTender.tender_number || `TND-${selectedTender.id}`}</div>
+                                  <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{selectedTender.title}</h2>
+                                  <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                    {selectedTender.category && <span>🏷️ {selectedTender.category}</span>}
+                                    {selectedTender.closing_date && <span>📅 Closes: {new Date(selectedTender.closing_date).toLocaleDateString()}</span>}
+                                    <StatusBadge status={selectedTender.status} />
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Bids Table */}
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: '900px' }}>
-                            <thead>
-                              <tr style={{ background: '#f8fafc' }}>
-                                {['Rank', 'Supplier', 'Email / Phone', 'Price (Birr.Cent)', 'Total (Birr.Cent)', 'Delivery', 'Payment Terms', 'Payment Method', 'Status', 'Action'].map(h => (
-                                  <th key={h} style={{ padding: '10px 14px', fontWeight: 600, color: '#64748b', fontSize: '11px', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {bids.length === 0 ? (
-                                <tr><td colSpan="9" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No bids for this product yet.</td></tr>
-                              ) : (
-                                bids.map((bid, idx) => (
-                                  <tr key={bid.id} style={{
-                                    background: bid.bid_status === 'recommended' ? '#f0fdf4' : idx === 0 ? '#fefce8' : 'white',
-                                    borderBottom: '1px solid #f1f5f9'
+                                {selectedTender.terms_conditions && (
+                                  <div style={{
+                                    marginTop: '14px', padding: '14px 16px', background: '#fffbeb',
+                                    border: '1px solid #fde68a', borderRadius: '10px', fontSize: '13px', color: '#78350f', lineHeight: 1.65
                                   }}>
-                                    <td style={{ padding: '12px 14px', fontWeight: 700 }}>
-                                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}th`}
-                                    </td>
-                                    <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>{bid.competitor_name}</td>
-                                    <td style={{ padding: '12px 14px', color: '#64748b', fontSize: '12px' }}>
-                                      <div>{bid.email || '—'}</div>
-                                      <div>{bid.phone || '—'}</div>
-                                    </td>
-                                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>
-                                      {bid.price_birr}.{String(bid.price_cent || 0).padStart(2, '0')}
-                                    </td>
-                                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: 700 }}>
-                                      {bid.total_birr}.{String(bid.total_cent || 0).padStart(2, '0')}
-                                    </td>
-                                    <td style={{ padding: '12px 14px', color: '#64748b' }}>{bid.delivery_time || '—'}</td>
-                                    <td style={{ padding: '12px 14px', color: '#64748b' }}>{bid.payment_terms || '—'}</td>
-                                    <td style={{ padding: '12px 14px' }}>
-                                      {bid.payment_method ? (
-                                        <span style={{
-                                          padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
-                                          background: bid.payment_method === 'Telebirr' ? '#FEF3C7' : bid.payment_method === 'Bank Transfer' ? '#E0F2FE' : bid.payment_method === 'Cash' ? '#DCFCE7' : '#F3F4F6',
-                                          color: bid.payment_method === 'Telebirr' ? '#D97706' : bid.payment_method === 'Bank Transfer' ? '#0284C7' : bid.payment_method === 'Cash' ? '#16A34A' : '#475569'
-                                        }}>
-                                          {bid.payment_method === 'Telebirr' ? '📱' : bid.payment_method === 'Bank Transfer' ? '🏦' : bid.payment_method === 'Cash' ? '💵' : '📄'} {bid.payment_method}
-                                        </span>
-                                      ) : '—'}
-                                    </td>
-                                    <td style={{ padding: '12px 14px' }}><BidStatusBadge status={bid.bid_status} /></td>
-                                    <td style={{ padding: '12px 14px' }}>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        {bid.bid_status === 'winner' ? (
-                                          <>
-                                            <span style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 700 }}>🏆 Winner</span>
-                                            <button
-                                              onClick={() => handleSendAwardEmail(bid)}
-                                              style={{ padding: '5px 10px', background: 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-                                              <Mail size={11} /> Send Award Email
-                                            </button>
-                                          </>
-                                        ) : bid.bid_status !== 'recommended' ? (
-                                          <button onClick={() => setReasonModal({ bidId: bid.id, name: bid.competitor_name, bid: bid })}
-                                            style={{ padding: '5px 12px', background: '#eff6ff', color: '#2563eb', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <Star size={12} /> Recommend
-                                          </button>
-                                        ) : (
-                                          <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>✅ Recommended</span>
+                                    <div style={{ fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase', letterSpacing: '0.4px', fontSize: '11px' }}>
+                                      <FileText size={13} /> Terms &amp; Conditions Suppliers Accepted
+                                    </div>
+                                    <div style={{ whiteSpace: 'pre-wrap' }}>{selectedTender.terms_conditions}</div>
+                                  </div>
+                                )}
+                                {/* Action buttons */}
+                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
+                                  {selectedTender.status === 'awarded' && !selectedTender.purchase_read && (
+                                    <button onClick={async () => {
+                                      try {
+                                        await api.post('/erp/purchase-mark-read', { id: selectedTender.id });
+                                        showToast('Marked as read', 'success');
+                                        setSelectedTender(prev => ({ ...prev, purchase_read: 1 }));
+                                        setTenders(prev => prev.map(t => t.id === selectedTender.id ? { ...t, purchase_read: 1 } : t));
+                                        window.dispatchEvent(new Event('refreshNotifications'));
+                                      } catch (err) {
+                                        showToast('Error: ' + (err?.response?.data?.message || err.message), 'error');
+                                      }
+                                    }}
+                                      style={{ padding: '9px 18px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <CheckCircle size={14} /> Mark as Read
+                                    </button>
+                                  )}
+                                  {selectedTender.status === 'published' && (
+                                    <button onClick={() => handleCloseTender(selectedTender.id)}
+                                      style={{ padding: '9px 18px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}>
+                                      🔒 Close Tender
+                                    </button>
+                                  )}
+                                  {/* Submit to CEO — only enabled if all winner/recommended bids have Finance confirmed */}
+                                  {(() => {
+                                    const allBids = bidsData.flatMap(g => g.bids || []);
+                                    const awardedBids = allBids.filter(b => ['winner', 'recommended'].includes((b.bid_status || '').toLowerCase()));
+                                    const allFinanceConfirmed = awardedBids.length > 0 && awardedBids.every(b => b.payment_status === 'confirmed');
+                                    const canSubmit = allFinanceConfirmed;
+                                    return (
+                                      <button
+                                        onClick={canSubmit ? handleSubmitCEO : () => showToast('⏳ Cannot submit yet. Finance must confirm payment for all recommended/winner bids first.', 'error')}
+                                        style={{
+                                          padding: '9px 18px',
+                                          background: canSubmit ? 'linear-gradient(135deg, #10b981, #059669)' : '#e2e8f0',
+                                          color: canSubmit ? 'white' : '#94a3b8',
+                                          border: 'none', borderRadius: '8px', fontWeight: 700,
+                                          cursor: canSubmit ? 'pointer' : 'not-allowed',
+                                          fontSize: '13px',
+                                          boxShadow: canSubmit ? '0 3px 10px rgba(16,185,129,0.3)' : 'none',
+                                          display: 'flex', alignItems: 'center', gap: '6px'
+                                        }}
+                                        title={canSubmit ? 'Submit to CEO for final approval' : 'Finance must confirm payment for all winner/recommended bids first'}
+                                      >
+                                        {canSubmit ? '✅' : '🔒'} Submit to CEO
+                                        {!canSubmit && <span style={{ fontSize: '11px', fontWeight: 500 }}>(Awaiting Finance)</span>}
+                                      </button>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+
+                              {loadingBids ? (
+                                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                                  <div className="segmented-spinner"></div>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                  {bidsData.map(group => {
+                                    const { tenderItem, bids, analytics } = group;
+                                    return (
+                                      <div key={tenderItem.id} style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                                        {/* Item Header */}
+                                        <div style={{ background: '#ffffff', padding: '14px 20px', borderBottom: '1px solid #e2e8f0', borderLeft: '4px solid #3b82f6' }}>
+                                          <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Product</span>
+                                          <h3 style={{ margin: '2px 0 0', color: '#0f172a', fontSize: '17px', fontWeight: 700 }}>
+                                            {tenderItem.object_type}
+                                          </h3>
+                                          <span style={{ fontSize: '12px', color: '#475569' }}>
+                                            Qty: {tenderItem.quantity} {tenderItem.unit}
+                                          </span>
+                                        </div>
+
+                                        {/* Analytics strip — full width, evenly spread (not right side only) */}
+                                        {analytics && bids.length > 0 && (
+                                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: '#e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                                            {[
+                                              { label: 'Lowest', value: analytics.lowest?.toFixed(2), icon: <TrendingDown size={14} />, color: '#059669' },
+                                              { label: 'Average', value: analytics.average?.toFixed(2), icon: <Minus size={14} />, color: '#b45309' },
+                                              { label: 'Highest', value: analytics.highest?.toFixed(2), icon: <TrendingUp size={14} />, color: '#dc2626' },
+                                              { label: 'Variance', value: analytics.variance?.toFixed(2), icon: <BarChart2 size={14} />, color: '#7c3aed' },
+                                            ].map(m => (
+                                              <div key={m.label} style={{ background: '#fff', padding: '10px 8px', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>{m.label}</div>
+                                                <div style={{ color: m.color, fontWeight: 800, fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', overflowWrap: 'anywhere' }}>
+                                                  {m.icon} {m.value}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
                                         )}
+
+                                        {/* Bids Table — scrollable horizontally within its container */}
+                                        <div style={{ overflowX: 'auto', width: '100%' }}>
+                                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', tableLayout: 'auto', minWidth: '0' }}>
+                                            <thead>
+                                              <tr style={{ background: '#f8fafc' }}>
+                                                {['Rank', 'Supplier', 'Email / Phone', 'Price (Birr.Cent)', 'Total (Birr.Cent)', 'Delivery', 'Payment Terms', 'Payment Method', 'Status', 'Finance', 'Action'].map(h => (
+                                                  <th key={h} style={{ padding: '10px 8px', fontWeight: 600, color: '#64748b', fontSize: '11px', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', whiteSpace: 'normal', textAlign: 'center' }}>{h}</th>
+                                                ))}
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {bids.length === 0 ? (
+                                                <tr><td colSpan="11" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No bids for this product yet.</td></tr>
+                                              ) : (
+                                                bids.map((bid, idx) => (
+                                                  <tr key={bid.id} style={{
+                                                    background: bid.bid_status === 'recommended' ? '#f0fdf4' : idx === 0 ? '#fefce8' : 'white',
+                                                    borderBottom: '1px solid #f1f5f9'
+                                                  }}>
+                                                    <td style={{ padding: '12px 14px', fontWeight: 700 }}>
+                                                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}th`}
+                                                    </td>
+                                                    <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>{bid.competitor_name}</td>
+                                                    <td style={{ padding: '10px 8px', color: '#64748b', fontSize: '12px', overflowWrap: 'break-word' }}>
+                                                      <div>{bid.email || '—'}</div>
+                                                      <div>{bid.phone || '—'}</div>
+                                                    </td>
+                                                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>
+                                                      {bid.price_birr}.{String(bid.price_cent || 0).padStart(2, '0')}
+                                                    </td>
+                                                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: 700 }}>
+                                                      {bid.total_birr}.{String(bid.total_cent || 0).padStart(2, '0')}
+                                                    </td>
+                                                    <td style={{ padding: '12px 14px', color: '#64748b' }}>{bid.delivery_time || '—'}</td>
+                                                    <td style={{ padding: '12px 14px', color: '#64748b' }}>{bid.payment_terms || '—'}</td>
+                                                    <td style={{ padding: '12px 14px' }}>
+                                                      {bid.payment_method ? (() => {
+                                                        const isTelebirr = bid.payment_method.startsWith('Telebirr');
+                                                        const isBank = bid.payment_method.startsWith('Bank Transfer');
+                                                        const parts = bid.payment_method.split('::');
+                                                        const methodLabel = parts[0];
+                                                        const accNum = parts.length > 1 ? `#${parts[1]}` : '';
+                                                        return (
+                                                          <span style={{
+                                                            display: 'inline-flex', flexDirection: 'column', gap: '2px',
+                                                            padding: '4px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
+                                                            background: isTelebirr ? '#FEF3C7' : isBank ? '#E0F2FE' : '#F3F4F6',
+                                                            color: isTelebirr ? '#D97706' : isBank ? '#0284C7' : '#475569'
+                                                          }}>
+                                                            <span>{isTelebirr ? '📱' : isBank ? '🏦' : '📄'} {methodLabel}</span>
+                                                            {accNum && <span style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: '10px', opacity: 0.85 }}>[Acct {accNum}]</span>}
+                                                          </span>
+                                                        );
+                                                      })() : '—'}
+                                                    </td>
+                                                    <td style={{ padding: '12px 14px' }}><BidStatusBadge status={bid.bid_status} /></td>
+                                                    <td style={{ padding: '12px 14px' }}><PaymentStatusBadge status={bid.payment_status} /></td>
+                                                    <td style={{ padding: '12px 14px' }}>
+                                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                        {bid.bid_status === 'winner' ? (
+                                                          <>
+                                                            <span style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 700 }}>🏆 Winner</span>
+                                                            <button
+                                                              onClick={() => handleSendAwardEmail(bid)}
+                                                              style={{ padding: '5px 10px', background: 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                                                              <Mail size={11} /> Send Award Email
+                                                            </button>
+                                                          </>
+                                                        ) : bid.bid_status !== 'recommended' ? (
+                                                          <button onClick={() => setReasonModal({ bidId: bid.id, name: bid.competitor_name, bid: bid })}
+                                                            style={{ padding: '5px 12px', background: '#eff6ff', color: '#2563eb', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <Star size={12} /> Recommend
+                                                          </button>
+                                                        ) : (
+                                                          <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>✅ Recommended</span>
+                                                        )}
+                                                      </div>
+                                                    </td>
+                                                  </tr>
+                                                ))
+                                              )}
+                                            </tbody>
+                                          </table>
+                                        </div>
                                       </div>
-                                    </td>
-                                  </tr>
-                                ))
+                                    );
+                                  })}
+                                  {bidsData.length === 0 && (
+                                    <div style={{ background: 'white', borderRadius: '14px', padding: '60px', textAlign: 'center', color: '#94a3b8', border: '1px dashed #e2e8f0' }}>
+                                      No product items found in this tender.
+                                    </div>
+                                  )}
+                                </div>
                               )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {bidsData.length === 0 && (
-                    <div style={{ background: 'white', borderRadius: '14px', padding: '60px', textAlign: 'center', color: '#94a3b8', border: '1px dashed #e2e8f0' }}>
-                      No product items found in this tender.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+                {tenders.length === 0 && (
+                  <tr><td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>No tenders yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
