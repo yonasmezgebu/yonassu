@@ -41,6 +41,15 @@ router.delete('/my-bids/:id/hide', authenticate, async (req, res) => {
   await db('bids').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
   res.json({ message: 'Bid removed from your dashboard' });
 });
+router.put('/my-bids/:id/cancel', authenticate, async (req, res) => {
+  const { db } = require('../../config/database');
+  const bid = await db('bids').where({ id: req.params.id, customer_id: req.user.id }).first();
+  if (!bid) return res.status(404).json({ message: 'Bid not found' });
+  const completedStatuses = ['cancelled', 'rejected', 'not_selected', 'disqualified'];
+  if (completedStatuses.includes((bid.status || '').toLowerCase())) return res.status(400).json({ message: 'Bid is already cancelled or rejected' });
+  await db('bids').where({ id: req.params.id }).update({ status: 'cancelled' });
+  res.json({ status: 'success', message: 'Bid cancelled' });
+});
 router.post('/:tenderId/bid', authenticate, bidController.submitBid);
 router.put('/:tenderId/bid', authenticate, bidController.updateMyBid);
 router.get('/:tenderId/my-bid', authenticate, bidController.getMyBid);
@@ -67,5 +76,6 @@ router.put('/bids/:bidId/evaluate', bidController.addEvaluation);
 router.put('/bids/:bidId/disqualify', bidController.disqualify);
 router.put('/bids/:bidId/mark-opened', authenticate, authorizeRoles(['Sales Manager', 'Admin']), bidController.markOpened);
 router.put('/bids/:bidId/mark-sent', authenticate, authorizeRoles(['Sales Manager', 'Admin']), bidController.markEmailSent);
+router.put('/bids/:bidId/payment-status', authenticate, authorizeRoles(['Finance', 'Sales Manager', 'Admin']), bidController.updateBidPaymentStatus);
 
 module.exports = router;
