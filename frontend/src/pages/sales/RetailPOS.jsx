@@ -972,20 +972,31 @@ const addToCart = (item) => {
     setOrderRequestId(order.id); // track the order_request id for later approval
 
     // Customer info
-    setRecipientName(order.customer_name || '');
-    setRecipientPhone(order.customer_phone || '');
-    setPayerName(order.customer_name || '');
-    setPayerPhone(order.customer_phone || '');
+    const custName = order.customer_name || 'Customer';
+    const custPhone = order.customer_phone || '';
+    setRecipientName(custName);
+    setRecipientPhone(custPhone);
+    setPayerName(custName);
+    setPayerPhone(custPhone);
     setPaymentAmount(parseFloat(order.total_amount || 0).toFixed(2));
     setPaymentStatus(order.payment_status || 'PAID');
     
     // Set correct payment details
     const method = String(order.payment_method || '').toUpperCase();
-    if (method.includes('BANK')) setPosPaymentMethod('BANK_TRANSFER');
-    else if (method.includes('TELEBIRR') || method.includes('TELBIR') || method.includes('MOBILE')) setPosPaymentMethod('TELBIR');
-    else setPosPaymentMethod('CASH');
+    if (method.includes('BANK')) {
+      setPosPaymentMethod('BANK_TRANSFER');
+      setBankName(order.payment_method || 'Bank Transfer');
+      setAccountHolder(custName);
+      setAccountNumber(custPhone);
+    } else if (method.includes('TELEBIRR') || method.includes('TELBIR') || method.includes('MOBILE')) {
+      setPosPaymentMethod('TELBIR');
+      setTelbirNumber(custPhone);
+      setPayerName(custName);
+    } else {
+      setPosPaymentMethod('CASH');
+    }
 
-    setTxnId(order.payment_ref || '');
+    setTxnId(order.payment_ref || 'N/A');
     setTab('retail-walkin');
     setShowCart(true);
   };
