@@ -2,6 +2,17 @@ import axios from 'axios';
 import { apiLoadingEvents } from '../components/ui/GlobalLoader';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+// Convert a backend-relative path (e.g. /uploads/orders/x.png) into an absolute
+// URL at the same backend origin the API talks to — so opening files in the
+// browser works even when the frontend isn't proxying /uploads (built/preview).
+const mediaUrl = (u = '') => {
+  if (!u) return u;
+  if (/^https?:\/\//i.test(u)) return u;
+  const origin = API_URL.replace(/\/api\/v1\/?$/, '');
+  return `${origin}${u.startsWith('/') ? u : `/${u}`}`;
+};
+
 const apiClient = axios.create({
   baseURL: API_URL,
   withCredentials: true,
@@ -85,3 +96,4 @@ apiClient.interceptors.response.use(
   }
 );
 export default apiClient;
+export { mediaUrl };
