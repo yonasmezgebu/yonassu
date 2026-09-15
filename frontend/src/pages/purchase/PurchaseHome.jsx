@@ -147,6 +147,17 @@ const KPI = ({ title, value, footer, icon: Icon, color, bg, onClick }) => (
   </div>
 );
 
+const asList = (body) => {
+  if (Array.isArray(body)) return body;
+  if (!body || typeof body !== 'object') return [];
+  if (Array.isArray(body.data)) return body.data;
+  if (body.data && Array.isArray(body.data.data)) return body.data.data;
+  if (Array.isArray(body.suppliers)) return body.suppliers;
+  if (Array.isArray(body.orders)) return body.orders;
+  if (Array.isArray(body.tenders)) return body.tenders;
+  return [];
+};
+
 const PurchaseHome = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -159,65 +170,83 @@ const PurchaseHome = () => {
   const [pendingDeliveries, setPendingDeliveries] = useState(0);
   const [receivedToday, setReceivedToday] = useState(0);
   const [totalSpend, setTotalSpend] = useState(0);
-  const [budgetRemaining, setBudgetRemaining] = useState(0);
+  const [budgetRemaining, setBudgetRemaining] = useState(null);
   const [activeReturns, setActiveReturns] = useState(0);
 
   useEffect(() => {
-    apiClient.get('/suppliers').then(res => {
-        const data = res.data?.data;
-        if (Array.isArray(data)) setTotalSuppliers(data.length);
-      }).catch(() => setTotalSuppliers(0));
+    let mounted = true;
+    const live = (fn) => (v) => { if (mounted) fn(v); };
 
-    Promise.all([
-      apiClient.get('/tenders').catch(() => ({ data: { data: [] } })),
-      apiClient.get('/public-tenders/internal').catch(() => ({ data: { data: [] } }))
-    ]).then(([res1, res2]) => {
-      const tenders1 = Array.isArray(res1.data?.data) ? res1.data.data : [];
-      const tenders2 = Array.isArray(res2.data?.data) ? res2.data.data : [];
-      const allTenders = [...tenders1, ...tenders2];
-      const openCount = allTenders.filter(t => {
-        const s = t.status?.toLowerCase();
-        return s === 'published' || s === 'open';
-      }).length;
-      setOpenTenders(openCount);
-    }).catch(() => setOpenTenders(0));
+    // Total Suppliers — Supplier Directory subpage uses GET /suppliers
+    apiClient.get('/suppliers')
+      .then(res => live(setTotalSuppliers)(Array.isArray(res?.data) ? res.data.length : 0))
+      .catch(() => live(setTotalSuppliers)(0));
 
-    apiClient.get('/purchase/orders').then(res => {
-        const data = res.data?.data;
-        const orders = data?.orders ?? data;
-        setTotalPOs(Array.isArray(orders) ? orders.length : (data?.pagination?.total ?? 0));
-      }).catch(() => setTotalPOs(0));
+    // Open Tenders — Tender & Bid subpage uses GET /public-tenders/internal
+    apiClient.get('/public-tenders/internal')
+      .then(res => {
+        const list = asList(res);
+        const openCount = list.filter(t => ['published', 'open'].includes(String(t.status || '').toLowerCase())).length;
+        live(setOpenTenders)(openCount);
+      })
+      .catch(() => live(setOpenTenders)(0));
 
-    apiClient.get('/procurement/requests').then(res => {
-        const data = res.data?.data;
-        if (Array.isArray(data)) {
-          const pending = data.filter(r => {
-            const s = r.status?.toUpperCase();
-            return s === 'PENDING' || s === 'SUBMITTED' || s === 'PENDING_CEO';
-          }).length;
-          setPendingRequests(pending);
-        }
-      }).catch(() => setPendingRequests(0));
-
-    apiClient.get('/purchase/quotations').then(res => {
-        const data = res.data?.data;
-        if (Array.isArray(data)) setSupplierBids(data.length);
-      }).catch(() => setSupplierBids(0));
-
-    apiClient.get('/purchase/statistics').then(res => {
-        const data = res.data?.data;
-        if (data) {
-          setTotalSpend(parseFloat(data.totalSpendThisYear) || 0);
-          setPendingDeliveries(parseInt(data.pendingReceiving) || 0);
-        }
-      }).catch(() => {
-        setTotalSpend(0);
-        setPendingDeliveries(0);
+    // Purchase Orders — orders subpage uses GET /purchase/orders
+    apiClient.get('/purchase/orders')
+      .then(res => {
+        const container = res?.data && typeof res.data === 'object' ? res.data : {};
+        const list = Array.isArray(container.orders) ? container.orders : [];
+        live(setTotalPOs)(container.pagination?.total ?? list.length);
+        const awaiting = ['Pending', 'Approved', 'Sent'];
+        live(setPendingDeliveries)(list.filter(o => awaiting.includes(o.status_name)).length);
+        live(setReceivedToday)(list.filter(o => String(o.status_name || '') === 'Received').length);
+      })
+      .catch(() => {
+        live(setTotalPOs)(0);
+        live(setPendingDeliveries)(0);
+        live(setReceivedToday)(0);
       });
 
-    setBudgetRemaining(0);
-    setActiveReturns(0);
-    setReceivedToday(0);
+    // Pending Requests — Purchase subpage uses GET /purchase-flow/purchase-requests
+    apiClient.get('/purchase-flow/purchase-requests')
+      .then(res => {
+        const list = asList(res);
+        const pendStates = ['PENDING', 'SUBMITTED', 'WAIT', 'PENDING_DECISION', 'APPROVAL'];
+        const pendCount = list.filter(r => pendStates.includes(String(r.status || '').toUpperCase())).length;
+        live(setPendingRequests)(pendCount || list.length);
+      })
+      .catch(() => live(setPendingRequests)(0));
+
+    // Supplier Bids — Quotation subpage uses GET /purchase/quotations
+    apiClient.get('/purchase/quotations')
+      .then(res => live(setSupplierBids)(asList(res).length))
+      .catch(() => live(setSupplierBids)(0));
+
+    // Active Returns — Returns subpage uses GET /purchase-returns
+    apiClient.get('/purchase-returns')
+      .then(res => {
+        const list = asList(res);
+        const activeCount = list.filter(r => !['Completed', 'Cancelled'].includes(String(r.status || ''))).length;
+        live(setActiveReturns)(activeCount);
+      })
+      .catch(() => live(setActiveReturns)(0));
+
+    // Total Spend — purchase statistics endpoint
+    apiClient.get('/purchase/statistics')
+      .then(res => live(setTotalSpend)(parseFloat(res?.data?.totalSpendThisYear) || 0))
+      .catch(() => live(setTotalSpend)(0));
+
+    // Budget Remaining — finance statistics exposes active budget period
+    apiClient.get('/finance/statistics/enhanced')
+      .then(res => {
+        const bu = res?.data?.budgetUtilization;
+        const budget = parseFloat(bu?.budget) || 0;
+        const used = parseFloat(bu?.used) || 0;
+        live(setBudgetRemaining)(Math.max(budget - used, 0));
+      })
+      .catch(() => live(setBudgetRemaining)(null));
+
+    return () => { mounted = false; };
   }, []);
 
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -250,8 +279,8 @@ const PurchaseHome = () => {
         <div className="section-title">Orders & Logistics</div>
         <div className="grid-layout">
           <KPI title="Purchase Orders" value={totalPOs} footer="Total orders created" icon={ShoppingCart} color="#0052CC" bg="#DEEBFF" onClick={() => navigate('/purchase/orders')} />
-          <KPI title="Pending Deliveries" value={pendingDeliveries} footer="Awaiting fulfillment" icon={Clock} color="#FF8B00" bg="#FFFAE6" onClick={() => navigate('/purchase/reports/delivery')} />
-          <KPI title="Received Today" value={receivedToday} footer="Inward shipments" icon={Truck} color="#008DA6" bg="#E6FCFF" onClick={() => navigate('/purchase/orders')} />
+          <KPI title="Pending Deliveries" value={pendingDeliveries} footer="Awaiting fulfillment" icon={Clock} color="#FF8B00" bg="#FFFAE6" onClick={() => navigate('/purchase/orders')} />
+          <KPI title="Received POs" value={receivedToday} footer="Inward shipments received" icon={Truck} color="#008DA6" bg="#E6FCFF" onClick={() => navigate('/purchase/orders')} />
           <KPI title="Active Returns" value={activeReturns} footer="Processing RMA" icon={RotateCcw} color="#DE350B" bg="#FFEBE6" onClick={() => navigate('/purchase/returns')} />
         </div>
       </div>
@@ -260,7 +289,7 @@ const PurchaseHome = () => {
         <div className="section-title">Financial Overview</div>
         <div className="grid-layout">
           <KPI title="Total Spend" value={`ETB ${totalSpend.toLocaleString()}`} footer="Year to date" icon={DollarSign} color="#DE350B" bg="#FFEBE6" onClick={() => navigate('/purchase/reports/financial')} />
-          <KPI title="Budget Remaining" value={`ETB ${budgetRemaining.toLocaleString()}`} footer="Current fiscal year" icon={Wallet} color="#006644" bg="#E3FCEF" onClick={() => navigate('/purchase/reports/financial')} />
+          <KPI title="Budget Remaining" value={budgetRemaining === null ? '—' : `ETB ${budgetRemaining.toLocaleString()}`} footer="Active budget period" icon={Wallet} color="#006644" bg="#E3FCEF" onClick={() => navigate('/purchase/reports/financial')} />
         </div>
       </div>
 
