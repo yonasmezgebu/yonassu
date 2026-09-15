@@ -193,6 +193,9 @@ const sendEmail = async (options) => {
     console.log(`======================================================`);
     console.log(`To: ${to}`);
     console.log(`Subject: ${subject}`);
+    if (options.attachments && options.attachments.length) {
+      logger.info(`📎 ATTACHMENTS (mock): ${options.attachments.map(a => a.filename).join(', ')}`);
+    }
     if (data.resetUrl) {
       logger.info(`🔗 RESET LINK: ${data.resetUrl}`);
       console.log(`\n🔗 COPY THIS RESET LINK:`);
@@ -227,6 +230,14 @@ const sendEmail = async (options) => {
   };
   if (text) {
     payload.content.push({ type: 'text/plain', value: text });
+  }
+  if (options.attachments && options.attachments.length) {
+    payload.attachments = options.attachments.map((a) => ({
+      content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : String(a.content || ''),
+      filename: a.filename || 'file',
+      type: a.type || 'application/octet-stream',
+      disposition: 'attachment'
+    }));
   }
   try {
     let decryptedApiKey;
