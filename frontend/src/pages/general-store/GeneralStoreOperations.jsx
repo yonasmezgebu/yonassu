@@ -1679,7 +1679,7 @@ export const GSIssueItem = () => {
         department: r.department || defDept,
         date: r.created_at || r.createdAt || r.date || new Date().toISOString(),
         request_number: r.request_code || r.request_number || r.id,
-        items: r.items || r.quantity_requested || (type === 'pos' ? 1 : 0),
+        item_count: r.item_count || (type === 'pos' ? (() => { try { return JSON.parse(r.cart_items || '[]').length; } catch(e) { return 1; }})() : (r.items ? r.items.length : 0)),
         status: r.status
       }));
 
@@ -1829,7 +1829,7 @@ export const GSIssueItem = () => {
     setSaving(false);
   };
 
-  const toggleRowDetail = async (id) => {
+  const toggleRowDetail = async (id, req_type) => {
     const isOpen = !!expandedRows[id];
     if (isOpen) {
       setExpandedRows(prev => ({ ...prev, [id]: false }));
@@ -1839,8 +1839,31 @@ export const GSIssueItem = () => {
     if (!rowDetails[id]) {
       setRowDetailLoading(prev => ({ ...prev, [id]: true }));
       try {
-        const res = await api.get(`/api/v1/car-renting/store-requests/${id}`);
-        setRowDetails(prev => ({ ...prev, [id]: res.data?.data || res.data }));
+        let endpoint;
+        if (req_type === 'pos') {
+          endpoint = `/api/v1/store-sales-requests/${id}`;
+        } else if (req_type === 'printing') {
+          endpoint = `/api/v1/printing-assets/material-requests/${id}`;
+        } else {
+          // car_agri default
+          endpoint = `/api/v1/car-renting/store-requests/${id}`;
+        }
+        const res = await api.get(endpoint);
+        // Normalize response shape for display
+        const raw = res.data?.data || res.data || {};
+        let normalized = { ...raw };
+        // For POS items: parse cart_items as items array
+        if (req_type === 'pos' && raw.cart_items) {
+          try {
+            const cartItems = typeof raw.cart_items === 'string' ? JSON.parse(raw.cart_items) : raw.cart_items;
+            normalized.items = cartItems.map(ci => ({
+              product_name: ci.name || ci.source || 'Item',
+              quantity_requested: ci.qty,
+              quantity_shipped: raw.status === 'APPROVED_BY_STORE' ? ci.qty : null,
+            }));
+          } catch(e) {}
+        }
+        setRowDetails(prev => ({ ...prev, [id]: normalized }));
       } catch {
         showToast('error', 'Failed to load detail');
         setExpandedRows(prev => ({ ...prev, [id]: false }));
@@ -1853,16 +1876,24 @@ export const GSIssueItem = () => {
   const filteredHistory = historyFilter === 'All'
     ? allHistory
     : historyFilter === 'Car Rental'
-      ? allHistory.filter(r => r.department === 'Car Rental' || !r.department)
-      : allHistory.filter(r => r.department === 'AgriRent');
+      ? allHistory.filter(r => r.department === 'Car Rental')
+      : historyFilter === 'AgriRent'
+      ? allHistory.filter(r => r.department === 'AgriRent')
+      : historyFilter === 'Printing'
+      ? allHistory.filter(r => r.department === 'Printing')
+      : allHistory.filter(r => r.department === 'Sales' || r.department === 'Retail POS' || r.req_type === 'pos');
 
   const STATUS = {
-    PENDING_STORE:    { label: 'Pending Store',  color: '#f59e0b',  bg: '#FFF8E1' },
-    FORWARDED_TO_CEO: { label: 'With CEO',       color: '#3b82f6',  bg: '#E3F2FD' },
-    APPROVED:         { label: 'CEO Approved',   color: '#10b981',  bg: '#F1F8E9' },
-    REJECTED:         { label: 'Rejected',       color: '#ef4444',  bg: '#FFEBEE' },
-    SHIPPED:          { label: 'Shipped',        color: '#059669',  bg: '#E8F5E9' },
-    RECEIVED:         { label: 'Received',       color: '#065f46',  bg: '#E8F5E9' },
+    PENDING_STORE:        { label: 'Pending Store',  color: '#f59e0b',  bg: '#FFF8E1' },
+    FORWARDED_TO_CEO:     { label: 'With CEO',       color: '#3b82f6',  bg: '#E3F2FD' },
+    APPROVED:             { label: 'CEO Approved',   color: '#10b981',  bg: '#F1F8E9' },
+    REJECTED:             { label: 'Rejected',       color: '#ef4444',  bg: '#FFEBEE' },
+    SHIPPED:              { label: 'Shipped ✓',      color: '#059669',  bg: '#E8F5E9' },
+    RECEIVED:             { label: 'Received ✓',     color: '#065f46',  bg: '#E8F5E9' },
+    Pending:              { label: 'Pending',        color: '#f59e0b',  bg: '#FFF8E1' },
+    APPROVED_BY_STORE:    { label: 'Released ✓',     color: '#059669',  bg: '#E8F5E9' },
+    REJECTED_BY_STORE:    { label: 'Rejected',       color: '#ef4444',  bg: '#FFEBEE' },
+    COMPLETED:            { label: 'Completed ✓',    color: '#065f46',  bg: '#E8F5E9' },
   };
 
   const StatusBadge = ({ status }) => {
@@ -2093,11 +2124,11 @@ export const GSIssueItem = () => {
                                 <DeptIcon size={11} />{dept}
                               </span>
                             </td>
-                            <td className="gsis-td--dim">{new Date(r.created_at).toLocaleDateString('en-GB')}</td>
-                            <td><span className="gsis-count-badge">{r.item_count || '—'}</span></td>
+                            <td className="gsis-td--dim">{new Date(r.created_at || r.date).toLocaleDateString('en-GB')}</td>
+                            <td><span className="gsis-count-badge">{r.item_count || (r.items ? (typeof r.items === 'number' ? r.items : r.items.length) : '—')}</span></td>
                             <td><StatusBadge status={r.status} /></td>
                             <td>
-                              <button onClick={() => toggleRowDetail(r.id)} className="gsis-view-btn">
+                              <button onClick={() => toggleRowDetail(r.id, r.req_type)} className="gsis-view-btn">
                                 {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {isOpen ? 'View Less' : 'View More'}
                               </button>
                             </td>
@@ -2114,9 +2145,9 @@ export const GSIssueItem = () => {
                                         <div className="gsis-detail-grid">
                                           {[
                                             { label: 'Department', value: dept },
-                                            { label: 'Requested By', value: det.requester_name || '—' },
-                                            { label: 'CEO Approved By', value: det.approver_name || '—' },
-                                            { label: 'Store Handler', value: det.store_handler_name || '—' },
+                                            { label: 'Requested By', value: det.requester_name || det.requested_by_name || det.customer_name || '—' },
+                                            { label: r.req_type === 'pos' ? 'Sales Manager Sig.' : 'CEO Approved By', value: det.approver_name || det.digital_signature ? '✓ Signed' : '—' },
+                                            { label: r.req_type === 'pos' ? 'Store Keeper Sig.' : 'Store Handler', value: det.store_handler_name || det.store_keeper_signature || '—' },
                                           ].map(f => (
                                             <div key={f.label} className="gsis-detail-item">
                                               <div className="gsis-detail-label">{f.label}</div>
@@ -2128,7 +2159,7 @@ export const GSIssueItem = () => {
                                           <table className="gsis-sub-table">
                                             <thead>
                                               <tr>
-                                                {['#', 'Product', 'Qty Requested', 'Qty Shipped', 'Status'].map(h => (
+                                                {['#', 'Product', 'Qty Requested', 'Qty Released', 'Status'].map(h => (
                                                   <th key={h}>{h}</th>
                                                 ))}
                                               </tr>
@@ -2137,11 +2168,11 @@ export const GSIssueItem = () => {
                                               {(det.items || []).map((it, idx) => (
                                                 <tr key={idx}>
                                                   <td>{idx + 1}</td>
-                                                  <td style={{ fontWeight: 600 }}>{it.product_name}</td>
-                                                  <td>{it.quantity_requested}</td>
+                                                  <td style={{ fontWeight: 600 }}>{it.product_name || it.name}</td>
+                                                  <td>{it.quantity_requested || it.qty}</td>
                                                   <td style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{it.quantity_shipped ?? '—'}</td>
                                                   <td>
-                                                    {it.quantity_shipped ? <span className="gsis-ship-flag">✓ SHIPPED</span> : <span className="gsis-ship-pending">—</span>}
+                                                    {it.quantity_shipped ? <span className="gsis-ship-flag">✓ RELEASED</span> : <span className="gsis-ship-pending">—</span>}
                                                   </td>
                                                 </tr>
                                               ))}
