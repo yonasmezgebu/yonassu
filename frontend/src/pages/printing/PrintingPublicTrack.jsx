@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   Search, Printer, CheckCircle2, Circle, ArrowRight,
   FileText, ListOrdered, Pencil, FileCheck, Scissors, PackageCheck,
-  AlertCircle, Loader2, TreePine, Leaf, Package, Clock
+  AlertCircle, Loader2, TreePine, Leaf, Package, Clock, Phone,
+  Download, Lock
 } from 'lucide-react';
 import axios from 'axios';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
@@ -36,6 +37,7 @@ const api = axios.create({ baseURL: '' });
 
 const PrintingPublicTrack = () => {
   const [orderNumber, setOrderNumber] = useState('');
+  const [phone, setPhone] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +48,9 @@ const PrintingPublicTrack = () => {
     if (!orderNumber.trim()) return;
     setLoading(true); setError(''); setResult(null); setSearched(true);
     try {
-      const { data } = await api.get(`/api/v1/printing/public/track/${orderNumber.trim().toUpperCase()}`);
+      const { data } = await api.get(`/api/v1/printing/public/track/${orderNumber.trim().toUpperCase()}`, {
+        params: { phone: phone.trim() || undefined }
+      });
       setResult(data.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Order not found. Please check the number and try again.');
@@ -151,6 +155,23 @@ const PrintingPublicTrack = () => {
                   placeholder="Enter order number (e.g. PRT-20260720-001)"
                   style={{
                     width: '100%', padding: '14px 14px 14px 46px',
+                    border: `2px solid ${G.sage}`, borderRadius: 14,
+                    fontSize: 15, color: G.darkGray, fontWeight: 500,
+                    boxSizing: 'border-box', background: 'transparent',
+                    transition: 'all 0.2s',
+                  }}
+                />
+              </div>
+              <div style={{ position: 'relative', width: 220 }}>
+                <Phone size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: G.olive }} />
+                <input
+                  className="track-input"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="Mobile (09XXXXXXXX)"
+                  inputMode="tel"
+                  style={{
+                    width: '100%', padding: '14px 14px 14px 42px',
                     border: `2px solid ${G.sage}`, borderRadius: 14,
                     fontSize: 15, color: G.darkGray, fontWeight: 500,
                     boxSizing: 'border-box', background: 'transparent',
@@ -366,6 +387,70 @@ const PrintingPublicTrack = () => {
                     Questions about your order? Contact the University Print Center or visit us on campus.
                   </div>
                 </div>
+              </div>
+
+              {/* Uploaded Work Files */}
+              <div style={{
+                background: 'rgba(255,255,255,0.97)', borderRadius: 20, padding: '28px',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+                border: '1px solid rgba(255,255,255,0.5)', marginTop: 20,
+              }}>
+                <h2 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 800, color: G.dark, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Download size={20} color={G.emerald} /> Your Uploaded Work Files
+                </h2>
+                <p style={{ margin: '0 0 18px', fontSize: 13, color: G.olive, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Lock size={13} /> Shown only when the order number is checked with the mobile number registered for this order.
+                </p>
+
+                {result.works?.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {result.works.map(w => (
+                      <div key={w.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        padding: '14px 18px', borderRadius: 14, background: `${G.sage}1a`,
+                        border: `1px solid ${G.sage}55`,
+                      }}>
+                        <div style={{
+                          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                          background: `linear-gradient(135deg, ${G.emerald}, ${G.leaf})`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <FileText size={20} color="#fff" />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, color: G.dark, fontSize: 14, wordBreak: 'break-word' }}>{w.originalName}</div>
+                          <div style={{ fontSize: 12, color: G.olive, marginTop: 2 }}>
+                            {w.size ? `${(w.size / 1024 / 1024).toFixed(2)} MB` : ''}
+                            {w.uploadedAt ? ` · uploaded ${new Date(w.uploadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+                          </div>
+                        </div>
+                        <a
+                          href={w.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="track-btn"
+                          style={{
+                            padding: '10px 18px', borderRadius: 10, flexShrink: 0,
+                            background: `linear-gradient(135deg, ${G.forest}, ${G.emerald})`,
+                            color: '#fff', textDecoration: 'none', fontWeight: 800, fontSize: 13,
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            boxShadow: `0 4px 14px ${G.forest}55`,
+                          }}
+                        >
+                          <Download size={15} /> Open File
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '18px', borderRadius: 12, background: '#f9fafb',
+                    border: `1.5px dashed ${G.sage}`, color: G.olive, fontSize: 13,
+                    textAlign: 'center',
+                  }}>
+                    No work files to show yet{phone.trim() ? ' — either none are uploaded or the mobile number does not match this order.' : ' — add the mobile number you used for this order to see them.'}
+                  </div>
+                )}
               </div>
             </div>
           )}
