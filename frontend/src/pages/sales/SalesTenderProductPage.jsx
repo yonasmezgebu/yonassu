@@ -503,7 +503,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead style={{ background: 'white' }}>
                             <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                              {['Rank', 'Bidder', 'Bid Price (ETB)', 'Status', 'CEO Decision', 'Action'].map(h => (
+                              {['Rank', 'Bidder', 'Bid Price (ETB)', 'Status', 'CEO Decision', 'Finance', 'Action'].map(h => (
                                 <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', textAlign: 'left' }}>{h}</th>
                               ))}
                             </tr>
@@ -527,6 +527,13 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                                   ) : b.ceo_approval_status === 'rejected' ? (
                                     <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>✕ REJECTED</span>
                                   ) : <span style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>PENDING</span>}
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  {b.payment_status === 'confirmed' ? (
+                                    <span style={{ color: '#059669', fontWeight: 700, fontSize: 11 }}>PAID</span>
+                                  ) : b.payment_status === 'rejected' ? (
+                                    <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>REJECTED</span>
+                                  ) : <span style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>UNPAID</span>}
                                 </td>
                                 <td style={{ padding: '10px 12px' }}>
                                   {b.status === 'awarded' ? (
@@ -575,7 +582,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: 'white', borderBottom: '2px solid #e2e8f0' }}>
-                        {['Rank', 'Bidder', 'Price/Unit (ETB)', 'Qty', 'Total (ETB)', 'Status', 'CEO', 'Action'].map((h, i) => (
+                        {['Rank', 'Bidder', 'Price/Unit (ETB)', 'Qty', 'Total (ETB)', 'Status', 'CEO', 'Finance', 'Action'].map((h, i) => (
                           <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', textAlign: i >= 2 && i <= 4 ? 'right' : 'left' }}>{h}</th>
                         ))}
                       </tr>
@@ -603,6 +610,13 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                             ) : b.ceo_approval_status === 'rejected' ? (
                               <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>✕ REJECTED</span>
                             ) : <span style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>PENDING</span>}
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            {b.payment_status === 'confirmed' ? (
+                              <span style={{ color: '#059669', fontWeight: 700, fontSize: 11 }}>PAID</span>
+                            ) : b.payment_status === 'rejected' ? (
+                              <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>REJECTED</span>
+                            ) : <span style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>UNPAID</span>}
                           </td>
                           <td style={{ padding: '10px 12px' }}>
                             {b.status === 'awarded' ? (
