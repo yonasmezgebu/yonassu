@@ -71,3 +71,32 @@ cron.schedule('* * * * *', async () => {
     console.error('Error in tender deadline notification job:', error);
   }
 });
+
+// ─── Public Smart-Tender Closing-Date Reminder — Runs every 5 minutes ───────
+// Owned by the Purchase Manager (Tender & Bid Hub). Unlike the job above, this
+// keeps re-notifying while the tender is still open past its closing date until
+// the manager CLOSES it or UPDATES its dates.
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    const expiredOpenTenders = await db('public_tenders')
+      .where('status', 'published')
+      .whereNotNull('closing_date')
+      .where('closing_date', '<=', new Date());
+
+    if (expiredOpenTenders.length === 0) return;
+
+    for (const tender of expiredOpenTenders) {
+      await notificationService.sendNotification('Purchase Manager', null, {
+        type: 'TENDER_CLOSING_DATE_PASSED',
+        title: '⏰ Tender Closing Date Passed — Still Open',
+        message: `Tender ${tender.tender_number || `TND-${tender.id}`} "${tender.title}" has passed its closing date and is still open for bids. Please evaluate the bids and CLOSE it, or UPDATE its opening/closing dates to keep it open.`,
+        related_entity_id: tender.id,
+        link: `/purchase/smart-tenders?viewTender=${tender.id}`
+      });
+    }
+
+    console.log(`Sent closing-date reminders for ${expiredOpenTenders.length} open smart tender(s).`);
+  } catch (error) {
+    console.error('Error in public tender closing-date reminder job:', error);
+  }
+});
