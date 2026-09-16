@@ -145,7 +145,9 @@ const sendFinanceNotification = async ({ title, message, type = 'finance', link 
       is_read: false
     });
     if (io) {
-      io.emit('finance-cash', { id, title, message, type, link, related_entity_id, is_read: false, timestamp: new Date() });
+      const payload = { id, title, message, type, link, related_entity_id, is_read: false, timestamp: new Date() };
+      io.emit('finance-cash', payload);
+      io.to('FINANCE').emit('notification', payload);
     }
     return id;
   } catch (err) {
