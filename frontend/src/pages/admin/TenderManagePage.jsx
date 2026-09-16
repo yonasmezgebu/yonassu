@@ -908,6 +908,7 @@ export default function TenderManagePage() {
               <div><strong>Competitor Name:</strong> {detailModalBid.bidder_full_name || detailModalBid.customer_name}</div>
               <div><strong>Email:</strong> {detailModalBid.bidder_email || detailModalBid.customer_email}</div>
               <div><strong>Phone:</strong> {detailModalBid.bidder_phone || 'N/A'}</div>
+              {detailModalBid.payment_method && <div><strong>Payment Method:</strong> {detailModalBid.payment_method.replace('::', ' — Account ID: ')}</div>}
               <div><strong>Total Value:</strong> ETB {parseFloat(detailModalBid.total_bid_value || 0).toLocaleString()}</div>
               <div><strong>Submit Date (Save Date):</strong> {new Date(detailModalBid.submitted_at).toLocaleString()}</div>
               <div><strong>Open Date:</strong> {detailModalBid.opened_at ? new Date(detailModalBid.opened_at).toLocaleString() : 'Just Opened'}</div>
