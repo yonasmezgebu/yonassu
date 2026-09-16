@@ -148,7 +148,7 @@ exports.approveTender = catchAsync(async (req, res) => {
               bidderEmail: wb.email || null,
               bidderPhone: wb.phone || null,
               amount,
-              paymentMethod: wb.payment_method || 'Bank',
+              paymentMethod: wb.payment_method || 'Internal',
               receivedFrom: wb.competitor_name || wb.email || 'Supplier'
             })
           });
@@ -231,7 +231,55 @@ exports.recommendSupplier = catchAsync(async (req, res) => {
     recommendation_reason: reason || 'Best value for money'
   });
 
-  res.json({ status: 'success', message: 'Supplier recommended successfully' });
+  // Submit to Finance Live Income for verification
+  const tender = await db('public_tenders').where({ id: bid.public_tender_id }).first();
+  const referenceNo = `PUB-BID-${bid.id}`;
+
+  // Calculate amount from bid items (total_birr/total_cent on the bid header are often NULL)
+  let amount = (parseInt(bid.total_birr || 0) * 100 + parseInt(bid.total_cent || 0)) / 100;
+  if (amount === 0) {
+    const bidItems = await db('public_bid_items').where('public_bid_id', bid.id);
+    if (bidItems.length > 0) {
+      amount = bidItems.reduce((s, it) => s + (parseInt(it.total_birr || 0) + parseInt(it.total_cent || 0) / 100), 0);
+    }
+  }
+
+  if (tender && (amount > 0 || true)) { // always create so Finance can see it
+    const useAmount = amount > 0 ? amount : 1;
+    const exists = await db('finance_income_submissions').where('reference_no', referenceNo).first();
+    if (!exists) {
+      await db('finance_income_submissions').insert({
+        department: 'Tender',
+        submitted_by: bid.competitor_name || bid.email || 'Supplier',
+        amount: useAmount,
+        reference_no: referenceNo,
+        description: `Public Tender recommendation — ${tender.tender_number}: ${tender.title || ''}`,
+        status: 'Pending',
+        manual_details: JSON.stringify({
+          type: 'public_tender',
+          tenderId: tender.id,
+          tenderNumber: tender.tender_number,
+          tenderTitle: tender.title || '',
+          bidId: bid.id,
+          bidderName: bid.competitor_name || null,
+          bidderEmail: bid.email || null,
+          bidderPhone: bid.phone || null,
+          amount: useAmount,
+          paymentMethod: bid.payment_method || 'Internal',
+          receivedFrom: bid.competitor_name || bid.email || 'Supplier'
+        })
+      });
+
+      await sendNotification('Finance', null, {
+        title: '💰 Public Tender Payment Pending Verification',
+        message: `A Public Tender recommended bid for ${tender.tender_number} needs payment verification on Revenue Live Income.`,
+        type: 'REQUEST_APPROVED',
+        link: '/finance/pharmacy-sales?tab=list'
+      });
+    }
+  }
+
+  res.json({ status: 'success', message: 'Supplier recommended successfully and sent to Finance for verification' });
 });
 
 // ─── GET PUBLIC TENDERS (for public page) ──────────────────────────────────
@@ -301,7 +349,7 @@ exports.submitBid = catchAsync(async (req, res) => {
     phone: bid.phone,
     delivery_time: bid.deliveryTime,
     payment_terms: bid.paymentTerms,
-    payment_method: bid.paymentMethod,
+    payment_method: bid.paymentMethod || 'Internal',
     terms_conditions: bid.termsConditions || null,
     digital_signature_text: bid.digitalSignatureText,
     hand_signature_path: bid.handSignaturePath,
