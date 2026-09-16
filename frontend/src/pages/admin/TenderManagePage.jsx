@@ -343,7 +343,8 @@ const GLOBAL_CSS = `
   /* Modal */
   .tm-modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000;
-    display: flex; align-items: center; justify-content: center; padding: 16px;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 24px 16px; overflow-y: auto;
   }
   .tm-modal {
     background: ${C.white}; border: 1px solid ${C.earthBrown}; border-radius: 12px;
@@ -432,7 +433,10 @@ function NotifyIcon({ type }) {
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function TenderCard({ tender, selected, onClick, onEdit, onDelete, onPublish, onClose, onCancel, onApprove, onToggleHidden, isCEOorAdmin }) {
-  const st = STATUS_CFG[tender.status] || { bg: '#eee', color: '#666', label: tender.status };
+  let st = { ...(STATUS_CFG[tender.status] || { bg: '#eee', color: '#666', label: tender.status }) };
+  if (tender.status === 'awarded') {
+    st.label = 'Winner Selected';
+  }
 
   /* Try to find most recent image attachment */
   let imgSrc = null;
@@ -619,6 +623,11 @@ export default function TenderManagePage() {
   const [disqReason, setDisqReason] = useState('');
   const [cancelModal, setCancelModal] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
+
+  /* Finance Modal */
+  const [financeModalBid, setFinanceModalBid] = useState(null);
+  const [financePaymentMethod, setFinancePaymentMethod] = useState('Bank');
+  const [financePaymentReference, setFinancePaymentReference] = useState('');
 
   const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
   const isCEOorAdmin = user?.roles?.some?.(r => ['Admin','CEO'].includes(r)) || ['Admin','CEO'].includes(user?.role);
@@ -823,6 +832,29 @@ export default function TenderManagePage() {
     } catch (err) { notify('error', err.message || 'Failed to forward'); }
   };
 
+  const handleSubmitToFinance = (bid) => {
+    setFinanceModalBid(bid);
+    setFinancePaymentMethod('Bank');
+    setFinancePaymentReference('');
+  };
+
+  const confirmFinanceSubmit = async () => {
+    if (!selectedTender || !financeModalBid) return;
+    try {
+      const r = await axios.post(`/tenders/bids/${financeModalBid.id}/submit-finance`, {
+        payment_method: financePaymentMethod,
+        payment_reference: financePaymentReference
+      });
+      if (r.status === 'success') {
+        notify('success', '✅ Submitted to Finance Live Income!');
+        await fetchBids(selectedTender.id);
+        setFinanceModalBid(null);
+      }
+    } catch (err) {
+      notify('error', err.message || 'Failed to submit to finance');
+    }
+  };
+
 
   /* ── Filter & Search ── */
   const STATUS_FILTERS = ['all', 'open', 'closed', 'awarded', 'cancelled', 'pending_approval'];
@@ -901,28 +933,91 @@ export default function TenderManagePage() {
       {/* Detail Modal */}
       {detailModalBid && (
         <div className="tm-modal-overlay" onClick={() => setDetailModalBid(null)}>
-          <div className="tm-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '100%', padding: 30, borderRadius: 12, background: C.white }}>
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: C.darkGreen, marginBottom: 20, borderBottom: `2px solid ${C.sage}`, paddingBottom: 10 }}>Bid Details</h3>
-            
-            <div style={{ display: 'grid', gap: 12, fontSize: 14 }}>
-              <div><strong>Competitor Name:</strong> {detailModalBid.bidder_full_name || detailModalBid.customer_name}</div>
-              <div><strong>Email:</strong> {detailModalBid.bidder_email || detailModalBid.customer_email}</div>
-              <div><strong>Phone:</strong> {detailModalBid.bidder_phone || 'N/A'}</div>
-              {detailModalBid.payment_method && <div><strong>Payment Method:</strong> {detailModalBid.payment_method.replace('::', ' — Account ID: ')}</div>}
-              <div><strong>Total Value:</strong> ETB {parseFloat(detailModalBid.total_bid_value || 0).toLocaleString()}</div>
-              <div><strong>Submit Date (Save Date):</strong> {new Date(detailModalBid.submitted_at).toLocaleString()}</div>
-              <div><strong>Open Date:</strong> {detailModalBid.opened_at ? new Date(detailModalBid.opened_at).toLocaleString() : 'Just Opened'}</div>
-              {detailModalBid.delivery_time && <div><strong>Delivery Time:</strong> {detailModalBid.delivery_time}</div>}
-              {detailModalBid.payment_terms && <div><strong>Payment Terms:</strong> {detailModalBid.payment_terms}</div>}
+          <div className="tm-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 560, width: '100%', padding: 32, borderRadius: 16, background: '#fff', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, borderBottom: '2px solid #f0fdf4', paddingBottom: 14 }}>
               <div>
-                <strong>Digital Signature:</strong>
-                <div style={{ marginTop: 8, padding: '12px 16px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontFamily: '"Caveat", "Dancing Script", cursive', fontSize: 24, color: '#0f172a' }}>
-                  {detailModalBid.digital_signature || 'No Signature'}
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: '#064e3b', margin: 0 }}>📋 Bid Detail View</h3>
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Full bid information submitted by competitor</p>
+              </div>
+              <button onClick={() => setDetailModalBid(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={20} color="#94a3b8" /></button>
+            </div>
+
+            {/* Bidder Info */}
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>👤 Competitor Info</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
+                <div><span style={{ color: '#94a3b8', fontSize: 11 }}>Full Name</span><br /><strong>{detailModalBid.bidder_full_name || detailModalBid.customer_name || '—'}</strong></div>
+                <div><span style={{ color: '#94a3b8', fontSize: 11 }}>Phone</span><br /><strong>{detailModalBid.bidder_phone || 'N/A'}</strong></div>
+                <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#94a3b8', fontSize: 11 }}>Email</span><br /><strong>{detailModalBid.bidder_email || detailModalBid.customer_email || '—'}</strong></div>
+              </div>
+            </div>
+
+            {/* Bid Financials */}
+            <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '14px 16px', marginBottom: 14, border: '1px solid #bbf7d0' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>💰 Bid Financials</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
+                <div><span style={{ color: '#94a3b8', fontSize: 11 }}>Total Bid Value</span><br /><strong style={{ fontSize: 16, color: '#059669' }}>ETB {parseFloat(detailModalBid.total_bid_value || 0).toLocaleString()}</strong></div>
+                <div><span style={{ color: '#94a3b8', fontSize: 11 }}>Price / Unit</span><br /><strong>{parseFloat(detailModalBid.bid_price_per_unit || 0).toLocaleString()} ETB</strong></div>
+              </div>
+            </div>
+
+            {/* Payment Info */}
+            <div style={{ background: detailModalBid.payment_status === 'confirmed' ? '#f0fdf4' : detailModalBid.payment_status === 'rejected' ? '#fef2f2' : '#fefce8', borderRadius: 10, padding: '14px 16px', marginBottom: 14, border: `1px solid ${detailModalBid.payment_status === 'confirmed' ? '#86efac' : detailModalBid.payment_status === 'rejected' ? '#fca5a5' : '#fde68a'}` }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>🏦 Payment Info</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
+                <div>
+                  <span style={{ color: '#94a3b8', fontSize: 11 }}>Payment Method</span><br />
+                  {detailModalBid.payment_method ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2, fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: detailModalBid.payment_method.toLowerCase().startsWith('internal') ? '#dcfce7' : detailModalBid.payment_method.startsWith('Telebirr') ? '#fef3c7' : '#eff6ff', color: detailModalBid.payment_method.toLowerCase().startsWith('internal') ? '#166534' : detailModalBid.payment_method.startsWith('Telebirr') ? '#92400e' : '#1d4ed8' }}>
+                      {detailModalBid.payment_method.toLowerCase().startsWith('internal') ? '🛎️' : detailModalBid.payment_method.startsWith('Telebirr') ? '📱' : '🏦'} {detailModalBid.payment_method.split('::')[0]}
+                    </span>
+                  ) : <span style={{ color: '#94a3b8' }}>Not specified</span>}
+                  {detailModalBid.payment_method?.includes('::') && (
+                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>Account/Ref: <strong>{detailModalBid.payment_method.split('::')[1]}</strong></div>
+                  )}
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8', fontSize: 11 }}>Finance Status</span><br />
+                  {detailModalBid.payment_status === 'confirmed' ? (
+                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:999,background:'#dcfce7',color:'#166534',border:'1px solid #86efac',marginTop:2 }}>✓ CONFIRMED</span>
+                  ) : detailModalBid.payment_status === 'rejected' ? (
+                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:999,background:'#fee2e2',color:'#991b1b',border:'1px solid #fca5a5',marginTop:2 }}>✕ REJECTED</span>
+                  ) : (
+                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:999,background:'#fef9c3',color:'#854d0e',border:'1px solid #fde047',marginTop:2 }}>⏳ AWAITING FINANCE</span>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div style={{ marginTop: 24, textAlign: 'right' }}>
+            {/* Dates & Other */}
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>📅 Dates & Terms</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
+                <div><span style={{ color: '#94a3b8', fontSize: 11 }}>Save Date</span><br /><strong>{new Date(detailModalBid.submitted_at).toLocaleString()}</strong></div>
+                <div><span style={{ color: '#94a3b8', fontSize: 11 }}>Open Date</span><br /><strong>{detailModalBid.opened_at ? new Date(detailModalBid.opened_at).toLocaleString() : 'Just Opened'}</strong></div>
+                {detailModalBid.delivery_time && <div><span style={{ color: '#94a3b8', fontSize: 11 }}>Delivery Time</span><br /><strong>{detailModalBid.delivery_time}</strong></div>}
+                {detailModalBid.payment_terms && <div><span style={{ color: '#94a3b8', fontSize: 11 }}>Payment Terms</span><br /><strong>{detailModalBid.payment_terms}</strong></div>}
+              </div>
+            </div>
+
+            {/* Signature */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>✍️ Digital Signature</div>
+              <div style={{ padding: '12px 16px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontFamily: '"Caveat","Dancing Script",cursive', fontSize: 24, color: '#0f172a' }}>
+                {detailModalBid.digital_signature || <em style={{ fontSize: 14, color: '#94a3b8' }}>No signature provided</em>}
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              {detailModalBid.status === 'awarded' && detailModalBid.payment_status !== 'confirmed' && (
+                <button
+                  className="btn btn-primary"
+                  style={{ background: '#10B981', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+                  onClick={() => { handleSubmitToFinance(detailModalBid); setDetailModalBid(null); }}
+                >
+                  <CreditCard size={14} /> Submit to Finance
+                </button>
+              )}
               <button className="btn btn-ghost" onClick={() => setDetailModalBid(null)}>Close</button>
             </div>
           </div>
@@ -1042,8 +1137,15 @@ export default function TenderManagePage() {
                         </div>
                       )}
                       {/* Submit to CEO */}
-                      {['closed', 'open'].includes(selectedTender.status) && bids.some(b => b.status === 'submitted' || b.status === 'pending' || b.status === 'under_review') && (
-                        <button className="btn btn-primary btn-sm" style={{ background: '#1D4ED8', border: 'none' }} onClick={handleForwardToCeo}>
+                      {/* Submit to CEO */}
+                      {['closed', 'open', 'awarded'].includes(selectedTender.status) && bids.some(b => b.status === 'awarded' || b.status === 'submitted' || b.status === 'pending' || b.status === 'under_review') && (
+                        <button 
+                          className="btn btn-primary btn-sm" 
+                          style={{ background: '#1D4ED8', border: 'none', opacity: bids.some(b => b.status === 'awarded' && b.payment_status !== 'confirmed') ? 0.5 : 1 }} 
+                          disabled={bids.some(b => b.status === 'awarded' && b.payment_status !== 'confirmed')} 
+                          onClick={handleForwardToCeo}
+                          title={bids.some(b => b.status === 'awarded' && b.payment_status !== 'confirmed') ? "Payment must be confirmed by Finance first" : "Submit to CEO for Final Approval"}
+                        >
                           <Award size={13} /> Submit to CEO
                         </button>
                       )}
@@ -1112,8 +1214,10 @@ export default function TenderManagePage() {
                                             <th>Save Date</th>
                                             <th>Open Date</th>
                                             <th style={{ textAlign: 'right' }}>Bid Price (ETB)</th>
+                                            <th>Payment Method</th>
                                             <th>Status</th>
                                             <th>CEO Approval</th>
+                                            <th>Finance</th>
                                             <th style={{ textAlign: 'center' }}>Actions</th>
                                           </tr>
                                         </thead>
@@ -1140,11 +1244,29 @@ export default function TenderManagePage() {
                                                 <td style={{ textAlign: 'right', fontWeight: 800, color: rank === 0 ? '#059669' : C.darkGray }}>
                                                   {b.productBidPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETB
                                                 </td>
-                                                <td><span className="status-badge" style={{ ...bst }}>{(b.status || '').replace(/_/g, ' ')}</span></td>
+                                                <td>
+                                                  {b.payment_method ? (
+                                                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: b.payment_method.toLowerCase().startsWith('internal') ? '#DCFCE7' : (b.payment_method.startsWith('Telebirr') ? '#FEF3C7' : '#EFF6FF'), color: b.payment_method.toLowerCase().startsWith('internal') ? '#166534' : (b.payment_method.startsWith('Telebirr') ? '#92400E' : '#1D4ED8'), textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 3, maxWidth: 160 }}>
+                                                      {b.payment_method.toLowerCase().startsWith('internal') ? '🛎️' : (b.payment_method.startsWith('Telebirr') ? '📱' : '🏦')} {b.payment_method.split('::')[0]}
+                                                    </span>
+                                                  ) : <span style={{ color: '#94a3b8', fontSize: 11 }}>—</span>}
+                                                </td>
+                                                <td><span className="status-badge" style={{ ...bst }}>{b.status === 'awarded' && b.ceo_approval_status !== 'approved' ? 'Winner Selected' : (b.status || '').replace(/_/g, ' ')}</span></td>
                                                 <td>
                                                   <span style={{ fontSize: 11, fontWeight: 700, color: b.ceo_approval_status === 'approved' ? '#059669' : b.ceo_approval_status === 'rejected' ? '#dc2626' : '#94a3b8' }}>
                                                     {b.ceo_approval_status === 'approved' ? '✅ Approved' : b.ceo_approval_status === 'rejected' ? '❌ Rejected' : '⏳ Pending'}
                                                   </span>
+                                                </td>
+                                                <td>
+                                                  {b.payment_status === 'confirmed' ? (
+                                                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#dcfce7',color:'#166534',border:'1px solid #86efac' }}>✓ CONFIRMED</span>
+                                                  ) : b.payment_status === 'rejected' ? (
+                                                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#fee2e2',color:'#991b1b',border:'1px solid #fca5a5' }}>✕ REJECTED</span>
+                                                  ) : b.payment_status === 'pending_verification' ? (
+                                                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#fef9c3',color:'#854d0e',border:'1px solid #fde047' }}>⏳ AWAITING FINANCE</span>
+                                                  ) : (
+                                                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#f3f4f6',color:'#4b5563',border:'1px solid #e5e7eb' }}>UNPAID</span>
+                                                  )}
                                                 </td>
                                                 <td>
                                                   <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
@@ -1152,9 +1274,16 @@ export default function TenderManagePage() {
                                                       <Eye size={13} color="#2563EB" />
                                                     </button>
                                                     {b.status === 'awarded' && (
-                                                      <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#16A34A' : '#2563EB', color: 'white', padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                                                        {b.notification_sent ? 'Email Sent' : 'Send Email'}
-                                                      </button>
+                                                      <div style={{ display: 'flex', gap: 4, flexDirection: 'column' }}>
+                                                        <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#16A34A' : '#2563EB', color: 'white', padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                                          {b.notification_sent ? 'Email Sent' : 'Send Email'}
+                                                        </button>
+                                                        {b.payment_status !== 'confirmed' && b.payment_status !== 'pending_verification' && (
+                                                          <button onClick={() => handleSubmitToFinance(b)} title="Submit to Finance" style={{ fontSize: 11, background: '#10B981', color: 'white', padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <CreditCard size={12} /> Submit
+                                                          </button>
+                                                        )}
+                                                      </div>
                                                     )}
                                                   </div>
                                                 </td>
@@ -1185,8 +1314,10 @@ export default function TenderManagePage() {
                               <th>Open Date</th>
                               <th style={{ textAlign: 'right' }}>Price/Unit</th>
                               <th style={{ textAlign: 'right' }}>Total</th>
+                              <th>Payment Method</th>
                               <th>Status</th>
                               <th>CEO Approval</th>
+                              <th>Finance</th>
                               <th style={{ textAlign: 'center' }}>Actions</th>
                             </tr>
                           </thead>
@@ -1215,11 +1346,27 @@ export default function TenderManagePage() {
                                   <td style={{ textAlign: 'right', fontWeight: 700 }}>
                                     {parseFloat(b.total_bid_value || 0).toLocaleString()}
                                   </td>
-                                  <td><span className="status-badge" style={{ ...bst }}>{(b.status || '').replace(/_/g, ' ')}</span></td>
+                                  <td>
+                                    {b.payment_method ? (
+                                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: b.payment_method.toLowerCase().startsWith('internal') ? '#DCFCE7' : (b.payment_method.startsWith('Telebirr') ? '#FEF3C7' : '#EFF6FF'), color: b.payment_method.toLowerCase().startsWith('internal') ? '#166534' : (b.payment_method.startsWith('Telebirr') ? '#92400E' : '#1D4ED8'), textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 3, maxWidth: 160 }}>
+                                        {b.payment_method.toLowerCase().startsWith('internal') ? '🛎️' : (b.payment_method.startsWith('Telebirr') ? '📱' : '🏦')} {b.payment_method.split('::')[0]}
+                                      </span>
+                                    ) : <span style={{ color: '#94a3b8', fontSize: 11 }}>—</span>}
+                                  </td>
+                                  <td><span className="status-badge" style={{ ...bst }}>{b.status === 'awarded' && b.ceo_approval_status !== 'approved' ? 'Winner Selected' : (b.status || '').replace(/_/g, ' ')}</span></td>
                                   <td>
                                     <span style={{ fontSize: 11, fontWeight: 700, color: b.ceo_approval_status === 'approved' ? '#059669' : b.ceo_approval_status === 'rejected' ? '#dc2626' : '#94a3b8' }}>
                                       {b.ceo_approval_status === 'approved' ? '✅ Approved' : b.ceo_approval_status === 'rejected' ? '❌ Rejected' : '⏳ Pending'}
                                     </span>
+                                  </td>
+                                  <td>
+                                    {b.payment_status === 'confirmed' ? (
+                                      <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#dcfce7',color:'#166534',border:'1px solid #86efac' }}>✓ CONFIRMED</span>
+                                    ) : b.payment_status === 'rejected' ? (
+                                      <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#fee2e2',color:'#991b1b',border:'1px solid #fca5a5' }}>✕ REJECTED</span>
+                                    ) : (
+                                      <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#fef9c3',color:'#854d0e',border:'1px solid #fde047' }}>⏳ AWAITING</span>
+                                    )}
                                   </td>
                                   <td>
                                     <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
@@ -1233,9 +1380,16 @@ export default function TenderManagePage() {
                                         </button>
                                       )}
                                       {b.status === 'awarded' && (
-                                        <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#16A34A' : '#2563EB', color: 'white', padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                                          {b.notification_sent ? 'Email Sent' : 'Send Email'}
-                                        </button>
+                                        <div style={{ display: 'flex', gap: 4, flexDirection: 'column' }}>
+                                          <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#16A34A' : '#2563EB', color: 'white', padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                            {b.notification_sent ? 'Email Sent' : 'Send Email'}
+                                          </button>
+                                          {b.payment_status !== 'confirmed' && (
+                                            <button onClick={() => handleSubmitToFinance(b)} title="Submit to Finance" style={{ fontSize: 11, background: '#10B981', color: 'white', padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                              <CreditCard size={12} /> Submit
+                                            </button>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
                                   </td>
@@ -1471,6 +1625,39 @@ export default function TenderManagePage() {
           )}
         </div>
       </div>
+      {/* Finance Submit Modal */}
+      {financeModalBid && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: 'white', width: 400, borderRadius: 12, padding: 24, boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: 18, display: 'flex', alignItems: 'center', gap: 8, color: '#047857' }}>
+              <CreditCard size={20} /> Submit to Finance
+            </h3>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Payment Method *</label>
+              <select value={financePaymentMethod} onChange={e => setFinancePaymentMethod(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 14 }}>
+                <option value="Bank">Bank Transfer</option>
+                <option value="Telebirr">Telebirr</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+            
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Transaction Reference (Optional)</label>
+              <input type="text" value={financePaymentReference} onChange={e => setFinancePaymentReference(e.target.value)} placeholder="e.g. FT231..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 14 }} />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button onClick={() => setFinanceModalBid(null)} style={{ padding: '8px 16px', border: '1px solid #D1D5DB', background: 'white', borderRadius: 6, cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
+                Cancel
+              </button>
+              <button onClick={confirmFinanceSubmit} style={{ padding: '8px 16px', border: 'none', background: '#10B981', color: 'white', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+                Confirm & Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
