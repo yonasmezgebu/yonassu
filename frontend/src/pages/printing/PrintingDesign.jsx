@@ -1,11 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PenTool, RefreshCw, ArrowRight } from 'lucide-react';
-import apiClient from '../../services/apiClient';
+import { PenTool, RefreshCw, ArrowRight, Eye } from 'lucide-react';
+import apiClient, { mediaUrl } from '../../services/apiClient';
 import { StatusBadge } from './StageShared';
 import { StageStyles } from './printingStageStyles';
 import StageNav from './StageNav';
 import StageConfirmModal from './StageConfirmModal';
+import FileViewer from '../../components/ui/FileViewer';
+
+const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+
+const getAttachments = (order) => {
+  if (!order?.attachments) return [];
+  if (Array.isArray(order.attachments)) return order.attachments;
+  try {
+    const parsed = JSON.parse(order.attachments);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
 
 const PrintingDesign = () => {
   const [orders, setOrders] = useState([]);
@@ -13,7 +27,19 @@ const PrintingDesign = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [movingId, setMovingId] = useState(null);
   const [confirm, setConfirm] = useState(null);
+  const [viewFile, setViewFile] = useState(null);
   const navigate = useNavigate();
+
+  const openAttachment = (att) => {
+    if (!att?.filename) return;
+    const url = mediaUrl(`/uploads/orders/${att.filename}`);
+    const ext = (att.originalName || att.filename || '').split('.').pop().toLowerCase();
+    if (IMAGE_EXTS.includes(ext) || ext === 'docx') {
+      setViewFile({ originalName: att.originalName || att.filename, url });
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const load = useCallback(async () => {
     try {
@@ -77,7 +103,9 @@ const PrintingDesign = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map(order => (
+                {orders.map(order => {
+                  const attaches = getAttachments(order);
+                  return (
                   <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/printing-manager/orders/${order.id}`)}>
                     <td className="stg-td stg-strong">{order.order_number}</td>
                     <td className="stg-td">{order.customer_name || 'Walk-in'}</td>
@@ -95,13 +123,27 @@ const PrintingDesign = () => {
                       {movingId === order.id ? (
                         <span className="stg-note">Moving...</span>
                       ) : (
-                        <button className="stg-btn stg-btn--soft-violet stg-btn--sm" onClick={() => setConfirm(order)}>
-                          <ArrowRight size={14} /> → Prepress
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {attaches.length > 0 ? (
+                            <button
+                              className="stg-btn stg-btn--soft-amber stg-btn--sm"
+                              onClick={() => openAttachment(attaches[0])}
+                              title={attaches.length > 1 ? `${attaches.length} files uploaded — opens the first one` : 'Open the customer uploaded file'}
+                            >
+                              <Eye size={14} /> Open File{attaches.length > 1 ? ` (${attaches.length})` : ''}
+                            </button>
+                          ) : (
+                            <span className="stg-note" style={{ fontSize: 11 }}>No file</span>
+                          )}
+                          <button className="stg-btn stg-btn--soft-violet stg-btn--sm" onClick={() => setConfirm(order)}>
+                            <ArrowRight size={14} /> → Prepress
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
-                ))}
+                );
+                })}
                 {orders.length === 0 && <tr><td className="stg-td" colSpan={9}><div className="stg-empty">No orders currently in Design.</div></td></tr>}
               </tbody>
             </table>
@@ -119,6 +161,8 @@ const PrintingDesign = () => {
         onConfirm={() => confirm && doMove(confirm)}
         onClose={() => setConfirm(null)}
       />
+
+      <FileViewer file={viewFile} onClose={() => setViewFile(null)} />
     </div>
   );
 };
