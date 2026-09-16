@@ -367,8 +367,8 @@ const PublicCompeteAndBuyPage = () => {
               >
                 <span>{f.q}</span>
                 {openFaq === i
-                  ? <ChevronUp size={18} style={{ flexShrink: 0, color: 'hsl(var(--primary))' }} />
-                  : <ChevronDown size={18} style={{ flexShrink: 0, color: 'hsl(var(--muted-foreground))' }} />
+                  ? <ChevronUp size={18} style={{ flexShrink: 0, color: 'hsl(142, 70%, 30%)' }} />
+                  : <ChevronDown size={18} style={{ flexShrink: 0, color: 'hsl(215.4, 16.3%, 46.9%)' }} />
                 }
               </button>
               <div className={`pcab-faq-answer${openFaq === i ? ' open' : ''}`}>{f.a}</div>
@@ -397,7 +397,7 @@ const PublicCompeteAndBuyPage = () => {
                 <User size={16} /> Sign Out &amp; Switch to Customer
               </button>
               <button
-                style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid hsl(var(--border))', background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid hsl(214.3, 31.8%, 91.4%)', background: 'hsl(210, 40%, 96.1%)', color: 'hsl(222.2, 84%, 4.9%)', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}
                 onClick={() => setRoleWarning(false)}
               >
                 Not Now
