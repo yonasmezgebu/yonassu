@@ -10,6 +10,16 @@ import { NEXT_STATUS, getStatusStyle, STATUS_LABELS } from "./printingStageConfi
 const priorityColors = { Normal: "#64748b", Urgent: "#f59e0b", Rush: "#dc2626" };
 const priorityRank   = { Rush: 1, Urgent: 2, Normal: 3 };
 
+const PENDING_CODES = ["received", "in_queue"];
+const STAGE_HINT = {
+  in_design:   { label: "Design stage",   path: "/printing-manager/jobs/design" },
+  file_check:  { label: "Prepress stage", path: "/printing-manager/jobs/prepress" },
+  in_printing: { label: "In Print stage", path: "/printing-manager/jobs/printing" },
+  in_progress: { label: "In Print stage", path: "/printing-manager/jobs/printing" },
+  finishing:   { label: "Finishing stage", path: "/printing-manager/jobs/finishing" },
+  ready:       { label: "Delivery stage", path: "/printing-manager/jobs/delivery" },
+};
+
 const getDaysRemaining = (due_date) => {
   if (!due_date) return null;
   const ms = new Date(due_date) - new Date();
@@ -176,9 +186,10 @@ const handleMove = async (order) => {
                 {filtered.map(order => {
                   const days     = getDaysRemaining(order.due_date);
                   const stStyle  = getStatusStyle(order.status_code);
-                  const isPaid   = order.payment_status === "Confirmed";
+const isPaid   = order.payment_status === "Confirmed";
                   const nextSt   = NEXT_STATUS[order.status_code];
                   const isMoving = movingId === order.id;
+                  const isPendingStage = PENDING_CODES.includes(order.status_code);
 
                   return (
                     <tr key={order.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/printing-manager/orders/${order.id}`)}>
@@ -247,13 +258,22 @@ const handleMove = async (order) => {
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {nextSt ? (
                             isPaid ? (
-                              <button
-                                className="stg-btn stg-btn--soft-blue stg-btn--sm"
-                                disabled={isMoving}
-                                onClick={() => handleMove(order)}
-                              >
-                                {isMoving ? "Moving..." : `→ ${STATUS_LABELS[nextSt] || nextSt}`}
-                              </button>
+                              isPendingStage ? (
+                                <button
+                                  className="stg-btn stg-btn--soft-blue stg-btn--sm"
+                                  disabled={isMoving}
+                                  onClick={() => handleMove(order)}
+                                >
+                                  {isMoving ? "Moving..." : `→ ${STATUS_LABELS[nextSt] || nextSt}`}
+                                </button>
+                              ) : (
+                                <button
+                                  className="stg-btn stg-btn--soft-blue stg-btn--sm"
+                                  onClick={() => navigate(STAGE_HINT[order.status_code]?.path || "/printing-manager/jobs/queue")}
+                                >
+                                  {isMoving ? "Moving..." : `→ ${STATUS_LABELS[nextSt] || nextSt} (${STAGE_HINT[order.status_code]?.label || "Next stage"})`}
+                                </button>
+                              )
                             ) : (
                               <span style={{ fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
                                 <Lock size={12} /> Locked
