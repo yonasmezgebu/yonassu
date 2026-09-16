@@ -7,6 +7,7 @@ const normalizePaymentMethod = (pm) => {
   const s = String(pm || '').toLowerCase().trim();
   if (!s) return 'Cash';
   if (s.includes('cash')) return 'Cash';
+  if (s.includes('internal') || s.includes('inter')) return 'Cash';
   if (
     s.includes('telebirr') || s.includes('telbir') || s.includes('birr') ||
     s.includes('mobile') || s.includes('wallet') || s.includes('mbir')
