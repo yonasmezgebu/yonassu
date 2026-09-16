@@ -359,3 +359,28 @@ exports.payRequest = catchAsync(async (req, res) => {
 
   res.json({ status: 'success', message: 'Payment successfully recorded.' });
 });
+
+exports.deleteRequest = catchAsync(async (req, res) => {
+  const oldRequest = await db('general_procurement_requests').where('id', req.params.id).first();
+  if (!oldRequest) throw AppError.notFound('Request not found');
+
+  const activeStatuses = ['APPROVED', 'ACCEPTED', 'PAYMENT_REQUESTED', 'FINANCE_CHECKED', 'PAYMENT_APPROVED'];
+  if (!activeStatuses.includes(oldRequest.status)) {
+    throw AppError.badRequest('Only active procurement requests can be deleted. History records cannot be removed.');
+  }
+
+  await db('general_procurement_requests').where('id', req.params.id).del();
+
+  await logAudit({
+    userId: req.user ? req.user.id : 1,
+    action: 'DELETE_GENERAL_PROCUREMENT',
+    resource: 'General Procurement',
+    resourceId: req.params.id,
+    beforeState: oldRequest,
+    afterState: null,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent']
+  });
+
+  res.json({ status: 'success', message: 'Procurement request deleted.' });
+});
