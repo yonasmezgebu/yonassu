@@ -364,6 +364,22 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
     throw new AppError('Cannot process order until payment is confirmed by Finance.', 400);
   }
 
+  const prevStatusRow = order.status_id
+    ? await db('order_statuses').where('id', order.status_id).first()
+    : null;
+  const prevStatusCode = prevStatusRow?.status_code || null;
+
+  if (statusRow.status_code === 'in_printing') {
+    if (prevStatusCode !== 'file_check') {
+      throw new AppError('Order must complete the Prepress file check before it can be sent to Print.', 400);
+    }
+    const workCount = await db('printing_order_works').where('order_id', id).count({ c: '*' }).first();
+    const hasWork = parseInt(workCount?.c || 0) > 0;
+    if (!hasWork) {
+      throw new AppError('Upload the checked work file at Prepress before sending this order to Print.', 400);
+    }
+  }
+
   const newStatusId = statusRow.id;
   const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
   const deliveredId = deliveredStatus?.id || 8;
@@ -463,11 +479,7 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
     }
   }
 
-  let oldStatusCode = null;
-  if (order.status_id) {
-    const oldStatusRow = await db('order_statuses').where('id', order.status_id).first();
-    oldStatusCode = oldStatusRow?.status_code || null;
-  }
+  const oldStatusCode = prevStatusCode;
   await audit('PRINTING_ORDER_STATUS_UPDATED', userId, {
     ip: req.ip, resourceId: id,
     beforeState: { status_code: oldStatusCode },
@@ -778,6 +790,7 @@ const serializeWork = (work) => ({
   size: work.size,
   mimeType: work.mime_type,
   url: work.file_url || `${WORK_PUBLIC_PREFIX}/${work.filename}`,
+  message: work.message || null,
   uploadedAt: work.uploaded_at,
   updatedAt: work.updated_at
 });
@@ -873,6 +886,9 @@ const notifyWorkUploaded = async (req, order, works) => {
       <div style="text-align:center;margin:0 0 8px">
         <a href="${trackUrl}" style="display:inline-block;background:#059669;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Track My Order</a>
       </div>
+      <div style="text-align:center;margin:8px 0 8px">
+        <a href="${config.frontendUrl}/customer/printing-orders" style="display:inline-block;background:#fff;color:#059669;border:2px solid #059669;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Open in My Services → Printing</a>
+      </div>
       <p style="text-align:center;font-size:13px;color:#94a3b8;margin:14px 0 0">Order number: <strong>${order.order_number}</strong></p>
     </div>
     <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 36px;text-align:center">
@@ -888,6 +904,26 @@ const notifyWorkUploaded = async (req, order, works) => {
       to: order.customer_phone,
       message: `Your work for order ${order.order_number} has been uploaded. Review it and continue tracking at ${trackUrl}`
     }).catch(err => console.error('Failed to SMS uploaded work:', err.message));
+  }
+
+  // Notify the customer's navbar bell (Customer Portal) so they see a message
+  // that deep-links to My Services → Printing Orders where the file is shown.
+  try {
+    if (order.customer_phone) {
+      const portalUser = await db('users').where('phone', order.customer_phone).whereNull('deleted_at').first();
+      if (portalUser) {
+        await sendCustomerNotification({
+          user_id: portalUser.id,
+          title: 'Your work is ready to review ✅',
+          message: `The work for your printing order ${order.order_number} (${works.length} file${works.length > 1 ? 's' : ''}) has been uploaded. Open it from My Services → Printing Orders.`,
+          type: 'printing_work',
+          link: '/customer/printing-orders',
+          related_entity_id: order.id
+        }, req.app?.get('io')).catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.error('Failed to notify customer bell for uploaded work:', e.message);
   }
 };
 
@@ -975,6 +1011,7 @@ exports.uploadWorks = catchAsync(async (req, res) => {
     mime_type: file.mimetype || 'application/octet-stream',
     file_path: file.path,
     file_url: `${WORK_PUBLIC_PREFIX}/${file.filename}`,
+    message: (req.body.message || '').trim().slice(0, 500) || null,
     uploaded_by: userId,
     uploaded_at: db.fn.now(),
     updated_at: db.fn.now()
@@ -1004,24 +1041,30 @@ exports.updateWork = catchAsync(async (req, res) => {
   const { workId } = req.params;
   const userId = req.user.id;
   const ip = req.ip;
-  if (!req.file) {
-    throw new AppError('Select a file to update the work', 400);
+  const message = (req.body.message || '').trim().slice(0, 500) || null;
+  if (!req.file && message === null) {
+    throw new AppError('Select a file or enter a message to update the work', 400);
   }
   const work = await db('printing_order_works').where('id', workId).first();
   if (!work) {
     throw new AppError('Work file not found', 404);
   }
   const order = await getOrderForWork(work.order_id);
-  try { if (work.file_path) deleteFile(work.file_path); } catch (e) { /* ignore */ }
-  await db('printing_order_works').where('id', workId).update({
-    filename: req.file.filename,
-    original_name: req.file.originalname,
-    size: req.file.size,
-    mime_type: req.file.mimetype || 'application/octet-stream',
-    file_path: req.file.path,
-    file_url: `${WORK_PUBLIC_PREFIX}/${req.file.filename}`,
-    updated_at: db.fn.now()
-  });
+  const updates = {};
+  if (req.file) {
+    try { if (work.file_path) deleteFile(work.file_path); } catch (e) { /* ignore */ }
+    updates.filename = req.file.filename;
+    updates.original_name = req.file.originalname;
+    updates.size = req.file.size;
+    updates.mime_type = req.file.mimetype || 'application/octet-stream';
+    updates.file_path = req.file.path;
+    updates.file_url = `${WORK_PUBLIC_PREFIX}/${req.file.filename}`;
+  }
+  if (message !== null) {
+    updates.message = message;
+  }
+  updates.updated_at = db.fn.now();
+  await db('printing_order_works').where('id', workId).update(updates);
   const updated = await db('printing_order_works').where('id', workId).first();
   await audit('PRINTING_ORDER_WORK_UPDATED', userId, {
     ip,
@@ -1029,10 +1072,10 @@ exports.updateWork = catchAsync(async (req, res) => {
     details: { workId, filename: updated.original_name }
   });
   if (req.res) req.res.locals.__centralAudited = true;
-  await notifyWorkUploaded(req, order, [updated]);
+  if (req.file) await notifyWorkUploaded(req, order, [updated]);
   res.json({
     status: 'success',
-    message: 'Work file updated and re-sent to the customer',
+    message: req.file ? 'Work file updated and re-sent to the customer' : 'Work message saved',
     data: { work: serializeWork(updated) }
   });
 });
@@ -1510,13 +1553,46 @@ exports.getCustomerOrders = catchAsync(async (req, res) => {
 
   const orders = await db('printing_orders as po')
     .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
-    .select('po.*', 'os.status_name', 'os.status_code', 'os.color_hex')
+    .leftJoin('customers as c', 'po.customer_id', 'c.id')
+    .select(
+      'po.*',
+      'os.status_name',
+      'os.status_code',
+      'os.color_hex',
+      'c.name as customer_name',
+      'c.email as customer_email',
+      'c.phone as customer_phone'
+    )
     .where('po.customer_id', customer.id)
     .where(function() {
       this.where('po.is_deleted_by_customer', false).orWhereNull('po.is_deleted_by_customer');
     })
     .whereNull('po.deleted_at')
     .orderBy('po.created_at', 'desc');
+
+  // Guarantee contact details on every order (portal-created customers usually
+  // store no email — fall back to the signed-in user profile).
+  orders.forEach(o => {
+    o.customer_name  = o.customer_name  || user?.full_name || user?.fullName || null;
+    o.customer_email = o.customer_email || user?.email || null;
+    o.customer_phone = o.customer_phone || user?.phone || null;
+  });
+
+  // Attach uploaded work files (finished job output) to each order so the
+  // customer can see/open them right from their dashboard.
+  const ids = orders.map(o => o.id);
+  if (ids.length > 0) {
+    const works = await db('printing_order_works')
+      .whereIn('order_id', ids)
+      .orderBy('uploaded_at', 'desc');
+    const worksByOrder = {};
+    works.forEach(w => {
+      (worksByOrder[w.order_id] = worksByOrder[w.order_id] || []).push(w);
+    });
+    orders.forEach(o => {
+      o.works = (worksByOrder[o.id] || []).map(serializeWork);
+    });
+  }
 
   res.json({ status: 'success', data: { orders } });
 });
@@ -1622,7 +1698,6 @@ exports.closeShift = catchAsync(async (req, res) => {
 // ── PUBLIC: Track order by order number (no auth required) ────────
 exports.trackOrder = catchAsync(async (req, res) => {
   const { orderNumber } = req.params;
-  const phoneQ = String(req.query.phone || '').replace(/[\s-]/g, '');
   const order = await db('printing_orders as po')
     .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
     .leftJoin('customers as c', 'po.customer_id', 'c.id')
@@ -1632,7 +1707,7 @@ exports.trackOrder = catchAsync(async (req, res) => {
       'po.payment_status', 'po.payment_method', 'po.payment_reference',
       'po.created_at', 'po.completed_at', 'po.updated_at',
       'os.status_name', 'os.status_code', 'os.color_hex', 'os.sort_order',
-      'c.name as customer_name', 'c.phone as customer_phone'
+      'c.name as customer_name'
     )
     .where('po.order_number', orderNumber)
     .whereNull('po.deleted_at')
@@ -1642,10 +1717,10 @@ exports.trackOrder = catchAsync(async (req, res) => {
   // Fetch status history
   const history = await db('order_status_history as osh')
     .leftJoin('printing_orders as po', 'osh.order_id', 'po.id')
-    .leftJoin('order_statuses as os', 'osh.status_id', 'os.id')
-    .select('os.status_name', 'os.status_code', 'os.color_hex', 'osh.created_at', 'osh.notes')
+    .leftJoin('order_statuses as os', 'os.status_code', 'osh.to_status')
+    .select('os.status_name', 'os.status_code', 'os.color_hex', 'osh.changed_at', 'osh.note as notes')
     .where('po.order_number', orderNumber)
-    .orderBy('osh.created_at', 'asc');
+    .orderBy('osh.changed_at', 'asc');
 
   // All possible steps in order
   const allSteps = [
@@ -1660,28 +1735,27 @@ exports.trackOrder = catchAsync(async (req, res) => {
   ];
 
   const currentSortOrder = order.sort_order || 1;
+  const isCancelled = order.status_code === 'cancelled';
   const steps = allSteps.map((step, idx) => {
     const histEntry = history.find(h => h.status_code === step.code);
     const stepOrder = idx + 1;
     return {
       ...step,
-      completed: stepOrder < currentSortOrder,
-      active: step.code === order.status_code,
-      timestamp: histEntry?.created_at || null,
+      completed: isCancelled ? false : stepOrder < currentSortOrder,
+      active: isCancelled ? false : stepOrder === currentSortOrder,
+      cancelled: isCancelled,
+      timestamp: histEntry?.changed_at || null,
       notes: histEntry?.notes || null,
     };
   });
 
-  // Uploaded work files are only exposed when the mobile number on file for
-  // the order is provided too — so the documents stay private to that customer.
+  // Uploaded work files are always exposed on the track page so the customer
+  // can open/download the finished job output as soon as it is uploaded.
   let works = [];
-  if (phoneQ) {
-    const customerPhone = String(order.customer_phone || '').replace(/[\s-]/g, '');
-    if (customerPhone && customerPhone === phoneQ) {
-      works = await db('printing_order_works')
-        .where('order_id', order.id)
-        .orderBy('uploaded_at', 'desc');
-    }
+  if (order?.id) {
+    works = await db('printing_order_works')
+      .where('order_id', order.id)
+      .orderBy('uploaded_at', 'desc');
   }
   delete order.customer_phone;
   delete order.id;
