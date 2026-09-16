@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Clock, Building2, MinusCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Clock, Building2, MinusCircle, ChevronDown } from 'lucide-react';
 import api from '../../services/apiClient';
 
 const C = {
@@ -81,6 +81,26 @@ const PQ_STYLES = `
   .pq-line-num { position: absolute; top: -8px; left: -8px; width: 24px; height: 24px; background: #2563EB; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
   .pq-line-remove { position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer; color: #DC2626; padding: 2px; border-radius: 4px; }
   .pq-line-remove:hover { background: #FEE2E2; }
+  .pq-stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .pq-stat-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.15s; }
+  .pq-stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .pq-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pq-stat-info { min-width: 0; }
+  .pq-stat-val { font-size: 20px; font-weight: 800; color: #111827; line-height: 1.1; }
+  .pq-stat-label { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
+  .pq-summary-row td { background: #F9FAFB !important; border-top: 2px solid #D1D5DB !important; font-weight: 700; padding: 12px 14px !important; font-size: 13px; color: #374151; }
+  .pq-modal-lg { width: 900px; }
+  .pq-detail-strip { border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .pq-detail-strip-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #F8FAFC; border-bottom: 1px solid #E5E7EB; flex-wrap: wrap; gap: 8px; }
+  .pq-detail-qno { font-size: 15px; font-weight: 700; color: #2563EB; font-family: monospace; }
+  .pq-detail-agreed { font-size: 12px; color: #6B7280; }
+  .pq-detail-strip-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; }
+  .pq-detail-cell { padding: 14px 16px; border-right: 1px solid #F3F4F6; border-bottom: 1px solid #F3F4F6; min-width: 0; }
+  .pq-detail-cell-total { background: #EFF6FF; border-bottom: 1px solid #DBEAFE; }
+  .pq-detail-kv-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; color: #9CA3AF; margin-bottom: 4px; }
+  .pq-detail-val { font-size: 14px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 6px; word-break: break-word; }
+  .pq-detail-total-val { font-size: 17px; font-weight: 800; color: #2563EB; }
+  .pq-detail-section-title { font-size: 12px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
   @media (max-width: 768px) { .pq-header { flex-direction: column; align-items: flex-start; } .pq-filter { flex-direction: column; align-items: stretch; } .pq-search-wrap { max-width: 100%; } .pq-modal { max-height: 95vh; } }
 `;
 
@@ -105,6 +125,10 @@ const PurchaseSupplierQuotations = () => {
     notes: '',
     vat_rate: '15'
   });
+  const [manualSupplier, setManualSupplier] = useState(false);
+  const [supplierOpen, setSupplierOpen] = useState(false);
+  const [supplierQuery, setSupplierQuery] = useState('');
+  const supplierWrapRef = useRef(null);
   const [lineItems, setLineItems] = useState([emptyItem()]);
 
   const showToast = (msg, type = 'success') => {
@@ -112,33 +136,62 @@ const PurchaseSupplierQuotations = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const fetchData = async () => {
+  const fetchSuppliers = async () => {
     try {
-      setLoading(true);
-      const [qRes, sRes] = await Promise.all([
-        api.get('/purchase/quotations'),
-        api.get('/suppliers')
-      ]);
-      setQuotations(qRes.data?.data || []);
-      if (Array.isArray(sRes.data.data)) setSuppliers(sRes.data.data);
-    } catch (error) {
-      showToast('Failed to load data', 'error');
-    } finally {
-      setLoading(false);
+      const sRes = await api.get('/suppliers');
+      if (sRes && Array.isArray(sRes.data)) setSuppliers(sRes.data);
+    } catch (err) {
+      console.error('Failed to load suppliers:', err.message);
     }
+  };
+
+  const fetchQuotations = async () => {
+    try {
+      const qRes = await api.get('/purchase/quotations');
+      if (qRes && Array.isArray(qRes.data)) setQuotations(qRes.data);
+    } catch (err) {
+      console.error('Failed to load quotations:', err.message);
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([fetchSuppliers(), fetchQuotations()]);
+    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleSupplierChange = (e) => {
-    const val = e.target.value;
-    const found = suppliers.find(s => s.id.toString() === val || s.full_name === val || s.company_name === val);
-    if (found) {
-      setFormData({ ...formData, supplier_id: found.id, supplier_name: found.company_name || found.full_name });
-    } else {
-      setFormData({ ...formData, supplier_id: '', supplier_name: val });
-    }
+  const pickSupplier = (s) => {
+    setFormData({ ...formData, supplier_id: s.id, supplier_name: s.company_name || s.full_name });
+    setManualSupplier(false);
+    setSupplierOpen(false);
   };
+
+  const matchesQuery = (s) => {
+    const q = supplierQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (s.company_name || '').toLowerCase().includes(q)
+      || (s.full_name || '').toLowerCase().includes(q)
+      || (s.category || '').toLowerCase().includes(q)
+      || (s.email || '').toLowerCase().includes(q);
+  };
+
+  const internalSuppliers = suppliers.filter(s => !s.user_id);
+  const selfSuppliers = suppliers.filter(s => s.user_id);
+  const selectedSupplier = suppliers.find(s => String(s.id) === String(formData.supplier_id)) || null;
+
+  useEffect(() => {
+    const onDocMouseDown = (e) => {
+      if (supplierWrapRef.current && !supplierWrapRef.current.contains(e.target)) setSupplierOpen(false);
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, []);
+
+  useEffect(() => {
+    if (!showAddModal) setSupplierOpen(false);
+  }, [showAddModal]);
 
   const updateLineItem = (idx, field, value) => {
     const updated = [...lineItems];
@@ -183,6 +236,7 @@ const PurchaseSupplierQuotations = () => {
       showToast('Quotation recorded successfully');
       setShowAddModal(false);
       setFormData({ supplier_id: '', supplier_name: '', date_agreed: new Date().toISOString().split('T')[0], agreed_via: 'Phone', notes: '', vat_rate: '15' });
+      setManualSupplier(false);
       setLineItems([emptyItem()]);
       fetchData();
     } catch (err) {
@@ -195,7 +249,7 @@ const PurchaseSupplierQuotations = () => {
     setShowViewModal(true);
     try {
       const res = await api.get(`/purchase/quotations/${q.id}/items`);
-      setSelectedItems(res.data?.data || []);
+      if (res && Array.isArray(res.data)) setSelectedItems(res.data);
     } catch { setSelectedItems([]); }
   };
 
@@ -242,10 +296,41 @@ const PurchaseSupplierQuotations = () => {
           <h1><FileText size={24} color="#2563EB" /> Quotations</h1>
           <p>Record routine prices agreed offline with trusted suppliers.</p>
         </div>
-        <button className="pq-btn pq-btn-primary" onClick={() => { setShowAddModal(true); setLineItems([emptyItem()]); }}>
+        <button className="pq-btn pq-btn-primary" onClick={() => { setShowAddModal(true); setManualSupplier(false); setLineItems([emptyItem()]); }}>
           <Plus size={16} /> Record New Quotation
         </button>
       </div>
+
+      {/* Stat Cards */}
+      {!loading && quotations.length > 0 && (() => {
+        const totalQ = quotations.length;
+        const pendingQ = quotations.filter(q => q.status === 'Pending CEO Approval').length;
+        const recordedQ = quotations.filter(q => q.status === 'Recorded').length;
+        const convertedQ = quotations.filter(q => q.status === 'Converted').length;
+        const cancelledQ = quotations.filter(q => q.status === 'Cancelled').length;
+        const totalValue = quotations.reduce((s, q) => s + parseFloat(q.total_amount || 0), 0);
+        const cards = [
+          { label: 'Total', val: totalQ, bg: '#EFF6FF', icon: <FileText size={20} color="#2563EB" /> },
+          { label: 'Pending CEO', val: pendingQ, bg: '#FEF3C7', icon: <Clock size={20} color="#D97706" /> },
+          { label: 'Recorded', val: recordedQ, bg: '#E0F2FE', icon: <CheckCircle size={20} color="#0369A1" /> },
+          { label: 'Converted', val: convertedQ, bg: '#DCFCE7', icon: <ShoppingCart size={20} color="#15803D" /> },
+          { label: 'Cancelled', val: cancelledQ, bg: '#FEE2E2', icon: <Trash2 size={20} color="#DC2626" /> },
+          { label: 'Total Value', val: `ETB ${totalValue.toLocaleString()}`, bg: '#F3E8FF', icon: <FileText size={20} color="#7C3AED" /> },
+        ];
+        return (
+          <div className="pq-stat-row">
+            {cards.map((c, i) => (
+              <div className="pq-stat-card" key={i}>
+                <div className="pq-stat-icon" style={{ background: c.bg }}>{c.icon}</div>
+                <div className="pq-stat-info">
+                  <div className="pq-stat-val">{c.val.toLocaleString?.() ?? c.val}</div>
+                  <div className="pq-stat-label">{c.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Filter */}
       <div className="pq-card" style={{ marginBottom: 20 }}>
@@ -267,7 +352,7 @@ const PurchaseSupplierQuotations = () => {
                 <th>Supplier</th>
                 <th>Items</th>
                 <th className="right">Subtotal</th>
-                <th className="right">VAT</th>
+                <th className="right">Input VAT</th>
                 <th className="right">Total</th>
                 <th>Date</th>
                 <th>Status</th>
@@ -301,6 +386,24 @@ const PurchaseSupplierQuotations = () => {
                 })
               )}
             </tbody>
+            {!loading && filteredQuotes.length > 0 && (() => {
+              const sumSubtotal = filteredQuotes.reduce((s, q) => s + parseFloat(q.total_amount || 0) - parseFloat(q.vat_amount || 0), 0);
+              const sumVat = filteredQuotes.reduce((s, q) => s + parseFloat(q.vat_amount || 0), 0);
+              const sumTotal = filteredQuotes.reduce((s, q) => s + parseFloat(q.total_amount || 0), 0);
+              const sumItems = filteredQuotes.reduce((s, q) => s + (parseInt(q.item_count, 10) || 0), 0);
+              return (
+                <tfoot>
+                  <tr className="pq-summary-row">
+                    <td colSpan={2}>Summary ({String(filteredQuotes.length)} quotation{filteredQuotes.length !== 1 ? 's' : ''})</td>
+                    <td><span style={{ background: '#D1E7FF', color: '#1D4ED8', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{sumItems} item{sumItems !== 1 ? 's' : ''}</span></td>
+                    <td className="right pq-amount">ETB {sumSubtotal.toLocaleString()}</td>
+                    <td className="right pq-amount">ETB {sumVat.toLocaleString()}</td>
+                    <td className="right pq-amount" style={{ color: '#2563EB', fontSize: 14 }}>ETB {sumTotal.toLocaleString()}</td>
+                    <td colSpan={3}></td>
+                  </tr>
+                </tfoot>
+              );
+            })()}
           </table>
         </div>
       </div>
@@ -319,10 +422,69 @@ const PurchaseSupplierQuotations = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label>Supplier</label>
-                    <input list="supplier-list" required className="pq-input" value={formData.supplier_name} onChange={handleSupplierChange} placeholder="Select or type a supplier..." />
-                    <datalist id="supplier-list">
-                      {suppliers.map(s => <option key={s.id} value={s.company_name || s.full_name}>{s.company_name || s.full_name}</option>)}
-                    </datalist>
+                    <div style={{ position: 'relative' }} ref={supplierWrapRef}>
+                      <button
+                        type="button"
+                        className="pq-input"
+                        onClick={() => { setSupplierOpen(o => !o); setSupplierQuery(''); }}
+                        style={{ textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff' }}
+                      >
+                        <span style={{ color: manualSupplier ? '#111827' : (selectedSupplier ? '#111827' : '#9CA3AF'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {manualSupplier ? (formData.supplier_name || 'Type supplier name...') : (selectedSupplier ? (selectedSupplier.company_name || selectedSupplier.full_name) : '-- Select Supplier --')}
+                        </span>
+                        <ChevronDown size={16} color="#9CA3AF" style={{ flexShrink: 0, marginLeft: 8 }} />
+                      </button>
+
+                      {supplierOpen && (
+                        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid #D1D5DB', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.16)', zIndex: 70, overflow: 'hidden' }}>
+                          <div style={{ padding: 8, borderBottom: '1px solid #F3F4F6' }}>
+                            <input autoFocus type="text" className="pq-input" style={{ padding: '8px 10px', fontSize: 13 }} value={supplierQuery} onChange={e => setSupplierQuery(e.target.value)} placeholder="Search suppliers..." />
+                          </div>
+                          <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+                            <div style={{ padding: '6px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6B7280', background: '#F9FAFB', borderTop: '1px solid #F3F4F6' }}>Self / Registered Suppliers</div>
+                            {selfSuppliers.filter(matchesQuery).length === 0 && (
+                              <div style={{ padding: '10px 14px', fontSize: 13, color: '#9CA3AF' }}>None found</div>
+                            )}
+                            {selfSuppliers.filter(matchesQuery).map(s => (
+                              <button key={`self-${s.id}`} type="button" onClick={() => pickSupplier(s)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13.5 }}>
+                                <span style={{ color: '#111827' }}>{s.company_name || s.full_name}</span>
+                                {s.category && <span style={{ color: '#9CA3AF', fontSize: 12 }}> — {s.category}</span>}
+                              </button>
+                            ))}
+                            <div style={{ padding: '6px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6B7280', background: '#F9FAFB', borderTop: '1px solid #F3F4F6' }}>Internal Suppliers</div>
+                            {internalSuppliers.filter(matchesQuery).length === 0 && (
+                              <div style={{ padding: '10px 14px', fontSize: 13, color: '#9CA3AF' }}>None found</div>
+                            )}
+                            {internalSuppliers.filter(matchesQuery).map(s => (
+                              <button key={`int-${s.id}`} type="button" onClick={() => pickSupplier(s)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13.5 }}>
+                                <span style={{ color: '#111827' }}>{s.company_name || s.full_name}</span>
+                                {s.category && <span style={{ color: '#9CA3AF', fontSize: 12 }}> — {s.category}</span>}
+                              </button>
+                            ))}
+                          </div>
+                          <div style={{ borderTop: '1px solid #E5E7EB' }}>
+                            <button
+                              type="button"
+                              onClick={() => { setManualSupplier(true); setSupplierOpen(false); setFormData({ ...formData, supplier_id: '', supplier_name: '' }); }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#2563EB' }}
+                            >
+                              <Plus size={15} /> Manual Entry — type a new supplier
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {manualSupplier && (
+                      <input
+                        type="text"
+                        required
+                        className="pq-input"
+                        style={{ marginTop: 8 }}
+                        value={formData.supplier_name}
+                        onChange={e => setFormData({ ...formData, supplier_name: e.target.value })}
+                        placeholder="Type supplier name..."
+                      />
+                    )}
                   </div>
                   <div>
                     <label>Date Agreed</label>
@@ -338,11 +500,17 @@ const PurchaseSupplierQuotations = () => {
                     </select>
                   </div>
                   <div>
-                    <label>VAT Rate</label>
-                    <select className="pq-input" value={formData.vat_rate} onChange={e => setFormData({ ...formData, vat_rate: e.target.value })}>
-                      <option value="15">15% (Standard)</option>
-                      <option value="0">0% (Exempt / Zero Rated)</option>
-                    </select>
+                    <label>Input VAT (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className="pq-input"
+                      value={formData.vat_rate}
+                      onChange={e => setFormData({ ...formData, vat_rate: e.target.value })}
+                      placeholder="15"
+                    />
                   </div>
                   <div>
                     <label>Notes</label>
@@ -407,7 +575,7 @@ const PurchaseSupplierQuotations = () => {
                       </tr>
                       {vatPct > 0 && (
                         <tr>
-                          <td style={{ padding: '6px 0', color: '#6B7280' }}>VAT ({vatPct}%)</td>
+                          <td style={{ padding: '6px 0', color: '#6B7280' }}>Input VAT ({vatPct}%)</td>
                           <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>ETB {vatAmt.toLocaleString()}</td>
                         </tr>
                       )}
@@ -436,53 +604,95 @@ const PurchaseSupplierQuotations = () => {
         const viewVat = parseFloat(selectedQuote.vat_amount || 0);
         return (
           <div className="pq-modal-overlay">
-            <div className="pq-modal pq-modal-sm">
+            <div className="pq-modal pq-modal-lg">
               <div className="pq-modal-header">
-                <h2>Quotation {selectedQuote.quotation_no}</h2>
+                <h2 style={{ fontFamily: 'monospace', color: '#2563EB' }}>{selectedQuote.quotation_no}</h2>
                 <button className="pq-close-btn" onClick={() => setShowViewModal(false)}><X size={20} /></button>
               </div>
               <div className="pq-modal-body">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <span className={`pq-badge ${badgeCls}`}>{status}</span>
-                  <span style={{ fontSize: 13, color: '#6B7280' }}>Agreed on {selectedQuote.date_agreed ? new Date(selectedQuote.date_agreed).toLocaleDateString() : '—'} via {selectedQuote.agreed_via}</span>
-                </div>
-                <div className="pq-detail-box">
-                  <div className="pq-detail-label">Supplier</div>
-                  <div className="pq-detail-val"><Building2 size={16} /> {selectedQuote.supplier_name}</div>
+                {/* Horizontal Detail Strip */}
+                <div className="pq-detail-strip">
+                  <div className="pq-detail-strip-head">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span className={`pq-badge ${badgeCls}`}>{status}</span>
+                      <span className="pq-detail-qno">{selectedQuote.quotation_no}</span>
+                    </div>
+                    <span className="pq-detail-agreed">Agreed {selectedQuote.date_agreed ? new Date(selectedQuote.date_agreed).toLocaleDateString() : '—'} via {selectedQuote.agreed_via || '—'}</span>
+                  </div>
+                  <div className="pq-detail-strip-grid">
+                    <div className="pq-detail-cell">
+                      <div className="pq-detail-kv-label">Supplier</div>
+                      <div className="pq-detail-val"><Building2 size={15} /> {selectedQuote.supplier_name}</div>
+                    </div>
+                    <div className="pq-detail-cell">
+                      <div className="pq-detail-kv-label">Items</div>
+                      <div className="pq-detail-val">{selectedItems.length || (parseInt(selectedQuote.item_count, 10) || 1)} item{(selectedItems.length || (parseInt(selectedQuote.item_count, 10) || 1)) !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div className="pq-detail-cell">
+                      <div className="pq-detail-kv-label">Subtotal</div>
+                      <div className="pq-detail-val">ETB {(viewSubtotal || parseFloat(selectedQuote.total_amount) - viewVat).toLocaleString()}</div>
+                    </div>
+                    <div className="pq-detail-cell">
+                      <div className="pq-detail-kv-label">Input VAT</div>
+                      <div className="pq-detail-val">{parseFloat(selectedQuote.vat_rate) > 0 ? `ETB ${viewVat.toLocaleString()}` : '—'}</div>
+                    </div>
+                    <div className="pq-detail-cell pq-detail-cell-total">
+                      <div className="pq-detail-kv-label">Total Amount</div>
+                      <div className="pq-detail-total-val">ETB {parseFloat(selectedQuote.total_amount).toLocaleString()}</div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Items Table */}
                 {selectedItems.length > 0 ? (
-                  <table className="pq-table" style={{ marginBottom: 16, fontSize: 13 }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: 30 }}>#</th>
-                        <th>Item</th>
-                        <th className="right">Qty</th>
-                        <th className="right">Cost Price</th>
-                        <th className="right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedItems.map(item => (
-                        <tr key={item.id}>
-                          <td style={{ fontWeight: 600, color: '#2563EB' }}>{item.line_no}</td>
-                          <td>{item.item_description}</td>
-                          <td className="right">{item.quantity} {item.unit}</td>
-                          <td className="right">ETB {parseFloat(item.unit_price).toLocaleString()}</td>
-                          <td className="right" style={{ fontWeight: 600 }}>ETB {parseFloat(item.line_total).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div>
+                    <div className="pq-detail-section-title">Line Items</div>
+                    <div className="pq-table-wrap">
+                      <table className="pq-table pq-items-table" style={{ fontSize: 13 }}>
+                        <colgroup>
+                          <col style={{ width: 40 }} />
+                          <col />
+                          <col style={{ width: 90 }} />
+                          <col style={{ width: 90 }} />
+                          <col style={{ width: 120 }} />
+                          <col style={{ width: 130 }} />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Item</th>
+                            <th className="right">Qty</th>
+                            <th className="right">Unit</th>
+                            <th className="right">Cost Price</th>
+                            <th className="right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedItems.map(item => (
+                            <tr key={item.id}>
+                              <td style={{ fontWeight: 600, color: '#2563EB' }}>{item.line_no}</td>
+                              <td>{item.item_description || '—'}</td>
+                              <td className="right">{item.quantity}</td>
+                              <td className="right">{item.unit || '—'}</td>
+                              <td className="right">ETB {parseFloat(item.unit_price || 0).toLocaleString()}</td>
+                              <td className="right" style={{ fontWeight: 600 }}>ETB {parseFloat(item.line_total || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 ) : (
-                  <table className="pq-info-table" style={{ width: '100%', marginBottom: 16, borderCollapse: 'collapse' }}>
-                    <tbody>
-                      <tr><td>Item</td><td>{selectedQuote.item_description}</td></tr>
-                      <tr><td>Quantity</td><td>{selectedQuote.quantity} {selectedQuote.unit}</td></tr>
-                      <tr><td>Cost Price</td><td>ETB {parseFloat(selectedQuote.unit_price).toLocaleString()}</td></tr>
-                    </tbody>
-                  </table>
+                  <div>
+                    <div className="pq-detail-section-title">Item Details</div>
+                    <table className="pq-info-table" style={{ width: '100%', marginBottom: 16, borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr><td>Item</td><td>{selectedQuote.item_description}</td></tr>
+                        <tr><td>Quantity</td><td>{selectedQuote.quantity} {selectedQuote.unit}</td></tr>
+                        <tr><td>Cost Price</td><td>ETB {parseFloat(selectedQuote.unit_price).toLocaleString()}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
                 )}
 
                 {/* Totals */}
@@ -491,7 +701,7 @@ const PurchaseSupplierQuotations = () => {
                     <tbody>
                       <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>Subtotal</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>ETB {(viewSubtotal || parseFloat(selectedQuote.total_amount) - viewVat).toLocaleString()}</td></tr>
                       {parseFloat(selectedQuote.vat_rate) > 0 && (
-                        <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>VAT ({parseFloat(selectedQuote.vat_rate)}%)</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>ETB {viewVat.toLocaleString()}</td></tr>
+                        <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>Input VAT ({parseFloat(selectedQuote.vat_rate)}%)</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>ETB {viewVat.toLocaleString()}</td></tr>
                       )}
                       <tr><td style={{ padding: '8px 0 0 0', fontWeight: 700, borderTop: '2px solid #E5E7EB' }}>Total Amount</td><td style={{ padding: '8px 0 0 0', textAlign: 'right', fontWeight: 800, fontSize: 16, color: '#2563EB', borderTop: '2px solid #E5E7EB' }}>ETB {parseFloat(selectedQuote.total_amount).toLocaleString()}</td></tr>
                     </tbody>
