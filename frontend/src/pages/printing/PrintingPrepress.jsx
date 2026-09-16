@@ -21,17 +21,24 @@ const PrintingPrepress = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [checklists, setChecklists] = useState({});
+  const [worksByOrder, setWorksByOrder] = useState({});
   const [movingId, setMovingId] = useState(null);
   const [confirm, setConfirm] = useState(null);
-  const [workOrder, setWorkOrder] = useState(null); // opens the Upload Work modal
+  const [workOrder, setWorkOrder] = useState(null);
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
     try {
-      const res = await apiClient.get('/printing/orders', { params: { limit: 200 } });
+      const [res, worksRes] = await Promise.all([
+        apiClient.get('/printing/orders', { params: { limit: 200 } }),
+        apiClient.get('/printing/works', { params: { limit: 100 } })
+      ]);
       const raw = res.data?.orders || res.data || [];
       const list = raw.filter(o => ['file_check'].includes(o.status_code));
       setOrders(list);
+      const byOrder = {};
+      (worksRes.data?.works || []).forEach(w => { byOrder[w.orderId] = (byOrder[w.orderId] || 0) + 1; });
+      setWorksByOrder(byOrder);
       const init = {};
       list.forEach(o => { if (!checklists[o.id]) init[o.id] = { bleed: false, res: false, color: false, fonts: false, size: false }; });
       if (Object.keys(init).length) setChecklists(prev => ({ ...prev, ...init }));
@@ -96,7 +103,9 @@ const PrintingPrepress = () => {
               </thead>
               <tbody>
                 {orders.map(order => {
-                  const passed = isAllChecked(order.id);
+                  const cDone = isAllChecked(order.id);
+                  const hasWorkCount = worksByOrder[order.id] || 0;
+                  const passed = cDone && hasWorkCount > 0;
                   return (
                     <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/printing-manager/orders/${order.id}`)}>
                       <td className="stg-td">
@@ -131,19 +140,21 @@ const PrintingPrepress = () => {
                       <td className="stg-td" onClick={e => e.stopPropagation()}>
                         {movingId === order.id ? (
                           <span className="stg-note">Sending...</span>
-                        ) : passed ? (
+                        ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <button className="stg-btn stg-btn--soft-amber stg-btn--sm" onClick={() => setWorkOrder(order)}>
-                              <UploadCloud size={14} /> Upload Work
+                              <UploadCloud size={14} /> Upload Work{hasWorkCount > 0 ? ` (${hasWorkCount})` : ''}
                             </button>
-                            <button className="stg-btn stg-btn--soft-cyan stg-btn--sm" onClick={() => setConfirm(order)}>
-                              <Send size={14} /> → Print
-                            </button>
+                            {passed ? (
+                              <button className="stg-btn stg-btn--soft-cyan stg-btn--sm" onClick={() => setConfirm(order)}>
+                                <Send size={14} /> → Print
+                              </button>
+                            ) : (
+                              <button className="stg-btn stg-btn--soft-cyan stg-btn--sm" disabled onClick={() => {}}>
+                                <Send size={14} /> {cDone ? 'Upload Work First' : 'Checklist Required'}
+                              </button>
+                            )}
                           </div>
-                        ) : (
-                          <button className="stg-btn stg-btn--soft-cyan stg-btn--sm" disabled onClick={() => {}}>
-                            <Send size={14} /> Checklist Required
-                          </button>
                         )}
                       </td>
                     </tr>
