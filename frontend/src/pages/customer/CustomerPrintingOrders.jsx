@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import axios from "../../services/apiClient";
 import {
   XCircle, Printer, RefreshCw,
-  ArrowLeft, Calendar, FileText, BookOpen,
-  CreditCard, CheckCircle2, Clock, AlertTriangle, Trash2, Package
+  Calendar, FileText, BookOpen,
+  CreditCard, CheckCircle2, Clock,
+  Trash2, Package, Mail, Phone, Download, ChevronDown
 } from "lucide-react";
 import SegmentedSpinner from "../../components/ui/SegmentedSpinner";
+import FileViewer from "../../components/ui/FileViewer";
 import styles from "./CustomerPrintingOrders.module.css";
 
 const BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1").replace("/api/v1", "");
@@ -19,6 +21,7 @@ const JOB_STATUS_CONFIG = {
   in_printing: { label: "Printing",           color: "#065f46", bg: "#ecfdf5", dot: "#059669" },
   finishing:   { label: "Finishing",          color: "#065f46", bg: "#f0fdf4", dot: "#16a34a" },
   ready:       { label: "Ready for Pickup",   color: "#14532d", bg: "#dcfce7", dot: "#22c55e" },
+  ready_for_pickup: { label: "Ready for Pickup", color: "#14532d", bg: "#dcfce7", dot: "#22c55e" },
   delivered:   { label: "Delivered",          color: "#14532d", bg: "#d1fae5", dot: "#10b981" },
   cancelled:   { label: "Cancelled",          color: "#7f1d1d", bg: "#fef2f2", dot: "#ef4444" },
 };
@@ -42,17 +45,43 @@ const STATUS_TABS = [
   { key: "delivered", label: "Delivered" },
 ];
 
+/* One quiet status line for every order — the same shape for all. */
+const PROCESSING_CODES = ["in_queue", "in_design", "file_check", "in_printing", "finishing", "in_progress"];
+const PROGRESS_STAGES = [
+  { key: "received",   label: "Received" },
+  { key: "processing", label: "In Production" },
+  { key: "ready",      label: "Ready for Pickup" },
+  { key: "delivered",  label: "Delivered" },
+];
+const progressIndex = (code) => {
+  const c = String(code || "").toLowerCase();
+  if (c === "received") return 0;
+  if (PROCESSING_CODES.includes(c)) return 1;
+  if (c === "ready" || c === "ready_for_pickup") return 2;
+  if (c === "delivered" || c === "completed") return 3;
+  return -1;
+};
+
 const fmtDate = (d) => d
   ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
   : "—";
 
+const initialsOf = (name) =>
+  String(name || "?")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join("") || "?";
+
 export default function CustomerPrintingOrders() {
   const [orders, setOrders]               = useState([]);
   const [loading, setLoading]             = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [openId, setOpenId]               = useState(null);
   const [activeTab, setActiveTab]         = useState("all");
   const [imgError, setImgError]           = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedWork, setSelectedWork]   = useState(null);
   const [refreshing, setRefreshing]       = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [toast, setToast]                 = useState(null);
@@ -88,8 +117,7 @@ export default function CustomerPrintingOrders() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const handleHideOrder = (e, id, orderNumber) => {
-    e.stopPropagation();
+  const handleHideOrder = (id, orderNumber) => {
     setConfirmDelete({ id, orderNumber });
   };
 
@@ -100,6 +128,7 @@ export default function CustomerPrintingOrders() {
     try {
       await axios.delete(`/printing/customer/orders/${id}`);
       setOrders(prev => prev.filter(o => o.id !== id));
+      if (openId === id) setOpenId(null);
       showToast("Order removed from your dashboard.", "success");
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to remove order.", "error");
@@ -110,11 +139,16 @@ export default function CustomerPrintingOrders() {
     try {
       await axios.delete(`/printing/orders/${id}/cancel`);
       fetchOrders();
-      setSelectedOrder(null);
+      setOpenId(null);
       showToast("Order cancelled successfully.");
     } catch (err) {
       showToast(err.response?.data?.message || "Cancellation failed — contact support.", "error");
     }
+  };
+
+  const toggleOrder = (id) => {
+    setImgError(false);
+    setOpenId(prev => (prev === id ? null : id));
   };
 
   const filtered = activeTab === "all"
@@ -125,13 +159,11 @@ export default function CustomerPrintingOrders() {
           : o.status_code === activeTab
       );
 
-  /* ─── DETAIL VIEW ─────────────────────────────────────────────── */
-  if (selectedOrder) {
-    const o       = selectedOrder;
-    const jobCfg  = getJobCfg(o.status_code);
-    const payCfg  = getPayCfg(o.payment_status);
+  const renderDetail = (o) => {
+    const jobCfg = getJobCfg(o.status_code);
+    const payCfg = getPayCfg(o.payment_status);
 
-    let attachment = null, docSrc = null, isImage = false;
+    let attachment = null, docSrc = null, isImage = false, isDocxDoc = false;
     if (o.attachments) {
       try {
         const atts = JSON.parse(o.attachments);
@@ -143,247 +175,267 @@ export default function CustomerPrintingOrders() {
           : `${BASE}/${attachment.path.replace(/\\/g, "/")}`;
       }
       isImage = !!(attachment && attachment.mimeType?.startsWith("image/"));
+      isDocxDoc = String(attachment?.path || "").toLowerCase().endsWith(".docx");
     }
 
+    const curProgress = progressIndex(o.status_code);
+    const isTerminal = TERMINAL.includes((o.status_code || "").toLowerCase());
+
     return (
-      <>
-        {selectedImage && (
-          <div className={styles.modal} onClick={() => setSelectedImage(null)}>
-            <button className={styles.modalClose} onClick={() => setSelectedImage(null)}>
-              <XCircle size={32} />
-            </button>
-            <img src={selectedImage} alt="Document" className={styles.modalImg} onClick={e => e.stopPropagation()} />
-          </div>
-        )}
-
-        <div className={styles.page}>
-          <div className={styles.wrap}>
-            <button className={styles.backBtn} onClick={() => setSelectedOrder(null)}>
-              <ArrowLeft size={16} /> Back to Printing Orders
-            </button>
-
-            <div className={styles.header}>
-              <h1 className={styles.pageTitle}>
-                <Printer size={24} /> Order #{o.order_number}
-              </h1>
-              <span
-                className={styles.badge}
-                style={{ background: jobCfg.bg, color: jobCfg.color }}
-              >
-                <span className={styles.dot} style={{ background: jobCfg.dot }} />
-                {jobCfg.label}
-              </span>
+      <div className={styles.detail}>
+        <div className={styles.detailInner}>
+          <div className={styles.detailHead}>
+            <div className={styles.detailMeta}>
+              <span><Calendar size={13} /> Placed {new Date(o.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+              <span>·</span>
+              <span><Clock size={13} /> Due {fmtDate(o.due_date)}</span>
+              <span>·</span>
+              <span style={{ color: payCfg.color, fontWeight: 600 }}>{payCfg.label}</span>
             </div>
+            <span className={styles.statusBadge} style={{ background: jobCfg.bg, color: jobCfg.color }}>
+              <span className={styles.rowStatusDot} style={{ background: jobCfg.dot }} />
+              {jobCfg.label}
+            </span>
+          </div>
 
-            {/* Payment banner */}
-            <div style={{
-              display: "flex", alignItems: "flex-start", gap: "0.75rem",
-              padding: "1rem 1.25rem", borderRadius: "0.75rem",
-              background: payCfg.bg, border: `1.5px solid ${payCfg.border}`,
-              color: payCfg.color, fontWeight: 600, fontSize: "0.875rem",
-              marginBottom: "1.5rem", lineHeight: 1.6,
-            }}>
-              {o.payment_status === "Confirmed"
-                ? <CheckCircle2 size={20} style={{ flexShrink: 0, marginTop: 2 }} />
-                : o.payment_status === "Rejected"
-                ? <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 2 }} />
-                : <Clock size={20} style={{ flexShrink: 0, marginTop: 2 }} />}
-              <div>
-                {o.payment_status === "Confirmed"
-                  ? "✅ Payment confirmed by Finance — your order is being processed by the printing team."
-                  : o.payment_status === "Rejected"
-                  ? "❌ Payment rejected by Finance — please contact support to resolve this."
-                  : "⏳ Awaiting Finance confirmation — printing starts once your payment is approved."}
+          {/* Identity — name, email, phone at every order */}
+          <div className={styles.contactStrip}>
+            <div className={styles.avatar}>{initialsOf(o.customer_name)}</div>
+            <div className={styles.contactMain}>
+              <div className={styles.contactName}>{o.customer_name || "Customer"}</div>
+              <div className={styles.contactLine}>
+                <Mail size={14} />
+                <a href={o.customer_email ? `mailto:${o.customer_email}` : undefined}>
+                  {o.customer_email || "No email on file"}
+                </a>
+              </div>
+              <div className={styles.contactLine}>
+                <Phone size={14} />
+                <a href={o.customer_phone ? `tel:${o.customer_phone}` : undefined}>
+                  {o.customer_phone || "No phone on file"}
+                </a>
               </div>
             </div>
+          </div>
 
-            {/* Two-column detail grid */}
-            <div className={styles.detailGrid}>
-              {/* Left column */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                {/* Printing Details */}
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>
-                    <BookOpen size={16} /> Printing Details
-                  </h3>
-                  <div className={styles.infoGrid}>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Service Type</div>
-                      <div className={styles.infoValue}>{o.product_type || "—"}</div>
-                    </div>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Paper Type</div>
-                      <div className={styles.infoValue}>{o.paper_type || "—"}</div>
-                    </div>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Binding</div>
-                      <div className={styles.infoValue}>{o.binding_type || "None"}</div>
-                    </div>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Color</div>
-                      <div className={styles.infoValue}>{o.color_printing ? "Color" : "Black & White"}</div>
-                    </div>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Quantity</div>
-                      <div className={styles.infoValue}>{o.quantity} copy × {o.pages_per_copy} pages</div>
-                    </div>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Due Date</div>
-                      <div className={styles.infoValue}>{fmtDate(o.due_date)}</div>
-                    </div>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Subtotal</div>
-                      <div className={styles.infoValue}>{parseFloat(o.subtotal || 0).toFixed(2)} ETB</div>
-                    </div>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>VAT</div>
-                      <div className={styles.infoValue}>{parseFloat(o.vat_amount || 0).toFixed(2)} ETB</div>
-                    </div>
-                    <div className={`${styles.infoItem} ${styles.infoFullRow}`}>
-                      <div className={styles.infoLabel}>Total (incl. VAT)</div>
-                      <div className={styles.infoValueLarge}>
-                        {parseFloat(o.total_price || 0).toLocaleString("en-ET", { minimumFractionDigits: 2 })} ETB
-                      </div>
-                    </div>
-                    {o.special_instructions && (
-                      <div className={`${styles.infoItem} ${styles.infoFullRow}`}>
-                        <div className={styles.infoLabel}>Special Instructions</div>
-                        <div style={{ fontSize: "0.875rem", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "0.5rem", padding: "0.75rem 1rem", color: "#92400e", lineHeight: 1.6 }}>
-                          {o.special_instructions}
-                        </div>
-                      </div>
-                    )}
+          <div className={styles.detailBody}>
+            {/* Left — print job + payment */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "2rem", minWidth: 0 }}>
+              <section className={styles.section}>
+                <h3 className={styles.sectionTitle}>
+                  <BookOpen size={17} /> Print Job
+                </h3>
+                <div className={styles.specList}>
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>Service type</span>
+                    <span className={styles.specValue}>{o.product_type || "—"}</span>
+                  </div>
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>Paper</span>
+                    <span className={styles.specValue}>{o.paper_type || "—"}</span>
+                  </div>
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>Binding</span>
+                    <span className={styles.specValue}>{o.binding_type || "None"}</span>
+                  </div>
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>Printing</span>
+                    <span className={styles.specValue}>{o.color_printing ? "Color" : "Black & White"}</span>
+                  </div>
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>Quantity</span>
+                    <span className={styles.specValue}>{o.quantity} copy × {o.pages_per_copy} pages</span>
                   </div>
                 </div>
-
-                {/* Payment Details */}
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>
-                    <CreditCard size={16} /> Payment Details
-                  </h3>
-                  <div className={styles.infoGrid}>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Payment Method</div>
-                      <div className={styles.infoValue}>{o.payment_method || "Not specified"}</div>
-                    </div>
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Finance Status</div>
-                      <div className={styles.infoValue} style={{ color: payCfg.color, fontWeight: 700 }}>
-                        {o.payment_status === "Confirmed" ? "✅ Confirmed" : o.payment_status === "Rejected" ? "❌ Rejected" : "⏳ Pending"}
-                      </div>
-                    </div>
-                    {o.payment_reference && (
-                      <div className={styles.infoItem}>
-                        <div className={styles.infoLabel}>Transaction Reference</div>
-                        <div style={{ fontFamily: "monospace", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "0.375rem", padding: "0.375rem 0.625rem", fontSize: "0.875rem", color: "#0f172a" }}>
-                          {o.payment_reference}
-                        </div>
-                      </div>
-                    )}
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoLabel}>Order Placed</div>
-                      <div className={styles.infoValue}>
-                        {new Date(o.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {o.status_code === "received" && (
-                  <div className={styles.cancelWrap}>
-                    <button
-                      onClick={() => handleCancel(o.id)}
-                      className={styles.btnSecondary}
-                      style={{ color: '#dc2626', borderColor: '#dc2626' }}
-                    >
-                      <XCircle size={16} /> Cancel Order
-                    </button>
+                {o.special_instructions && (
+                  <div className={styles.specialNote}>
+                    <strong style={{ fontWeight: 700 }}>Special instructions: </strong>
+                    {o.special_instructions}
                   </div>
                 )}
-              </div>
+              </section>
 
-              {/* Right column — Document */}
-              <div className={styles.detailCard}>
-                <h3 className={styles.detailCardTitle}>
-                  <FileText size={16} /> Document Attachment
+              <section className={styles.section}>
+                <h3 className={styles.sectionTitle}>
+                  <CreditCard size={17} /> Payment
+                </h3>
+                <div className={styles.specList}>
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>Method</span>
+                    <span className={styles.specValue}>{o.payment_method || "Not specified"}</span>
+                  </div>
+                  {o.payment_reference && (
+                    <div className={styles.specRow}>
+                      <span className={styles.specLabel}>Reference</span>
+                      <span className={styles.mono}>{o.payment_reference}</span>
+                    </div>
+                  )}
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>Subtotal</span>
+                    <span className={styles.specValue}>{parseFloat(o.subtotal || 0).toFixed(2)} ETB</span>
+                  </div>
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>VAT</span>
+                    <span className={styles.specValue}>{parseFloat(o.vat_amount || 0).toFixed(2)} ETB</span>
+                  </div>
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>Total</span>
+                    <span className={styles.specValuePrice}>
+                      {parseFloat(o.total_price || 0).toLocaleString("en-ET", { minimumFractionDigits: 2 })} ETB
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                {o.status_code === "received" && (
+                  <button className={`${styles.btnGhost} ${styles.btnGhostDanger}`} onClick={() => handleCancel(o.id)}>
+                    <XCircle size={15} /> Cancel Order
+                  </button>
+                )}
+                {isTerminal && (
+                  <button className={styles.btnGhost} onClick={() => handleHideOrder(o.id, o.order_number)}>
+                    <Trash2 size={15} /> Hide from dashboard
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Right — progress + files */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "2rem", minWidth: 0 }}>
+              <section className={styles.section}>
+                <h3 className={styles.sectionTitle}>
+                  <Clock size={17} /> Progress
+                </h3>
+                <div className={styles.progress}>
+                  {PROGRESS_STAGES.map((stage, idx) => {
+                    const completed = curProgress >= 0 && idx < curProgress && o.status_code !== "cancelled";
+                    const active = o.status_code === "cancelled" ? false : idx === curProgress;
+                    return (
+                      <div
+                        key={stage.key}
+                        className={`${styles.progressNode}${completed ? ` ${styles.progressCompleted}` : ""}${active ? ` ${styles.progressActive}` : ""}`}
+                      >
+                        <span className={styles.progressDot} />
+                        <div>
+                          <div className={styles.progressLabel}>{stage.label}</div>
+                          {active && <div className={styles.progressMeta}>Current stage</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className={styles.section}>
+                <h3 className={styles.sectionTitle}>
+                  <FileText size={17} /> Order Document
                 </h3>
                 {!docSrc ? (
                   <div className={styles.attachEmpty}>
-                    <FileText size={40} style={{ color: "#94a3b8" }} />
-                    <div className={styles.attachEmptyTitle}>No file attached</div>
-                    <div className={styles.attachEmptyDesc}>Bring your document directly to the print shop.</div>
+                    <FileText size={28} style={{ color: "hsl(40 6% 40%)" }} />
+                    <div>No file attached with this order — bring your document to the print shop when you call in.</div>
                   </div>
                 ) : imgError || !isImage ? (
-                  <div className={styles.attachFile}>
-                    <FileText size={40} style={{ color: "#059669" }} />
-                    <div className={styles.attachFileName}>{attachment?.originalName || "Document File"}</div>
-                    <a
-                      href={docSrc}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={styles.btnPrimary}
-                      style={{ textDecoration: "none" }}
-                    >
-                      Download File
-                    </a>
-                  </div>
+                  <button className={styles.fileOpen} style={{ alignSelf: "flex-start", margin: 0 }} onClick={() => {
+                    if (isDocxDoc) setSelectedWork({ originalName: attachment?.name || "Order Document", url: docSrc });
+                    else window.open(docSrc, "_blank", "noopener,noreferrer");
+                  }}>
+                    <Download size={15} /> {isDocxDoc ? "Preview document" : "Download document"}
+                  </button>
                 ) : (
                   <div className={styles.attachImg} onClick={() => setSelectedImage(docSrc)}>
-                    <img
-                      src={docSrc}
-                      alt="Attached Document"
-                      onError={() => setImgError(true)}
-                    />
+                    <img src={docSrc} alt="Attached Document" onError={() => setImgError(true)} />
                   </div>
                 )}
-              </div>
+              </section>
+
+              <section className={styles.section}>
+                <h3 className={styles.sectionTitle}>
+                  <Package size={17} /> Your Work Files
+                </h3>
+                {o.works?.length > 0 ? (
+                  <div className={styles.filesGrid}>
+                    {o.works.map(w => {
+                      const wUrl = w.url?.startsWith("http") ? w.url : `${BASE}${w.url || ""}`;
+                      const isImg = String(w.mimeType || "").toLowerCase().startsWith("image/");
+                      return (
+                        <div key={w.id} className={styles.fileCard}>
+                          <div className={styles.fileThumb}>
+                            {isImg ? (
+                              <img src={wUrl} alt={w.originalName} loading="lazy" onError={e => { e.currentTarget.style.display = "none"; }} />
+                            ) : (
+                              <div className={styles.fileFallback}>
+                                <FileText size={24} />
+                              </div>
+                            )}
+                          </div>
+                          <div className={styles.fileMeta}>
+                            <span className={styles.fileName}>{w.originalName}</span>
+                            <span className={styles.fileSize}>
+                              {w.size ? `${(w.size / 1024 / 1024).toFixed(2)} MB` : ""}
+                              {w.uploadedAt ? ` · ${new Date(w.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                            </span>
+                            {w.message && <span className={styles.fileMsg}>{w.message}</span>}
+                          </div>
+                          <button className={styles.fileOpen} onClick={() => setSelectedWork({ originalName: w.originalName, url: wUrl })}>
+                            <Download size={13} /> Open
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className={styles.attachEmpty}>
+                    <Package size={28} style={{ color: "hsl(40 6% 40%)" }} />
+                    <div>Nothing finished yet — when the print shop uploads your work, the files will appear here.</div>
+                  </div>
+                )}
+              </section>
             </div>
           </div>
         </div>
-
-        {toast && (
-          <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", zIndex: 9100, background: toast.type === "success" ? "#059669" : "#dc2626", color: "#fff", padding: "0.875rem 1.5rem", borderRadius: "0.75rem", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", fontSize: "0.9rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {toast.type === "success" ? "✅" : "❌"} {toast.msg}
-          </div>
-        )}
-      </>
+      </div>
     );
-  }
+  };
 
-  /* ─── LIST VIEW ───────────────────────────────────────────────── */
   return (
     <>
       {selectedImage && (
         <div className={styles.modal} onClick={() => setSelectedImage(null)}>
-          <button className={styles.modalClose} onClick={() => setSelectedImage(null)}>
+          <button className={styles.modalClose} onClick={() => setSelectedImage(null)} aria-label="Close preview">
             <XCircle size={32} />
           </button>
-          <img src={selectedImage} alt="Doc" className={styles.modalImg} onClick={e => e.stopPropagation()} />
+          <img src={selectedImage} alt="Preview" className={styles.modalImg} onClick={e => e.stopPropagation()} />
         </div>
       )}
 
+      <FileViewer file={selectedWork} onClose={() => setSelectedWork(null)} />
+
       <div className={styles.page}>
-        <div className={styles.wrap}>
+        <div className={styles.container}>
           {/* Header */}
           <div className={styles.header}>
             <h1 className={styles.pageTitle}>
-              <Printer size={24} /> My Printing Orders
+              <Printer size={22} /> Print Orders
             </h1>
             <div className={styles.actions}>
               <button className={styles.btnIcon} onClick={handleRefresh} disabled={refreshing} title="Refresh">
-                {refreshing ? <SegmentedSpinner size={18} /> : <RefreshCw size={18} />}
+                {refreshing ? <SegmentedSpinner size={17} /> : <RefreshCw size={17} />}
               </button>
               <button className={styles.btnPrimary} onClick={() => navigate("/services/printing")}>
-                + New Order
+                New order
               </button>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className={styles.tabs}>
+          <div className={styles.tabs} role="tablist">
             {STATUS_TABS.map(t => (
               <button
                 key={t.key}
+                role="tab"
+                aria-selected={activeTab === t.key}
                 className={`${styles.tab}${activeTab === t.key ? ` ${styles.tabActive}` : ""}`}
                 onClick={() => setActiveTab(t.key)}
               >
@@ -393,220 +445,97 @@ export default function CustomerPrintingOrders() {
           </div>
 
           {loading ? (
-            <div className={styles.empty}>
-              <SegmentedSpinner size={36} />
-              <div className={styles.emptyTitle} style={{ marginTop: "1rem" }}>Loading orders…</div>
+            <div className={styles.loading}>
+              <SegmentedSpinner size={32} />
+              <span>Loading orders…</span>
             </div>
           ) : filtered.length === 0 ? (
             <div className={styles.empty}>
-              <Printer size={48} style={{ color: "#94a3b8" }} />
-              <div className={styles.emptyTitle}>No printing orders found.</div>
-              <button className={styles.btnPrimary} onClick={() => navigate("/services/printing")}>
-                Order Print Service
+              <Printer size={40} style={{ color: "hsl(40 6% 40%)" }} />
+              <div className={styles.emptyTitle}>No printing orders yet</div>
+              <p style={{ fontSize: "0.875rem", maxWidth: "20rem" }}>Orders you place from the Printing service will appear here.</p>
+              <button className={styles.btnPrimary} style={{ marginTop: "0.75rem" }} onClick={() => navigate("/services/printing")}>
+                Order print service
               </button>
             </div>
           ) : (
-            <>
-              {/* ── DESKTOP TABLE VIEW ── */}
-              <div className={styles.tableContainer}>
-                <div className={styles.tableHeader}>
-                  <span>Order / Date</span>
-                  <span>Service</span>
-                  <span>Qty / Pages</span>
-                  <span>Payment</span>
-                  <span>Job Status</span>
-                  <span style={{ textAlign: "right" }}>Actions</span>
-                </div>
-
-                {filtered.map((order) => {
-                  const jCfg = getJobCfg(order.status_code);
-                  const pCfg = getPayCfg(order.payment_status);
-                  const isTerminal = TERMINAL.includes((order.status_code || "").toLowerCase());
-                  
-                  return (
-                    <div
-                      key={order.id}
-                      className={styles.tableRow}
-                      onClick={() => { setImgError(false); setSelectedOrder(order); }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={e => e.key === "Enter" && setSelectedOrder(order)}
-                    >
-                      <div className={styles.tableCol}>
-                        <div className={styles.textPrimary} style={{ color: "#2563eb", letterSpacing: "0.02em" }}>
-                          #{order.order_number}
+            <div className={styles.listStack}>
+              {filtered.map(order => {
+                const jCfg = getJobCfg(order.status_code);
+                const isOpen = openId === order.id;
+                return (
+                  <div key={order.id} className={`${styles.orderBlock}${isOpen ? ` ${styles.orderOpen}` : ""}`}>
+                    {/* Row — one line per order */}
+                    <div className={styles.orderRow}>
+                      <div className={styles.rowMain}>
+                        <div className={styles.rowTop}>
+                          <span className={styles.orderNum}>#{order.order_number}</span>
+                          <span className={styles.rowStatus} style={{ background: jCfg.bg, color: jCfg.color }}>
+                            <span className={styles.rowStatusDot} style={{ background: jCfg.dot }} />
+                            {jCfg.label}
+                          </span>
                         </div>
-                        <div className={styles.textSecondary}>
-                          <Calendar size={11} />
-                          {fmtDate(order.created_at)}
+                        <div className={styles.rowMeta}>
+                          <span>{order.product_type}</span>
+                          <span>·</span>
+                          <span>{order.quantity} × {order.pages_per_copy} pp</span>
+                          <span>·</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                            <Calendar size={12} /> {fmtDate(order.created_at)}
+                          </span>
                         </div>
-                      </div>
-
-                      <div className={styles.tableCol}>
-                        <div className={styles.textPrimary} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {order.product_type}
+                        <div className={styles.rowMeta}>
+                          <span className={styles.rowMetaStrong}>{initialsOf(order.customer_name)} · {order.customer_name || "—"}</span>
+                          <span>·</span>
+                          <span>{order.customer_phone || "No phone"}</span>
                         </div>
-                        <span className={styles.chip} style={{ width: "fit-content" }}>
-                          {order.color_printing ? "Color" : "B&W"}
-                        </span>
-                      </div>
-
-                      <div className={styles.tableCol}>
-                        <div className={styles.textPrimary}>{order.quantity} copies</div>
-                        <div className={styles.textSecondary}>{order.pages_per_copy} pages</div>
-                      </div>
-
-                      <div className={styles.tableCol}>
-                        <div className={styles.textPrice}>
-                          {parseFloat(order.total_price || 0).toFixed(2)} ETB
-                        </div>
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: "0.25rem",
-                          fontSize: "0.6875rem", fontWeight: 700,
-                          padding: "0.2rem 0.5rem", borderRadius: "999px",
-                          background: pCfg.bg, border: `1px solid ${pCfg.border}`, color: pCfg.color,
-                          width: "fit-content",
-                        }}>
-                          {order.payment_status === "Confirmed"
-                            ? <CheckCircle2 size={11} />
-                            : order.payment_status === "Rejected"
-                            ? <AlertTriangle size={11} />
-                            : <Clock size={11} />}
-                          {pCfg.label}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: "0.3rem",
-                          padding: "0.3rem 0.625rem", borderRadius: "999px",
-                          background: jCfg.bg, color: jCfg.color,
-                          fontSize: "0.6875rem", fontWeight: 700, whiteSpace: "nowrap",
-                        }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: jCfg.dot, display: "inline-block", flexShrink: 0 }} />
-                          {jCfg.label}
-                        </span>
-                      </div>
-
-                      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "0.375rem" }}>
-                        {isTerminal && (
-                          <button
-                            onClick={e => handleHideOrder(e, order.id, order.order_number)}
-                            title="Remove from dashboard"
-                            style={{ background: "none", border: "none", color: "#e53e3e", cursor: "pointer", padding: "0.375rem", borderRadius: "0.375rem", display: "flex", alignItems: "center", transition: "background 0.15s ease" }}
-                            onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
-                            onMouseLeave={e => e.currentTarget.style.background = "none"}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                        {order.works?.length > 0 && (
+                          <span className={styles.rowFiles}>
+                            <CheckCircle2 size={13} /> {order.works.length} file{order.works.length > 1 ? "s" : ""} ready
+                          </span>
                         )}
+                      </div>
+
+                      {/* Far-right end — price + chevron toggle */}
+                      <div className={styles.rowEnd}>
+                        <span className={styles.rowPrice}>
+                          {parseFloat(order.total_price || 0).toLocaleString("en-ET", { minimumFractionDigits: 2 })} ETB
+                        </span>
                         <button
-                          onClick={e => { e.stopPropagation(); setImgError(false); setSelectedOrder(order); }}
-                          title="View order details"
-                          style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", padding: "0.375rem", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", fontWeight: 600, transition: "background 0.15s ease" }}
-                          onMouseEnter={e => e.currentTarget.style.background = "#eff6ff"}
-                          onMouseLeave={e => e.currentTarget.style.background = "none"}
+                          className={`${styles.toggle}${isOpen ? ` ${styles.toggleOpen}` : ""}`}
+                          onClick={() => toggleOrder(order.id)}
+                          aria-expanded={isOpen}
+                          aria-label={isOpen ? `Hide details for order ${order.order_number}` : `Show details for order ${order.order_number}`}
+                          title={isOpen ? "Hide details" : "Show details"}
                         >
-                          <Package size={14} /> View
+                          <ChevronDown size={18} />
                         </button>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
 
-              {/* ── MOBILE CARD VIEW ── */}
-              <div className={styles.list}>
-                {filtered.map((order) => {
-                  const jCfg = getJobCfg(order.status_code);
-                  const pCfg = getPayCfg(order.payment_status);
-                  const isTerminal = TERMINAL.includes((order.status_code || "").toLowerCase());
-                  
-                  return (
-                    <div
-                      key={order.id}
-                      className={styles.card}
-                      onClick={() => { setImgError(false); setSelectedOrder(order); }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={e => e.key === "Enter" && setSelectedOrder(order)}
-                    >
-                      <div className={styles.cardLeft}>
-                        <div className={styles.orderNum}>#{order.order_number}</div>
-                        <div className={styles.orderName}>
-                          {order.product_type}
-                          <span className={styles.chip}>{order.color_printing ? "Color" : "B&W"}</span>
-                        </div>
-                        
-                        <div className={styles.meta}>
-                          <div className={styles.metaIcon}>
-                            <Calendar size={13} /> {fmtDate(order.created_at)}
-                          </div>
-                          <span className={styles.divider}>•</span>
-                          <div className={styles.metaIcon}>
-                            <BookOpen size={13} /> {order.paper_type}
-                          </div>
-                          <span className={styles.divider}>•</span>
-                          <div>{order.quantity} copy × {order.pages_per_copy} pp</div>
-                        </div>
-                      </div>
-
-                      <div className={styles.cardRight}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
-                          <div style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#059669' }}>
-                            {parseFloat(order.total_price || 0).toFixed(2)} ETB
-                          </div>
-                          <div className={styles.badge} style={{ background: pCfg.bg, color: pCfg.color, border: `1px solid ${pCfg.border}` }}>
-                            {order.payment_status === "Confirmed" ? <CheckCircle2 size={12} /> : order.payment_status === "Rejected" ? <AlertTriangle size={12} /> : <Clock size={12} />}
-                            {pCfg.label}
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span className={styles.badge} style={{ background: jCfg.bg, color: jCfg.color }}>
-                            <span className={styles.dot} style={{ background: jCfg.dot }} />
-                            {jCfg.label}
-                          </span>
-                          
-                          {isTerminal && (
-                            <button
-                              onClick={e => handleHideOrder(e, order.id, order.order_number)}
-                              title="Remove from dashboard"
-                              style={{ background: "none", border: "none", color: "#e53e3e", cursor: "pointer", padding: "0.375rem", borderRadius: "0.375rem", display: "flex", alignItems: "center", transition: "background 0.15s ease" }}
-                              onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
-                              onMouseLeave={e => e.currentTarget.style.background = "none"}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
+                    {/* Detail — expands below the row, chevron hides it */}
+                    {isOpen && renderDetail(order)}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
 
       {/* ── In-app confirmation modal ── */}
       {confirmDelete && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: "1rem", padding: "2rem", maxWidth: 380, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.25)", textAlign: "center" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>🗑️</div>
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>Remove Order?</h3>
-            <p style={{ margin: "0 0 1.5rem", fontSize: "0.875rem", color: "#64748b", lineHeight: 1.6 }}>
-              Order <strong>#{confirmDelete.orderNumber}</strong> will be removed from your dashboard.<br />
-              This only hides it for you — the print shop still has your order.
+        <div className={styles.modal} onClick={() => setConfirmDelete(null)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
+            <span className={styles.modalEmoji}>🗑️</span>
+            <h3 className={styles.modalTitle}>Remove order?</h3>
+            <p className={styles.modalText}>
+              Order <strong>#{confirmDelete.orderNumber}</strong> will be hidden from your dashboard.<br />
+              The print shop still keeps your order — this only cleans up your view.
             </p>
-            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
-              <button onClick={() => setConfirmDelete(null)} style={{ padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "1.5px solid #e2e8f0", background: "#f8fafc", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem" }}>
-                Cancel
-              </button>
-              <button onClick={confirmHideOrder} style={{ padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "none", background: "#e53e3e", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}>
-                Yes, Remove
-              </button>
+            <div className={styles.modalActions}>
+              <button className={styles.btnGhost} onClick={() => setConfirmDelete(null)}>Keep it</button>
+              <button className={`${styles.btnGhost} ${styles.btnGhostDanger}`} onClick={confirmHideOrder}>Yes, hide</button>
             </div>
           </div>
         </div>
@@ -614,8 +543,9 @@ export default function CustomerPrintingOrders() {
 
       {/* ── Toast ── */}
       {toast && (
-        <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", zIndex: 9100, background: toast.type === "success" ? "#059669" : "#dc2626", color: "#fff", padding: "0.875rem 1.5rem", borderRadius: "0.75rem", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", fontSize: "0.9rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {toast.type === "success" ? "✅" : "❌"} {toast.msg}
+        <div className={`${styles.toast} ${toast.type === "success" ? styles.toastSuccess : styles.toastError}`}>
+          <span>{toast.type === "success" ? "✓" : "!"}</span>
+          {toast.msg}
         </div>
       )}
     </>
