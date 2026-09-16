@@ -15,8 +15,8 @@ const MODULE_PREFIXES = {
 
 const STAGE_MAPS = {
   PRINTING: {
-    stages: ['RECEIVED', 'IN PROGRESS', 'QUALITY CHECK', 'READY', 'DELIVERED'],
-    map: (s) => ({ received: 0, in_progress: 1, quality_check: 2, ready: 3, delivered: 4 })[s] ?? -1,
+    stages: ['ORDER RECEIVED', 'JOB QUEUE', 'IN DESIGN', 'FILE CHECK', 'IN PRINTING', 'FINISHING', 'READY', 'DELIVERED'],
+    map: (s) => ({ received: 0, in_queue: 1, payment_confirmed: 1, in_design: 2, file_check: 3, in_printing: 4, in_progress: 4, finishing: 5, ready: 6, delivered: 7, cancelled: -1 })[s] ?? -1,
   },
   CAR_RENTAL: {
     stages: ['PENDING', 'APPROVED', 'CONFIRMED', 'ACTIVE', 'COMPLETED'],
@@ -38,9 +38,14 @@ const STAGE_MAPS = {
 
 const STATUS_LABELS = {
   PRINTING: {
-    received: 'RECEIVED — Your order has been received and is in queue',
-    in_progress: 'IN PROGRESS — Your order is being printed',
-    quality_check: 'QUALITY CHECK — Your order is undergoing quality inspection',
+    received: 'RECEIVED — Your order has been received and is in the job queue',
+    in_queue: 'JOB QUEUE — Your order is waiting to be assigned to a designer',
+    payment_confirmed: 'JOB QUEUE — Payment confirmed, your order is waiting for design',
+    in_design: 'IN DESIGN — A designer is preparing your document',
+    file_check: 'FILE CHECK — Your file is being checked before printing',
+    in_printing: 'IN PRINTING — Your order is on the press',
+    in_progress: 'IN PRINTING — Your order is being printed',
+    finishing: 'FINISHING — Binding and final touches are in progress',
     ready: 'READY — Your order is ready for pickup',
     delivered: 'DELIVERED — Your order has been delivered',
     cancelled: 'CANCELLED — This order has been cancelled',
@@ -83,8 +88,8 @@ const STATUS_LABELS = {
 
 const fmtDate = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
 
-const buildStages = (stages, currentIdx) =>
-  stages.map((label, i) => ({ label, completed: i <= currentIdx, current: i === currentIdx }));
+const buildStages = (stages, currentIdx, cancelled = false) =>
+  stages.map((label, i) => ({ label, completed: !cancelled && currentIdx >= 0 && i <= currentIdx, current: !cancelled && i === currentIdx }));
 
 const getModuleFromInvoice = (invoice) => {
   const clean = (invoice || '').replace(/^[#\s]+/, '').trim();
@@ -117,10 +122,16 @@ exports.trackOrder = catchAsync(async (req, res) => {
     if (!phonesMatch(phoneClean, row.customer_phone) && !phonesMatch(phoneClean, row.user_phone)) return sendNotFound(res);
 
     const statusRow = await db('order_statuses').where('id', row.status_id).first();
-    const statusKey = (statusRow?.name || 'received').toLowerCase().replace(/ /g, '_');
+    const statusKey = statusRow?.status_code || 'received';
     const sm = STAGE_MAPS.PRINTING;
     const idx = sm.map(statusKey);
+    const cancelled = statusKey === 'cancelled';
     const branch = await db('branches').select('name', 'address').first();
+
+    const works = await db('printing_order_works')
+      .where('order_id', row.id)
+      .orderBy('uploaded_at', 'desc')
+      .select('id', 'filename', 'original_name', 'size', 'mime_type', 'file_url', 'message', 'uploaded_at');
 
     return res.json({
       status: 'success',
@@ -129,15 +140,25 @@ exports.trackOrder = catchAsync(async (req, res) => {
         module: moduleType,
         order_date: fmtDate(row.created_at),
         status: statusKey.toUpperCase(),
-        status_label: STATUS_LABELS.PRINTING[statusKey] || STATUS_LABELS.PRINTING.received,
-        stages: buildStages(sm.stages, idx),
+        status_label: STATUS_LABELS.PRINTING[statusKey] || (statusRow ? statusRow.status_name : 'Order received'),
+        stages: buildStages(sm.stages, idx, cancelled),
+        cancelled,
         estimated_completion: fmtDate(row.due_date),
         product: `${row.product_type} — ${row.quantity} copy(ies), ${row.paper_type}, ${row.pages_per_copy} pages, ${row.color_printing ? 'Color' : 'B&W'}, ${row.binding_type} binding`,
         total_amount: parseFloat(row.total_price) || 0,
-        payment_status: 'PAID',
+        payment_status: row.payment_status || 'PAID',
         pickup_location: branch ? `${branch.name}, ${branch.address}` : 'Sutana Branch, Addis Ababa',
         working_hours: '8:00 AM — 5:00 PM',
         contact_number: CONTACT_NUMBER,
+        works: works.map(w => ({
+          id: w.id,
+          original_name: w.original_name,
+          size: w.size,
+          mime_type: w.mime_type,
+          url: w.file_url || `/uploads/orders/${w.filename}`,
+          message: w.message || null,
+          uploaded_at: w.uploaded_at,
+        })),
       },
     });
   }
