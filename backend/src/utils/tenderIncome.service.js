@@ -40,6 +40,21 @@ const ensureTenderIncomeSubmission = async ({ bid, tender }) => {
     itemsSnapshot = [{ itemId: tender.id, quantity: qty, unitPrice: qty ? subtotal / qty : subtotal }];
   }
 
+  let formattedPaymentMethod = bid.payment_method || 'Cash';
+  if (formattedPaymentMethod.includes('::')) {
+    const [type, accId] = formattedPaymentMethod.split('::');
+    try {
+      const acc = await db('finance_accounts').where('id', accId).first();
+      if (acc) {
+        formattedPaymentMethod = `${type} (${acc.account_number})`;
+      } else {
+        formattedPaymentMethod = type;
+      }
+    } catch (err) {
+      formattedPaymentMethod = type;
+    }
+  }
+
   const manualDetails = {
     type: 'tender_sell',
     tenderId: tender.id,
@@ -53,7 +68,7 @@ const ensureTenderIncomeSubmission = async ({ bid, tender }) => {
     subtotal,
     vatAmount,
     amount,
-    paymentMethod: 'Cash',
+    paymentMethod: formattedPaymentMethod,
     receivedFrom: bid.bidder_full_name || bid.bidder_email || 'Tender Winner',
     description: `${tender.reference_number || `Tender #${tender.id}`} — ${tender.title || 'Compete & Buy'}`,
     itemsSnapshot,
