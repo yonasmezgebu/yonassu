@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from '../../services/apiClient';
+import axios, { mediaUrl } from '../../services/apiClient';
 import {
   Search, Hash, CheckCircle, Circle, AlertTriangle,
   HelpCircle, Package, Printer, Sprout, Car, Pill,
   ShoppingCart, X, MapPin, Clock, Calendar, CreditCard,
-  Shield, Zap
+  Shield, Zap, FileText, Download
 } from 'lucide-react';
 import { PublicNav } from './PublicNavFooter';
+import FileViewer from '../../components/ui/FileViewer';
 import './LandingRedesign.css';
 import './TrackOrderPage.css';
 
@@ -44,9 +45,14 @@ export default function TrackOrderPage() {
   const [loading,    setLoading]    = useState(false);
   const [focused,    setFocused]    = useState(null);
   const [showResult, setShowResult] = useState(false);
+  const [viewFile,   setViewFile]   = useState(null);
 
   const canvasRef = useRef(null);
   const animRef   = useRef(null);
+
+  const stagesArr = result?.stages || [];
+  const doneCount = stagesArr.filter(s => s.completed || s.current).length;
+  const progressPct = result?.cancelled ? 0 : stagesArr.length ? Math.round((doneCount / stagesArr.length) * 100) : 0;
 
   /* ─── 3D Particle Network Canvas (Preserved Animation) ─── */
   useEffect(() => {
@@ -273,21 +279,58 @@ export default function TrackOrderPage() {
                     </button>
                   </div>
 
-                  {/* Stages */}
-                  <div className="track-stages">
-                    <div className="track-stages-label">Current Status</div>
-                    {result.stages.map((stage, i) => (
-                      <div key={stage.label} className={`track-stage${stage.completed ? ' active' : ''}`}>
-                        <div className="track-stage-icon">
-                          {stage.completed
-                            ? <CheckCircle size={18} />
-                            : <Circle size={18} />
-                          }
-                        </div>
-                        <div className="track-stage-label">{stage.label}</div>
+                  {/* Status banner */}
+                  {result.status_label && (
+                    <div className={`track-result-status${result.cancelled ? ' cancelled' : ''}`}>
+                      <span className="track-result-status-dot" />
+                      <span>{result.status_label}</span>
+                    </div>
+                  )}
+
+                  {/* Progress */}
+                  {result.stages && (
+                    <div className="track-progress">
+                      <div className={`track-progress-track${result.cancelled ? ' cancelled' : ''}`}>
+                        <div className="track-progress-fill" style={{ width: `${progressPct}%` }} />
                       </div>
-                    ))}
-                  </div>
+                      <span className="track-progress-label">{result.cancelled ? 'Cancelled' : `${progressPct}% Complete`}</span>
+                    </div>
+                  )}
+
+                  {/* Stages */}
+                  {result.stages && (
+                    <div className="track-stages">
+                      <div className="track-stages-label">Order Journey Timeline</div>
+                      {result.stages.map(stage => (
+                        <div key={stage.label} className={`track-stage${stage.completed ? ' active' : ''}${stage.current ? ' current' : ''}`}>
+                          <div className="track-stage-icon">
+                            {stage.completed ? <CheckCircle size={18} /> : <Circle size={18} />}
+                          </div>
+                          <div className="track-stage-label">{stage.label}</div>
+                          {stage.current && <span className="track-stage-now">Current</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Uploaded work files */}
+                  {result.module === 'PRINTING' && result.works?.length > 0 && (
+                    <div className="track-works">
+                      <div className="track-works-title">Your Uploaded Files</div>
+                      {result.works.map(w => (
+                        <div key={w.id} className="track-work" role="button" tabIndex={0} onClick={() => setViewFile({ originalName: w.original_name, url: mediaUrl(w.url) })}
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewFile({ originalName: w.original_name, url: mediaUrl(w.url) }); } }}>
+                          <FileText size={16} className="track-work-icon" />
+                          <span className="track-work-main">
+                            <span className="track-work-name">{w.original_name}</span>
+                            {w.message && <span className="track-work-msg">{w.message}</span>}
+                          </span>
+                          {w.size ? <span className="track-work-size">{(w.size / 1024 / 1024).toFixed(2)} MB</span> : null}
+                          <Download size={15} className="track-work-open" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Detail cards */}
                   <div className="track-detail-section">
@@ -343,6 +386,8 @@ export default function TrackOrderPage() {
 
         </div>
       </div>
+
+      <FileViewer file={viewFile} onClose={() => setViewFile(null)} />
     </>
   );
 }
