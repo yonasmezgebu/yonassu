@@ -223,6 +223,11 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
   };
 
   const handleAwardBid = async (bidId) => {
+    const bid = bids.find(b => b.id === bidId);
+    if (bid && bid.payment_status !== 'confirmed') {
+      notify('Cannot award. Payment is not confirmed by Finance.', 'error');
+      return;
+    }
     if (!window.confirm('Are you sure you want to award the tender to this bid?')) return;
     try {
       const res = await axios.put(`/tenders/${selectedTenderForBids.id}/award`, { bid_ids: [bidId] });
@@ -271,8 +276,16 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
     try {
       const bidsRes = await axios.get(`/tenders/${tender.id}/bids`);
       const allBids = bidsRes.data || [];
-      const approvedBidIds = allBids.filter(b => b.ceo_approval_status === 'approved').map(b => b.id);
-      if (!approvedBidIds.length) { notify('No CEO-approved bids found.', 'error'); return; }
+      const approvedBids = allBids.filter(b => b.ceo_approval_status === 'approved');
+      if (!approvedBids.length) { notify('No CEO-approved bids found.', 'error'); return; }
+
+      const unconfirmedBids = approvedBids.filter(b => b.payment_status !== 'confirmed');
+      if (unconfirmedBids.length > 0) {
+        notify('Cannot finalize. Some approved bids have unconfirmed payments.', 'error');
+        return;
+      }
+
+      const approvedBidIds = approvedBids.map(b => b.id);
       const res = await axios.put(`/tenders/${tender.id}/award`, { bid_ids: approvedBidIds });
       if (res.status === 'success') {
         notify('🏆 Sale finalized! Winners have been awarded.');
@@ -503,7 +516,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead style={{ background: 'white' }}>
                             <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                              {['Rank', 'Bidder', 'Bid Price (ETB)', 'Status', 'CEO Decision', 'Finance', 'Action'].map(h => (
+                              {['Rank', 'Bidder', 'Bid Price (ETB)', 'Payment Method', 'Status', 'CEO Decision', 'Finance', 'Action'].map(h => (
                                 <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', textAlign: 'left' }}>{h}</th>
                               ))}
                             </tr>
@@ -519,6 +532,13 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                                 </td>
                                 <td style={{ padding: '10px 12px', fontWeight: 700, color: rank === 0 ? '#059669' : '#334155', fontSize: 14 }}>{b.productBidPrice.toLocaleString()}</td>
                                 <td style={{ padding: '10px 12px' }}>
+                                  {b.payment_method ? (
+                                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: b.payment_method.toLowerCase().startsWith('internal') ? '#DCFCE7' : (b.payment_method.startsWith('Telebirr') ? '#FEF3C7' : '#EFF6FF'), color: b.payment_method.toLowerCase().startsWith('internal') ? '#166534' : (b.payment_method.startsWith('Telebirr') ? '#92400E' : '#1D4ED8'), textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 3, maxWidth: 160 }}>
+                                      {b.payment_method.toLowerCase().startsWith('internal') ? '🛎️' : (b.payment_method.startsWith('Telebirr') ? '📱' : '🏦')} {b.payment_method.split('::')[0]}
+                                    </span>
+                                  ) : <span style={{ color: '#94a3b8', fontSize: 11 }}>—</span>}
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
                                   <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: '#f1f5f9', color: '#475569', textTransform: 'uppercase' }}>{b.status.replace(/_/g, ' ')}</span>
                                 </td>
                                 <td style={{ padding: '10px 12px' }}>
@@ -530,10 +550,12 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                                 </td>
                                 <td style={{ padding: '10px 12px' }}>
                                   {b.payment_status === 'confirmed' ? (
-                                    <span style={{ color: '#059669', fontWeight: 700, fontSize: 11 }}>PAID</span>
+                                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#dcfce7',color:'#166534',border:'1px solid #86efac' }}>✓ CONFIRMED</span>
                                   ) : b.payment_status === 'rejected' ? (
-                                    <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>REJECTED</span>
-                                  ) : <span style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>UNPAID</span>}
+                                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#fee2e2',color:'#991b1b',border:'1px solid #fca5a5' }}>✕ REJECTED</span>
+                                  ) : (
+                                    <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:999,background:'#fef9c3',color:'#854d0e',border:'1px solid #fde047' }}>⏳ AWAITING</span>
+                                  )}
                                 </td>
                                 <td style={{ padding: '10px 12px' }}>
                                   {b.status === 'awarded' ? (
@@ -582,7 +604,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: 'white', borderBottom: '2px solid #e2e8f0' }}>
-                        {['Rank', 'Bidder', 'Price/Unit (ETB)', 'Qty', 'Total (ETB)', 'Status', 'CEO', 'Finance', 'Action'].map((h, i) => (
+                        {['Rank', 'Bidder', 'Price/Unit (ETB)', 'Qty', 'Total (ETB)', 'Payment Method', 'Status', 'CEO', 'Finance', 'Action'].map((h, i) => (
                           <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', textAlign: i >= 2 && i <= 4 ? 'right' : 'left' }}>{h}</th>
                         ))}
                       </tr>
@@ -602,6 +624,13 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                           <td style={{ padding: '10px 12px', color: '#475569', fontWeight: 600, textAlign: 'right' }}>{b.quantity_requested}</td>
                           <td style={{ padding: '10px 12px', fontWeight: 700, color: rank === 0 ? '#059669' : '#0f172a', textAlign: 'right', fontSize: 14 }}>{parseFloat(b.total_bid_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                           <td style={{ padding: '10px 12px' }}>
+                            {b.payment_method ? (
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: b.payment_method.toLowerCase().startsWith('internal') ? '#DCFCE7' : (b.payment_method.startsWith('Telebirr') ? '#FEF3C7' : '#EFF6FF'), color: b.payment_method.toLowerCase().startsWith('internal') ? '#166534' : (b.payment_method.startsWith('Telebirr') ? '#92400E' : '#1D4ED8'), textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 3, maxWidth: 160 }}>
+                                {b.payment_method.toLowerCase().startsWith('internal') ? '🛎️' : (b.payment_method.startsWith('Telebirr') ? '📱' : '🏦')} {b.payment_method.split('::')[0]}
+                              </span>
+                            ) : <span style={{ color: '#94a3b8', fontSize: 11 }}>—</span>}
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
                             <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: '#f1f5f9', color: '#475569', textTransform: 'uppercase' }}>{b.status.replace(/_/g, ' ')}</span>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
@@ -613,10 +642,12 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                           </td>
                           <td style={{ padding: '10px 12px' }}>
                             {b.payment_status === 'confirmed' ? (
-                              <span style={{ color: '#059669', fontWeight: 700, fontSize: 11 }}>PAID</span>
+                              <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:999, background:'#dcfce7', color:'#166534', border:'1px solid #86efac' }}>✓ CONFIRMED</span>
                             ) : b.payment_status === 'rejected' ? (
-                              <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>REJECTED</span>
-                            ) : <span style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>UNPAID</span>}
+                              <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:999, background:'#fee2e2', color:'#991b1b', border:'1px solid #fca5a5' }}>✕ REJECTED</span>
+                            ) : (
+                              <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:999, background:'#fef9c3', color:'#854d0e', border:'1px solid #fde047' }}>⏳ AWAITING</span>
+                            )}
                           </td>
                           <td style={{ padding: '10px 12px' }}>
                             {b.status === 'awarded' ? (
