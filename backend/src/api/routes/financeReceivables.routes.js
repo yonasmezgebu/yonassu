@@ -972,8 +972,9 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
 
       // Record approved income into the canonical ledger (CRV + cashbook +
       // revenue book) — includes the Receivables Book row via the service.
+      let ledgerReceivableId = null;
       if (!skipLedgerRecording) {
-        await recordLedgerIncome(trx, {
+        const ledgerResult = await recordLedgerIncome(trx, {
           amount: systemTotal,
           department: submission.department,
           manualDetails,
@@ -986,6 +987,7 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
             financeName: manualDetails.financeName || finance_name || (req.user && req.user.fullName) || 'Finance Officer',
           },
         });
+        ledgerReceivableId = ledgerResult ? ledgerResult.receivableId : null;
       }
 
       // Mint + link a Sales Invoice and Receipt for the approved income so it always
@@ -998,7 +1000,7 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       // treat as non-self-invoicing so a proper sales_invoice + sales_receipt is always created.
       const isPosWithoutOrder = (deptKey === 'retail pos' || deptKey === 'retailpos') && !manualDetails.order_id;
       if (!SELF_INVOICING_DEPARTMENTS.has(deptKey) || isPosWithoutOrder) {
-        await ensureInvoiceAndReceipt(trx, {
+        const newInvoiceId = await ensureInvoiceAndReceipt(trx, {
           source: isPosWithoutOrder ? 'retail' : 'manual',
           saleId: isPosWithoutOrder ? (parseInt(manualDetails.cart_id || id, 10) + 800000000) : (500000000 + parseInt(id, 10)),
           customer: customerName,
@@ -1008,6 +1010,19 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
           description: submission.description,
           receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
         });
+        // Link the generated invoice_no back to the finance_receivables row so that
+        // the Revenue Book deduplication (keyed on invoice_no) excludes this ledger row
+        // and shows the invoice row (with correct VAT) instead of the legacy row (VAT=0).
+        if (newInvoiceId && ledgerReceivableId) {
+          try {
+            const createdInv = await trx('sales_invoices').where('id', newInvoiceId).select('invoice_no').first();
+            if (createdInv && createdInv.invoice_no) {
+              await trx('finance_receivables').where('id', ledgerReceivableId).update({ invoice_no: createdInv.invoice_no });
+            }
+          } catch (e) {
+            console.warn('Failed to link invoice_no back to finance_receivables:', e.message);
+          }
+        }
       } else {
         // Self-invoicing module already recorded the invoice (with VAT) at order
         // time. Approval only attaches the receipt so the invoice shows PAID with
@@ -1189,7 +1204,7 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
               });
               if (bid.customer_id) {
                 try {
-                  const { notificationRepository } = require('../../../repositories/notification.repository');
+                  const notificationRepository = require('../../../repositories/notification.repository');
                   await notificationRepository.create({
                     userId: bid.customer_id,
                     title: '✅ Payment Confirmed — Tender Award',
@@ -1213,7 +1228,7 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
                 try {
                   const user = await trx('users').where({ email: bid.email }).first();
                   if (user) {
-                    const { notificationRepository } = require('../../../repositories/notification.repository');
+                    const notificationRepository = require('../../../repositories/notification.repository');
                     await notificationRepository.create({
                       userId: user.id,
                       title: '✅ Payment Confirmed — Public Tender',
@@ -1453,7 +1468,7 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
             });
             if (bid.customer_id) {
               try {
-                const { notificationRepository } = require('../../../repositories/notification.repository');
+                const notificationRepository = require('../../../repositories/notification.repository');
                 await notificationRepository.create({
                   userId: bid.customer_id,
                   title: '❌ Payment Rejected — Tender Award',
@@ -1476,7 +1491,7 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
               try {
                 const user = await knex('users').where({ email: bid.email }).first();
                 if (user) {
-                  const { notificationRepository } = require('../../../repositories/notification.repository');
+                  const notificationRepository = require('../../../repositories/notification.repository');
                   await notificationRepository.create({
                     userId: user.id,
                     title: '❌ Payment Rejected — Public Tender',
@@ -1607,37 +1622,54 @@ router.get('/book', authenticate, async (req, res) => {
       });
     }
     const legacyRows = await legacyQuery;
-    const legacyMapped = legacyRows.map(r => {
-      const total = asNum(r.total_amount);
-      const paid = asNum(r.amount_paid);
-      const isPaid = r.status === 'Paid' || paid >= total - 0.01;
-      return {
-        id: `rec-${r.id}`,
-        _source_type: 'receivable',
-        invoice_no: r.invoice_no,
-        receipt_no: null,
-        customer_name: r.customer_name,
-        department_source: r.department_source,
-        invoice_date: r.invoice_date,
-        due_date: r.due_date,
-        selling_price: total,
-        cogs: 0,
-        gross_profit: total,
-        subtotal: total,
-        input_vat: 0,
-        output_vat: 0,
-        vat_standard: 0,
-        vat_exempt: 0,
-        vat_zero_rated: 0,
-        vat_total: 0,
-        total_amount: total,
-        amount_paid: paid,
-        outstanding_balance: isPaid ? 0 : round2(total - paid),
-        status: isPaid ? 'Paid' : (r.status || 'Unpaid'),
-        payment_method: null,
-        manual_details: r.manual_details,
-      };
-    });
+
+    // Build a dedup key set from invoiceRows so that legacy rows whose linked sales invoice
+    // is already represented in invoiceRows are not shown again with VAT=0.
+    // Keyed by 'customerName_totalAmount' — covers the case where finance_receivables.invoice_no
+    // was null when the row was created (e.g. Tender payments approved before the linking fix).
+    const invoiceRowDedup = new Set(
+      invoiceRows.map(r => `${String(r.customer_name || '').toLowerCase().trim()}_${round2(r.total_amount)}`)
+    );
+
+    const legacyMapped = legacyRows
+      .filter(r => {
+        // If invoice_no is present it was already excluded by the SQL WHERE NOT IN clause.
+        // For rows with invoice_no=null, check if a matching invoiceRow already covers it.
+        if (r.invoice_no) return true; // should not happen (excluded by SQL), but keep as safety
+        const dedupKey = `${String(r.customer_name || '').toLowerCase().trim()}_${round2(asNum(r.total_amount))}`;
+        return !invoiceRowDedup.has(dedupKey);
+      })
+      .map(r => {
+        const total = asNum(r.total_amount);
+        const paid = asNum(r.amount_paid);
+        const isPaid = r.status === 'Paid' || paid >= total - 0.01;
+        return {
+          id: `rec-${r.id}`,
+          _source_type: 'receivable',
+          invoice_no: r.invoice_no,
+          receipt_no: null,
+          customer_name: r.customer_name,
+          department_source: r.department_source,
+          invoice_date: r.invoice_date,
+          due_date: r.due_date,
+          selling_price: total,
+          cogs: 0,
+          gross_profit: total,
+          subtotal: total,
+          input_vat: 0,
+          output_vat: 0,
+          vat_standard: 0,
+          vat_exempt: 0,
+          vat_zero_rated: 0,
+          vat_total: 0,
+          total_amount: total,
+          amount_paid: paid,
+          outstanding_balance: isPaid ? 0 : round2(total - paid),
+          status: isPaid ? 'Paid' : (r.status || 'Unpaid'),
+          payment_method: null,
+          manual_details: r.manual_details,
+        };
+      });
 
     const all = [...invoiceRows, ...legacyMapped].sort(
       (a, b) => new Date(b.invoice_date) - new Date(a.invoice_date)
