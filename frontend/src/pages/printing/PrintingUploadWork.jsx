@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UploadCloud, RefreshCw, Search, FileText, FileImage, FileArchive, Trash2, Upload, Eye, Phone, Mail } from 'lucide-react';
+import { UploadCloud, RefreshCw, Search, FileText, FileImage, FileArchive, Trash2, Upload, Eye, Phone, Mail, MessageSquare } from 'lucide-react';
 import apiClient, { mediaUrl } from '../../services/apiClient';
 import { StageStyles } from './printingStageStyles';
 import ConfirmBox from '../../components/ui/ConfirmBox';
@@ -39,6 +39,8 @@ const PrintingUploadWork = () => {
   const [error, setError] = useState('');
   const [confirmWork, setConfirmWork] = useState(null);
   const [viewFile, setViewFile] = useState(null);
+  const [editId, setEditId] = useState(null);
+  const [editText, setEditText] = useState('');
   const navigate = useNavigate();
 
   const openFile = (w) => {
@@ -104,6 +106,28 @@ const PrintingUploadWork = () => {
     } catch (e) {
       setError(e?.message || 'Delete failed.');
       setConfirmWork(null);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const startEdit = (w) => {
+    setEditId(w.id);
+    setEditText(w.message || '');
+  };
+
+  const handleSaveMessage = async (work) => {
+    setBusyId(work.id); setMsg(''); setError('');
+    try {
+      const fd = new FormData();
+      fd.append('message', editText.trim());
+      const res = await apiClient.put(`/printing/works/${work.id}`, fd);
+      setMsg(res.message || 'Message saved.');
+      setEditId(null); setEditText('');
+      applyFilters(page);
+    } catch (e) {
+      setError(e?.message || 'Failed to save message.');
+      setEditId(null); setEditText('');
     } finally {
       setBusyId(null);
     }
@@ -201,6 +225,36 @@ const PrintingUploadWork = () => {
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: '#0f172a', fontSize: 13 }}>
                       {fileIcon(w.originalName)} {w.originalName}
                     </span>
+                    {editId === w.id ? (
+                      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start', maxWidth: 320 }}>
+                        <textarea
+                          value={editText}
+                          onChange={e => setEditText(e.target.value)}
+                          maxLength={500}
+                          rows={2}
+                          placeholder="Message for the customer about this file..."
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, fontFamily: "'Inter', sans-serif" }}
+                        />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button type="button" disabled={busyId === w.id} onClick={() => handleSaveMessage(w)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#2563EB', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                            {busyId === w.id ? 'Saving...' : 'Save message'}
+                          </button>
+                          <button type="button" onClick={() => { setEditId(null); setEditText(''); }} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#64748b', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      w.message && (
+                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'flex-start', gap: 5, fontSize: 12, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '4px 8px', whiteSpace: 'pre-wrap', maxWidth: 320 }}>
+                          <MessageSquare size={12} style={{ flexShrink: 0, marginTop: 2 }} />
+                          <span>{w.message}</span>
+                        </div>
+                      )
+                    )}
+                    <button type="button" onClick={() => (editId === w.id ? (setEditId(null), setEditText('')) : startEdit(w))} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 11, cursor: 'pointer', padding: 0, marginTop: 6 }}>
+                      <MessageSquare size={12} /> {editId === w.id ? 'Cancel' : (w.message ? 'Edit message' : 'Add message')}
+                    </button>
                   </td>
                   <td className="stg-td" style={{ color: '#64748b', whiteSpace: 'nowrap' }}>{formatBytes(w.size)}</td>
                   <td className="stg-td" style={{ color: '#64748b', fontSize: 12, whiteSpace: 'nowrap' }}>
