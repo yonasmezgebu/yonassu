@@ -1310,10 +1310,17 @@ const FinanceLiveIncome = () => {
   const [view, setView] = useState(() => (searchParams.get('tab') === 'form' ? 'form' : 'list'));
   const [detailId, setDetailId] = useState(null);
 
-  // Sync view from URL (?tab=) so bell notifications can deep-link to the pending list
+  // Sync view from URL (?tab=) so bell notifications can deep-link to the pending list or a specific item
   useEffect(() => {
     const t = searchParams.get('tab');
-    if (t === 'form' || t === 'list') setView(t);
+    const specificId = searchParams.get('id');
+    if (specificId) {
+      setDetailId(Number(specificId));
+      setView('detail');
+    } else if (t === 'form' || t === 'list') {
+      setView(t);
+      setDetailId(null);
+    }
   }, [searchParams]);
 
   /* Form fields */
