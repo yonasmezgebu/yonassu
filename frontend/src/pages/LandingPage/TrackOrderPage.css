@@ -532,9 +532,183 @@
   margin: 0 0 0.625rem;
 }
 
-.track-trust-card p {
-  margin: 0;
-  font-size: 0.8125rem;
+/* ─── 11. Result Status Banner ─── */
+.track-result-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin: 1rem 1.75rem 0;
+  padding: 0.875rem 1rem;
+  background-color: hsl(var(--primary) / 0.06);
+  border: 1px solid hsl(var(--primary) / 0.25);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  line-height: 1.5;
+}
+
+.track-result-status.cancelled {
+  background-color: hsl(0 84% 95%);
+  border-color: hsl(0 84% 60% / 0.4);
+}
+
+.track-result-status-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background-color: hsl(var(--primary));
+  flex-shrink: 0;
+  margin-top: 0.375rem;
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.15);
+}
+
+.track-result-status.cancelled .track-result-status-dot {
+  background-color: hsl(0 84% 60%);
+  box-shadow: 0 0 0 4px hsl(0 84% 60% / 0.15);
+}
+
+/* ─── 12. Progress Bar ─── */
+.track-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1.25rem 1.75rem 0;
+}
+
+.track-progress-track {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: 99rem;
+  background-color: hsl(var(--muted));
+  overflow: hidden;
+}
+
+.track-progress-fill {
+  height: 100%;
+  border-radius: 99rem;
+  background-image: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.7));
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.track-progress-track.cancelled .track-progress-fill {
+  background-image: linear-gradient(90deg, hsl(0 84% 60%), hsl(0 84% 60% / 0.7));
+}
+
+.track-progress-label {
+  font-size: 0.75rem;
+  font-weight: 700;
   color: hsl(var(--muted-foreground));
-  line-height: 1.625;
+  white-space: nowrap;
+}
+
+/* ─── 13. Current Stage Marker ─── */
+.track-stage.current {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12);
+  background-color: hsl(var(--primary) / 0.04);
+}
+
+.track-stage.current .track-stage-icon {
+  background-color: hsl(var(--primary));
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.18);
+}
+
+.track-stage-now {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.12);
+  padding: 0.2rem 0.55rem;
+  border-radius: 99rem;
+  text-transform: uppercase;
+}
+
+/* ─── 14. Uploaded Work Files ─── */
+.track-works {
+  padding: 1.25rem 1.75rem 0;
+  background-color: hsl(var(--background));
+}
+
+.track-works-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+}
+
+.track-work {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.track-work:focus-visible {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+}
+
+.track-work:hover {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 4px 12px hsl(var(--primary) / 0.12);
+  transform: translateY(-1px);
+}
+
+.track-work-icon {
+  color: hsl(var(--primary));
+  flex-shrink: 0;
+}
+
+.track-work-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.track-work-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.track-work-msg {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--accent-deep, var(--muted-foreground)));
+  background-color: hsl(var(--muted));
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  white-space: pre-wrap;
+}
+
+.track-work-size {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.track-work-open {
+  color: hsl(var(--primary));
+  flex-shrink: 0;
 }
