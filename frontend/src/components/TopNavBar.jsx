@@ -37,13 +37,30 @@ export default function TopNavBar() {
   /* ── Fetch notifications (news + system) ── */
   const fetchAllNotifications = useCallback(async () => {
     try {
-      const [newsRes, sysRes] = await Promise.all([
+      const [newsRes, sysRes, v2Res] = await Promise.all([
         notificationService.getMyNotifications(),
-        notificationService.getSystemNotifications().catch(() => ({ data: [] })),
+        notificationService.getSystemNotifications().catch(() => ({ data: { notifications: [] } })),
+        notificationService.getMyNotificationsV2().catch(() => ({ data: [] }))
       ]);
       const news = newsRes?.status === 'success' ? (newsRes.data || []) : [];
-      const sys = (sysRes?.data || []).map(n => ({
-        id: `sys-${n.id}`,
+      
+      // V1 system notifications
+      const sysData = (sysRes?.data?.notifications || sysRes?.data || []);
+      const sys = sysData.map(n => ({
+        id: `sys1-${n.id}`,
+        title: n.title,
+        message: n.message,
+        createdAt: n.createdAt || n.created_at,
+        isRead: n.isRead || n.is_read,
+        _type: n.type || 'system',
+        _refId: n.id,
+        _link: n.link_url || n.link,
+      }));
+
+      // V2 system notifications (role-based scopes)
+      const v2Data = (v2Res?.data || v2Res || []);
+      const v2Sys = Array.isArray(v2Data) ? v2Data.map(n => ({
+        id: `sys2-${n.id}`,
         title: n.title,
         message: n.message,
         createdAt: n.createdAt || n.created_at,
@@ -51,8 +68,9 @@ export default function TopNavBar() {
         _type: n.type || 'system',
         _refId: n.id,
         _link: n.link,
-      }));
-      const merged = [...news, ...sys].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      })) : [];
+
+      const merged = [...news, ...sys, ...v2Sys].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setNotifications(merged);
     } catch (_) {}
   }, []);
