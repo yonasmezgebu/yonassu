@@ -71,24 +71,10 @@ const PublicCompeteAndSellPage = () => {
   const [paymentTerms, setPaymentTerms] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [myExistingBid, setMyExistingBid] = useState(null); // existing bid for update mode
-  const [paymentMethod, setPaymentMethod] = useState(''); // Telebirr / Bank
-  const [financeAccounts, setFinanceAccounts] = useState([]);
   const [vatCtx, setVatCtx] = useState(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
   useEffect(() => { fetchTenders(); }, []);
-
-  useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        const res = await api.get('/finance-bank');
-        setFinanceAccounts(res.data || []);
-      } catch (e) {
-        console.error('Failed to fetch finance accounts', e);
-      }
-    };
-    fetchAccounts();
-  }, []);
 
   const fetchTenders = async () => {
     try {
@@ -148,7 +134,6 @@ const PublicCompeteAndSellPage = () => {
     setHandSignature('');
     setDeliveryTime('');
     setPaymentTerms('');
-    setPaymentMethod('');
     setCompetitorName(user?.name || user?.full_name || '');
     setBidderEmail(user?.email || '');
     setBidderPhone(user?.phone || '');
@@ -167,7 +152,6 @@ const PublicCompeteAndSellPage = () => {
         setBidderPhone(existing.phone || user?.phone || '');
         setDeliveryTime(existing.delivery_time || '');
         setPaymentTerms(existing.payment_terms || '');
-        setPaymentMethod(existing.payment_method || '');
         setHandSignature(existing.hand_signature_path || '');
         // Pre-fill item bids if available
         if (existing.items?.length) {
@@ -233,7 +217,6 @@ const PublicCompeteAndSellPage = () => {
       phone: bidderPhone,
       deliveryTime,
       paymentTerms,
-      paymentMethod,
       handSignaturePath: handSignature,
       items: itemsPayload
     };
@@ -847,18 +830,44 @@ const PublicCompeteAndSellPage = () => {
                         </div>
                       </div>
 
-                      {/* Acceptance — marked on the public side only */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginTop: '0.75rem' }}>
-                        <input
-                          type="checkbox"
-                          id="pcas-agree-terms"
-                          checked={agreedToTerms}
-                          onChange={e => setAgreedToTerms(e.target.checked)}
-                          style={{ width: '1rem', height: '1rem', accentColor: 'hsl(var(--primary))', cursor: 'pointer' }}
-                        />
-                        <label htmlFor="pcas-agree-terms" style={{ fontSize: '0.8125rem', color: 'hsl(var(--foreground))', cursor: 'pointer', fontWeight: 500 }}>
-                          I have read and accept the tender terms above, including the stated delivery and payment terms.
+                      {/* Terms & Conditions — full scrollable body */}
+                      <div style={{ marginTop: '1.25rem' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'hsl(var(--foreground))', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                          📋 General Terms &amp; Conditions
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'hsl(0 72% 38%)', background: 'hsl(0 72% 96%)', padding: '1px 6px', borderRadius: 4 }}>Must Read &amp; Accept</span>
+                        </div>
+                        <div style={{ border: '1px solid hsl(var(--border))', borderRadius: '0.5rem', maxHeight: '180px', overflowY: 'auto', padding: '0.875rem 1rem', fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))', lineHeight: 1.7, background: 'hsl(var(--muted))', marginBottom: '0.75rem' }}>
+                          <p style={{ margin: '0 0 0.5rem', fontWeight: 700, color: 'hsl(var(--foreground))' }}>SUTANA Public Tender — Supplier Bidding Terms &amp; Conditions</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>1. Eligibility.</strong> Only registered Customer/Supplier accounts in good standing may submit bids. SUTANA reserves the right to disqualify any bidder without prior notice.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>2. Binding Offer.</strong> By submitting a bid, you make a legally binding offer to supply the requested item(s) at the price and terms you specify. You may not withdraw a submitted bid after acceptance by SUTANA.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>3. Accuracy of Information.</strong> You confirm that all information provided — including prices, quantities, delivery times, payment terms, and your identity — is accurate, truthful, and legally your own.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>4. Price & Delivery Commitment.</strong> The unit price and delivery time you enter are binding commitments. If awarded, you are obligated to supply the goods at exactly the stated price and within the stated delivery window.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>5. Award Decision.</strong> SUTANA evaluates bids based on price, quality, delivery time, and overall value. SUTANA's award decision is final and non-contestable. The lowest price does not automatically guarantee award.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>6. Payment Terms.</strong> Payment will be made according to the terms negotiated and confirmed in writing by SUTANA's Finance Department. Suppliers may not demand payment terms beyond what is agreed at bid stage.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>7. Quality & Compliance.</strong> All supplied goods must meet the specifications listed in the tender. SUTANA reserves the right to reject non-conforming goods and claim damages from the supplier.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>8. Confidentiality.</strong> Bid amounts and details are confidential. You may not disclose your bid or any SUTANA tender information to third parties.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>9. SUTANA's Discretion.</strong> SUTANA may cancel or modify any tender, reject any or all bids, or decline to award a tender at its sole discretion, without liability to bidders.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>10. Digital Signature.</strong> Your typed full name or drawn signature constitutes a valid digital signature binding you to these terms and the submitted bid.</p>
+                          <p style={{ margin: '0 0 0.5rem' }}><strong>11. Governing Law.</strong> These terms are governed by the laws of the Federal Democratic Republic of Ethiopia. Any disputes shall be resolved in Ethiopian courts of competent jurisdiction.</p>
+                          <p style={{ margin: 0 }}><strong>12. Acceptance.</strong> By ticking the checkbox below and submitting your bid, you confirm you have read, understood, and agree to be bound by all of the above terms and conditions, as well as any additional conditions set by SUTANA for this specific tender.</p>
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem', cursor: 'pointer', padding: '0.625rem 0.875rem', border: `1.5px solid ${agreedToTerms ? 'hsl(152 76% 40%)' : 'hsl(var(--border))'}`, borderRadius: '0.5rem', background: agreedToTerms ? 'hsl(152 76% 96%)' : 'hsl(var(--background))', transition: 'all 0.2s' }}>
+                          <input
+                            type="checkbox"
+                            id="pcas-agree-terms"
+                            checked={agreedToTerms}
+                            onChange={e => setAgreedToTerms(e.target.checked)}
+                            style={{ marginTop: '2px', accentColor: 'hsl(152 76% 40%)', width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '0.8125rem', lineHeight: 1.5, color: agreedToTerms ? 'hsl(152 76% 25%)' : 'hsl(var(--foreground))' }}>
+                            I have read and I agree to all of SUTANA's <strong>General Terms &amp; Conditions</strong> and the specific tender conditions above. I understand this is a binding offer.
+                          </span>
                         </label>
+                        {!agreedToTerms && (
+                          <p style={{ fontSize: '0.75rem', color: 'hsl(0 72% 38%)', marginTop: '0.375rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            ⚠️ You must read and accept the Terms &amp; Conditions to submit your bid.
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -890,7 +899,7 @@ const PublicCompeteAndSellPage = () => {
                           />
                         </div>
                       </div>
-                      {/* ── Payment Summary + Method (above signature) ── */}
+                      {/* ── Total Bid Payment (no payment method needed — settled internally) ── */}
                       {(() => {
                         const grandTotal = selectedTender.items?.reduce((sum, item) => {
                           const itemBid = bidItems[item.id] || {};
@@ -901,85 +910,16 @@ const PublicCompeteAndSellPage = () => {
                           return sum + getVatForItem(vatCtx, 'tender_buy', item.id != null ? item.id : null, lineValue).total;
                         }, 0) || 0;
 
-                        const telebirrAccounts = financeAccounts.filter(a => a.status === 'Active' && a.account_type === 'Mobile Wallet');
-                        const bankAccounts = financeAccounts.filter(a => a.status === 'Active' && a.account_type === 'Bank');
-                        const selectedAccObj = financeAccounts.find(a => paymentMethod && paymentMethod === `${a.account_type === 'Mobile Wallet' ? 'Telebirr' : 'Bank Transfer'}::${a.id}`);
-
                         return (
-                          <div style={{ margin: '1.25rem 0', padding: '1.25rem', background: 'hsl(152 76% 97%)', border: '2px solid hsl(152 69% 75%)', borderRadius: '0.75rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                              <span style={{ fontWeight: 800, fontSize: '1rem', color: 'hsl(152 76% 25%)' }}>💵 Total Bid Payment (incl. VAT)</span>
+                          <div style={{ margin: '1.5rem 0 1.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'hsl(152 76% 25%)' }}>Total Bid Payment (incl. VAT)</span>
                               <span style={{ fontWeight: 900, fontSize: '1.25rem', color: 'hsl(152 76% 20%)', fontFamily: 'monospace' }}>
                                 ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
-                            <div>
-                              <label className="pcas-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
-                                Payment Method &amp; Account <span className="pcas-required">*</span>
-                              </label>
-                              <select
-                                required
-                                value={paymentMethod}
-                                onChange={e => setPaymentMethod(e.target.value)}
-                                className="pcas-input-field"
-                                style={{ maxWidth: '460px', fontWeight: 600 }}
-                              >
-                                <option value="">-- Select Account to Pay Into --</option>
-                                {telebirrAccounts.length > 0 && (
-                                  <optgroup label="📱 Telebirr Accounts">
-                                    {telebirrAccounts.map(acc => (
-                                      <option key={acc.id} value={`Telebirr::${acc.id}`}>
-                                        📱 Telebirr {`{${acc.account_number}}`} — {acc.account_name}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                                {bankAccounts.length > 0 && (
-                                  <optgroup label="🏦 Bank Transfer Accounts">
-                                    {bankAccounts.map(acc => (
-                                      <option key={acc.id} value={`Bank Transfer::${acc.id}`}>
-                                        🏦 Bank {`{${acc.account_number}}`} — {acc.account_name}{acc.bank_provider ? ` (${acc.bank_provider})` : ''}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                                {telebirrAccounts.length === 0 && bankAccounts.length === 0 && (
-                                  <option value="" disabled>No accounts configured yet</option>
-                                )}
-                              </select>
-                              {!paymentMethod && <p style={{ fontSize: '0.75rem', color: 'hsl(0 72% 38%)', marginTop: '0.25rem' }}>Select the account you will transfer your bid payment into if awarded.</p>}
-
-                              {selectedAccObj && (
-                                <div style={{ marginTop: '0.875rem', padding: '1rem 1.125rem', background: 'white', borderRadius: '0.625rem', border: '2px solid hsl(152 69% 60%)', boxShadow: '0 2px 8px rgba(16,185,129,0.12)' }}>
-                                  <div style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'hsl(152 76% 35%)', marginBottom: '0.625rem' }}>
-                                    ✅ Transfer Payment To This Account
-                                  </div>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.75rem', rowGap: '0.35rem', alignItems: 'center', fontSize: '0.875rem' }}>
-                                    <span style={{ fontWeight: 600, color: '#64748b' }}>Account Name</span>
-                                    <span style={{ fontWeight: 800, color: '#0f172a' }}>{selectedAccObj.account_name}</span>
-
-                                    <span style={{ fontWeight: 600, color: '#64748b' }}>Account No.</span>
-                                    <span style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: '1rem', color: 'hsl(152 76% 22%)', background: 'hsl(152 76% 95%)', padding: '0.15rem 0.5rem', borderRadius: '0.25rem', letterSpacing: '0.04em' }}>
-                                      {selectedAccObj.account_number}
-                                    </span>
-
-                                    {selectedAccObj.bank_provider && (
-                                      <>
-                                        <span style={{ fontWeight: 600, color: '#64748b' }}>Bank / Provider</span>
-                                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{selectedAccObj.bank_provider}</span>
-                                      </>
-                                    )}
-
-                                    <span style={{ fontWeight: 600, color: '#64748b' }}>Method</span>
-                                    <span style={{ fontWeight: 700, color: selectedAccObj.account_type === 'Mobile Wallet' ? '#D97706' : '#0284C7' }}>
-                                      {selectedAccObj.account_type === 'Mobile Wallet' ? '📱 Telebirr' : '🏦 Bank Transfer'}
-                                    </span>
-                                  </div>
-                                  <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'hsl(152 76% 30%)', fontWeight: 600, background: 'hsl(152 76% 94%)', padding: '0.4rem 0.75rem', borderRadius: '0.375rem' }}>
-                                    ⚠️ Finance will verify this payment against the above account before your bid is approved.
-                                  </div>
-                                </div>
-                              )}
+                            <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: '#64748b' }}>
+                              No payment method needed — settled internally at the table when awarded.
                             </div>
                           </div>
                         );
@@ -1019,7 +959,7 @@ const PublicCompeteAndSellPage = () => {
                       <button
                         type="submit"
                         className="pcas-btn-primary"
-                        disabled={submitting || !competitorName || !handSignature || !agreedToTerms || !paymentMethod || Object.keys(bidItems).length === 0}
+                        disabled={submitting || !competitorName || !handSignature || !agreedToTerms || Object.keys(bidItems).length === 0}
                         style={{ maxWidth: '18rem', marginLeft: 'auto' }}
                       >
                         {submitting
