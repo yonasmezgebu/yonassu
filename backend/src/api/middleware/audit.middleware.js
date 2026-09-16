@@ -16,6 +16,7 @@ const AUDIT_RESOURCES = [
   'pos_sales',
   'inventory',
   'purchase_orders',
+  'quotations',
   'expenses',
   'payments',
   'settings',
@@ -113,8 +114,11 @@ const getActionType = (method) => {
     'DELETE': 'DELETE',
     'GET': 'READ'
   };
-  if (method === 'POST' && (this?.url?.includes('/approve') || this?.url?.includes('/submit'))) {
-    return 'APPROVE';
+  if (method === 'POST') {
+    const u = String(this?.url || '');
+    if (u.includes('/approve') || u.includes('/submit') || /-(approve|reject|submit)(\/|$|\?)/.test(u)) {
+      return 'APPROVE';
+    }
   }
   return actionMap[method] || 'UNKNOWN';
 };
@@ -134,6 +138,9 @@ const captureBeforeState = async (req, resource, resourceId) => {
         break;
       case 'purchase_orders':
         tableName = 'purchase_orders';
+        break;
+      case 'quotations':
+        tableName = 'purchase_quotations';
         break;
       case 'customers':
         tableName = 'customers';
