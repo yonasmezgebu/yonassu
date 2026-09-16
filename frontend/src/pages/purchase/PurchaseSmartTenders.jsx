@@ -41,19 +41,6 @@ const BidStatusBadge = ({ status }) => {
   );
 };
 
-const PaymentStatusBadge = ({ status }) => {
-  if (!status || status === 'pending') return (
-    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#fef9c3', color: '#854d0e' }}>⏳ Awaiting Finance</span>
-  );
-  if (status === 'confirmed') return (
-    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#dcfce7', color: '#166534' }}>✅ Finance Confirmed</span>
-  );
-  if (status === 'rejected') return (
-    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#fee2e2', color: '#991b1b' }}>❌ Finance Rejected</span>
-  );
-  return <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#f1f5f9', color: '#475569' }}>{status}</span>;
-};
-
 // ─── Tab Button ──────────────────────────────────────────────────────────────
 const TabBtn = ({ active, onClick, icon, label, count }) => (
   <button onClick={onClick} style={{
@@ -267,7 +254,7 @@ const PurchaseSmartTenders = () => {
       if (location.state.gpRequestId) {
         setGpRequestId(location.state.gpRequestId);
       }
-      setActiveTab('create');
+      switchTab('create');
       // Clear state so reload doesn't trigger again
       window.history.replaceState({}, document.title);
     }
@@ -363,6 +350,7 @@ const PurchaseSmartTenders = () => {
 
   const loadBids = async (tender) => {
     setSelectedTender(tender);
+    setBidsData([]);
     setLoadingBids(true);
     try {
       const res = await api.get(`/public-tenders/internal/${tender.id}/bids`);
@@ -381,6 +369,7 @@ const PurchaseSmartTenders = () => {
       if (t) {
         setActiveTab('list');
         loadBids(t);
+        window.history.replaceState({}, document.title, location.pathname);
       }
     }
   }, [location.search, tenders]);
@@ -425,7 +414,10 @@ const PurchaseSmartTenders = () => {
       setNewTender({ title: '', category: '', description: '', termsConditions: '', openingDate: '', closingDate: '' });
       setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1 }]);
       setShowCreate(false);
+      setSelectedTender(null);
+      setBidsData([]);
       fetchTenders();
+      switchTab('list');
     } catch (err) {
       alert('Error creating tender: ' + (err.message || 'Unknown error'));
     } finally { setCreating(false); }
@@ -563,6 +555,18 @@ This is an official award notification from SUTANA's procurement system.
     totalBids: tenders.reduce((s, t) => s + Number(t.bids_count || 0), 0),
   };
 
+  // ─── Tab Switch (clears stale evaluate state so old bids don't linger) ────
+  const switchTab = useCallback((nextTab) => {
+    if (nextTab !== 'evaluate') {
+      setSelectedTender(null);
+      setBidsData([]);
+    }
+    if (nextTab !== 'create') {
+      setCreateMsg('');
+    }
+    setActiveTab(nextTab);
+  }, []);
+
   // ─── Tabs ─────────────────────────────────────────────────────────────────
   const tabs = [
     { id: 'list', label: 'Tender List', icon: <FileText size={15} />, count: stats.total },
@@ -605,7 +609,7 @@ This is an official award notification from SUTANA's procurement system.
       {/* ── Tab Bar ── */}
       <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '6px', borderRadius: '10px', marginBottom: '24px', width: 'fit-content' }}>
         {tabs.map(t => (
-          <TabBtn key={t.id} active={activeTab === t.id} onClick={() => setActiveTab(t.id)}
+          <TabBtn key={t.id} active={activeTab === t.id} onClick={() => switchTab(t.id)}
             icon={t.icon} label={t.label} count={t.count} />
         ))}
       </div>
@@ -617,7 +621,7 @@ This is an official award notification from SUTANA's procurement system.
         <div className="pst-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>All Tenders</h2>
-            <button onClick={() => setActiveTab('create')} style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+            <button onClick={() => switchTab('create')} style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
               <PlusCircle size={14} /> New Tender
             </button>
           </div>
@@ -656,7 +660,7 @@ This is an official award notification from SUTANA's procurement system.
                     <td style={{ padding: '14px 16px' }}><StatusBadge status={t.status} /></td>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => { setSelectedTender(t); setActiveTab('evaluate'); loadBids(t); }}
+                        <button onClick={() => { loadBids(t); switchTab('evaluate'); }}
                           style={{ padding: '5px 10px', background: '#eff6ff', color: '#2563eb', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
                           Evaluate
                         </button>
@@ -946,15 +950,14 @@ This is an official award notification from SUTANA's procurement system.
                                       🔒 Close Tender
                                     </button>
                                   )}
-                                  {/* Submit to CEO — only enabled if all winner/recommended bids have Finance confirmed */}
-                                  {(() => {
+                                  {/* Submit to CEO — only shown before submission (published / closed), hidden once submitted or awarded */}
+                                  {['published', 'closed'].includes(selectedTender.status) && (() => {
                                     const allBids = bidsData.flatMap(g => g.bids || []);
                                     const awardedBids = allBids.filter(b => ['winner', 'recommended'].includes((b.bid_status || '').toLowerCase()));
-                                    const allFinanceConfirmed = awardedBids.length > 0 && awardedBids.every(b => b.payment_status === 'confirmed');
-                                    const canSubmit = allFinanceConfirmed;
+                                    const canSubmit = awardedBids.length > 0;
                                     return (
                                       <button
-                                        onClick={canSubmit ? handleSubmitCEO : () => showToast('⏳ Cannot submit yet. Finance must confirm payment for all recommended/winner bids first.', 'error')}
+                                        onClick={canSubmit ? handleSubmitCEO : () => showToast('⏳ Select at least one recommended/winner bid first.', 'error')}
                                         style={{
                                           padding: '9px 18px',
                                           background: canSubmit ? 'linear-gradient(135deg, #10b981, #059669)' : '#e2e8f0',
@@ -965,10 +968,10 @@ This is an official award notification from SUTANA's procurement system.
                                           boxShadow: canSubmit ? '0 3px 10px rgba(16,185,129,0.3)' : 'none',
                                           display: 'flex', alignItems: 'center', gap: '6px'
                                         }}
-                                        title={canSubmit ? 'Submit to CEO for final approval' : 'Finance must confirm payment for all winner/recommended bids first'}
+                                        title={canSubmit ? 'Submit to CEO for final approval' : 'Select at least one recommended/winner bid'}
                                       >
                                         {canSubmit ? '✅' : '🔒'} Submit to CEO
-                                        {!canSubmit && <span style={{ fontSize: '11px', fontWeight: 500 }}>(Awaiting Finance)</span>}
+                                        {!canSubmit && <span style={{ fontSize: '11px', fontWeight: 500 }}>(No Winners Yet)</span>}
                                       </button>
                                     );
                                   })()}
@@ -1020,14 +1023,14 @@ This is an official award notification from SUTANA's procurement system.
                                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', tableLayout: 'auto', minWidth: '0' }}>
                                             <thead>
                                               <tr style={{ background: '#f8fafc' }}>
-                                                {['Rank', 'Supplier', 'Email / Phone', 'Price (Birr.Cent)', 'Total (Birr.Cent)', 'Delivery', 'Payment Terms', 'Payment Method', 'Status', 'Finance', 'Action'].map(h => (
+                                                {['Rank', 'Supplier', 'Email / Phone', 'Price (Birr.Cent)', 'Total (Birr.Cent)', 'Delivery', 'Payment Terms', 'Status', 'Action'].map(h => (
                                                   <th key={h} style={{ padding: '10px 8px', fontWeight: 600, color: '#64748b', fontSize: '11px', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', whiteSpace: 'normal', textAlign: 'center' }}>{h}</th>
                                                 ))}
                                               </tr>
                                             </thead>
                                             <tbody>
                                               {bids.length === 0 ? (
-                                                <tr><td colSpan="11" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No bids for this product yet.</td></tr>
+                                                <tr><td colSpan="9" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No bids for this product yet.</td></tr>
                                               ) : (
                                                 bids.map((bid, idx) => (
                                                   <tr key={bid.id} style={{
@@ -1050,28 +1053,7 @@ This is an official award notification from SUTANA's procurement system.
                                                     </td>
                                                     <td style={{ padding: '12px 14px', color: '#64748b' }}>{bid.delivery_time || '—'}</td>
                                                     <td style={{ padding: '12px 14px', color: '#64748b' }}>{bid.payment_terms || '—'}</td>
-                                                    <td style={{ padding: '12px 14px' }}>
-                                                      {bid.payment_method ? (() => {
-                                                        const isTelebirr = bid.payment_method.startsWith('Telebirr');
-                                                        const isBank = bid.payment_method.startsWith('Bank Transfer');
-                                                        const parts = bid.payment_method.split('::');
-                                                        const methodLabel = parts[0];
-                                                        const accNum = parts.length > 1 ? `#${parts[1]}` : '';
-                                                        return (
-                                                          <span style={{
-                                                            display: 'inline-flex', flexDirection: 'column', gap: '2px',
-                                                            padding: '4px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
-                                                            background: isTelebirr ? '#FEF3C7' : isBank ? '#E0F2FE' : '#F3F4F6',
-                                                            color: isTelebirr ? '#D97706' : isBank ? '#0284C7' : '#475569'
-                                                          }}>
-                                                            <span>{isTelebirr ? '📱' : isBank ? '🏦' : '📄'} {methodLabel}</span>
-                                                            {accNum && <span style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: '10px', opacity: 0.85 }}>[Acct {accNum}]</span>}
-                                                          </span>
-                                                        );
-                                                      })() : '—'}
-                                                    </td>
                                                     <td style={{ padding: '12px 14px' }}><BidStatusBadge status={bid.bid_status} /></td>
-                                                    <td style={{ padding: '12px 14px' }}><PaymentStatusBadge status={bid.payment_status} /></td>
                                                     <td style={{ padding: '12px 14px' }}>
                                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                         {bid.bid_status === 'winner' ? (
