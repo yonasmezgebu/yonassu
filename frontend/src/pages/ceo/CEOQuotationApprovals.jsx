@@ -22,14 +22,14 @@ const CEOQuotationApprovals = () => {
     try {
       setLoading(true);
       const res = await apiClient.get('/purchase/quotations/pending-ceo');
-      const data = res?.data?.data || [];
+      const data = Array.isArray(res?.data) ? res.data : [];
       setQuotations(data);
       // Fetch items for each quotation
       const itemsResults = {};
       await Promise.all(data.map(async (q) => {
         try {
           const iRes = await apiClient.get(`/purchase/quotations/${q.id}/items`);
-          itemsResults[q.id] = iRes.data?.data || [];
+          itemsResults[q.id] = Array.isArray(iRes?.data) ? iRes.data : [];
         } catch { itemsResults[q.id] = []; }
       }));
       setItemsMap(itemsResults);
@@ -75,7 +75,7 @@ const CEOQuotationApprovals = () => {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 960, margin: '0 auto', fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+    <div style={{ padding: 24, width: '95%', maxWidth: 'none', margin: '0 auto', fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
       {toast && (
         <div style={{
           position: 'fixed', top: 20, right: 20, zIndex: 9999,
