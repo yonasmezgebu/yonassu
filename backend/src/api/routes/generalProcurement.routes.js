@@ -18,6 +18,7 @@ router.get('/requests/approved', authorizeRoles(['Admin', 'Purchase Manager', 'P
 router.put('/requests/:id/accept', authorizeRoles(['Admin', 'Purchase Manager', 'Purchase', 'Purchase Staff', 'purchase', 'Purchase Team']), generalProcurementController.acceptRequest);
 router.put('/requests/:id/request-payment', authorizeRoles(['Admin', 'Purchase Manager', 'Purchase', 'Purchase Staff', 'purchase', 'Purchase Team']), generalProcurementController.requestPayment);
 router.put('/requests/:id/complete-tender', authorizeRoles(['Admin', 'Purchase Manager', 'Purchase', 'Purchase Staff', 'purchase', 'Purchase Team']), generalProcurementController.completeTender);
+router.delete('/requests/:id', authorizeRoles(['Admin', 'Purchase Manager', 'Purchase', 'Purchase Staff', 'purchase', 'Purchase Team']), generalProcurementController.deleteRequest);
 
 // Finance -> Check funds and Pay
 router.get('/requests/finance/pending', authorizeRoles(['Admin', 'Finance', 'Finance Manager', 'Accountant']), generalProcurementController.getFinancePending);
