@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import {
   Search, Printer, CheckCircle2, Circle, ArrowRight,
   FileText, ListOrdered, Pencil, FileCheck, Scissors, PackageCheck,
-  AlertCircle, Loader2, TreePine, Leaf, Package, Clock, Phone,
-  Download, Lock
+  AlertCircle, Loader2, TreePine, Leaf, Package, Clock,
+  Download
 } from 'lucide-react';
 import axios from 'axios';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import FileViewer from '../../components/ui/FileViewer';
+import { mediaUrl } from '../../services/apiClient';
 
 const G = {
   forest:   '#228B22', dark: '#1B5E20', emerald: '#2E8B57',
@@ -37,20 +39,23 @@ const api = axios.create({ baseURL: '' });
 
 const PrintingPublicTrack = () => {
   const [orderNumber, setOrderNumber] = useState('');
-  const [phone, setPhone] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
+  const [viewFile, setViewFile] = useState(null);
+
+  const openWork = (w) => {
+    if (!w?.url) return;
+    setViewFile({ originalName: w.originalName || w.original_name || 'Uploaded Work', url: mediaUrl(w.url) || w.url });
+  };
 
   const handleTrack = async (e) => {
     e.preventDefault();
     if (!orderNumber.trim()) return;
     setLoading(true); setError(''); setResult(null); setSearched(true);
     try {
-      const { data } = await api.get(`/api/v1/printing/public/track/${orderNumber.trim().toUpperCase()}`, {
-        params: { phone: phone.trim() || undefined }
-      });
+      const { data } = await api.get(`/api/v1/printing/public/track/${orderNumber.trim().toUpperCase()}`);
       setResult(data.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Order not found. Please check the number and try again.');
@@ -59,12 +64,12 @@ const PrintingPublicTrack = () => {
     }
   };
 
-  const activeStep = result?.steps?.find(s => s.active);
   const completedCount = result?.steps?.filter(s => s.completed || s.active).length || 0;
   const totalSteps = result?.steps?.length || 8;
   const progressPct = Math.round((completedCount / totalSteps) * 100);
 
   return (
+    <>
     <div style={{ minHeight: '100vh', background: `linear-gradient(160deg, #1B5E20 0%, #2E7D32 30%, #388E3C 55%, #A5D6A7 80%, #E8F5E9 100%)`, fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -155,23 +160,6 @@ const PrintingPublicTrack = () => {
                   placeholder="Enter order number (e.g. PRT-20260720-001)"
                   style={{
                     width: '100%', padding: '14px 14px 14px 46px',
-                    border: `2px solid ${G.sage}`, borderRadius: 14,
-                    fontSize: 15, color: G.darkGray, fontWeight: 500,
-                    boxSizing: 'border-box', background: 'transparent',
-                    transition: 'all 0.2s',
-                  }}
-                />
-              </div>
-              <div style={{ position: 'relative', width: 220 }}>
-                <Phone size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: G.olive }} />
-                <input
-                  className="track-input"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="Mobile (09XXXXXXXX)"
-                  inputMode="tel"
-                  style={{
-                    width: '100%', padding: '14px 14px 14px 42px',
                     border: `2px solid ${G.sage}`, borderRadius: 14,
                     fontSize: 15, color: G.darkGray, fontWeight: 500,
                     boxSizing: 'border-box', background: 'transparent',
@@ -399,48 +387,73 @@ const PrintingPublicTrack = () => {
                   <Download size={20} color={G.emerald} /> Your Uploaded Work Files
                 </h2>
                 <p style={{ margin: '0 0 18px', fontSize: 13, color: G.olive, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Lock size={13} /> Shown only when the order number is checked with the mobile number registered for this order.
+                  <FileText size={13} /> Files uploaded by the Print Center for this order.
                 </p>
 
                 {result.works?.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {result.works.map(w => (
-                      <div key={w.id} style={{
-                        display: 'flex', alignItems: 'center', gap: 14,
-                        padding: '14px 18px', borderRadius: 14, background: `${G.sage}1a`,
-                        border: `1px solid ${G.sage}55`,
-                      }}>
-                        <div style={{
-                          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                          background: `linear-gradient(135deg, ${G.emerald}, ${G.leaf})`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    {result.works.map(w => {
+                      const wUrl = mediaUrl(w.url) || w.url || '#';
+                      const isImage = String(w.mimeType || '').toLowerCase().startsWith('image/');
+                      return (
+                        <div key={w.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 14,
+                          padding: '14px 18px', borderRadius: 14, background: `${G.sage}1a`,
+                          border: `1px solid ${G.sage}55`,
                         }}>
-                          <FileText size={20} color="#fff" />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, color: G.dark, fontSize: 14, wordBreak: 'break-word' }}>{w.originalName}</div>
-                          <div style={{ fontSize: 12, color: G.olive, marginTop: 2 }}>
-                            {w.size ? `${(w.size / 1024 / 1024).toFixed(2)} MB` : ''}
-                            {w.uploadedAt ? ` · uploaded ${new Date(w.uploadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+                          {isImage ? (
+                            <button
+                              type="button"
+                              onClick={() => openWork(w)}
+                              style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, overflow: 'hidden', border: `2px solid ${G.leaf}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', cursor: 'pointer', padding: 0 }}
+                              title="Preview image"
+                            >
+                              <img
+                                src={wUrl}
+                                alt={w.originalName || w.original_name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                onError={e => { e.target.style.display = 'none'; }}
+                              />
+                            </button>
+                          ) : (
+                            <div style={{
+                              width: 56, height: 56, borderRadius: 12, flexShrink: 0,
+                              background: `linear-gradient(135deg, ${G.emerald}, ${G.leaf})`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              <FileText size={22} color="#fff" />
+                            </div>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, color: G.dark, fontSize: 14, wordBreak: 'break-word' }}>{w.originalName || w.original_name}</div>
+                            <div style={{ fontSize: 12, color: G.olive, marginTop: 2 }}>
+                              {w.size ? `${(w.size / 1024 / 1024).toFixed(2)} MB` : ''}
+                              {(w.uploadedAt || w.uploaded_at) ? ` · uploaded ${new Date(w.uploadedAt || w.uploaded_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+                            </div>
+                            {(w.message) ? (
+                              <div style={{ marginTop: 6, fontSize: 12, color: G.brown, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '5px 8px', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                {w.message}
+                              </div>
+                            ) : null}
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => openWork(w)}
+                            className="track-btn"
+                            style={{
+                              padding: '10px 18px', borderRadius: 10, flexShrink: 0,
+                              background: `linear-gradient(135deg, ${G.forest}, ${G.emerald})`,
+                              color: '#fff', border: 'none', fontFamily: 'inherit',
+                              cursor: 'pointer', fontWeight: 800, fontSize: 13,
+                              display: 'inline-flex', alignItems: 'center', gap: 8,
+                              boxShadow: `0 4px 14px ${G.forest}55`,
+                            }}
+                          >
+                            <Download size={15} /> Open File
+                          </button>
                         </div>
-                        <a
-                          href={w.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="track-btn"
-                          style={{
-                            padding: '10px 18px', borderRadius: 10, flexShrink: 0,
-                            background: `linear-gradient(135deg, ${G.forest}, ${G.emerald})`,
-                            color: '#fff', textDecoration: 'none', fontWeight: 800, fontSize: 13,
-                            display: 'inline-flex', alignItems: 'center', gap: 8,
-                            boxShadow: `0 4px 14px ${G.forest}55`,
-                          }}
-                        >
-                          <Download size={15} /> Open File
-                        </a>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div style={{
@@ -448,7 +461,7 @@ const PrintingPublicTrack = () => {
                     border: `1.5px dashed ${G.sage}`, color: G.olive, fontSize: 13,
                     textAlign: 'center',
                   }}>
-                    No work files to show yet{phone.trim() ? ' — either none are uploaded or the mobile number does not match this order.' : ' — add the mobile number you used for this order to see them.'}
+                    No work files uploaded for this order yet.
                   </div>
                 )}
               </div>
@@ -473,6 +486,9 @@ const PrintingPublicTrack = () => {
         </div>
       </div>
     </div>
+
+    <FileViewer file={viewFile} onClose={() => setViewFile(null)} />
+    </>
   );
 };
 
