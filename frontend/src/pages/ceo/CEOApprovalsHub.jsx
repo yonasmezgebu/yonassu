@@ -196,7 +196,7 @@ const CEOApprovalsHub = () => {
 
   useEffect(() => {
     apiClient.get('/purchase/quotations/pending-ceo')
-      .then(res => setQuotationCount(Array.isArray(res?.data?.data) ? res.data.data.length : 0))
+      .then(res => setQuotationCount(Array.isArray(res?.data) ? res.data.length : 0))
       .catch(() => setQuotationCount(0));
   }, []);
 
