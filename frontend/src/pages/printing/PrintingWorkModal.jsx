@@ -36,6 +36,7 @@ const PrintingWorkModal = ({ isOpen, order, onClose }) => {
   const [selected, setSelected] = useState([]);
   const [errors, setErrors] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [note, setNote] = useState('');
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
   const [confirmDel, setConfirmDel] = useState(null);
@@ -67,7 +68,7 @@ const PrintingWorkModal = ({ isOpen, order, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
-      setMsg(''); setError(''); setSelected([]); setErrors([]);
+      setMsg(''); setError(''); setSelected([]); setErrors([]); setNote('');
       load();
     }
   }, [isOpen, order?.id]);
@@ -112,9 +113,11 @@ const PrintingWorkModal = ({ isOpen, order, onClose }) => {
     try {
       const fd = new FormData();
       selected.forEach(f => fd.append('files', f));
+      if (note.trim()) fd.append('message', note.trim());
       const res = await apiClient.post(`/printing/orders/${order.id}/works`, fd);
       setMsg(res.message || 'Work uploaded.');
       setSelected([]);
+      setNote('');
       await load();
     } catch (e) {
       setError(e?.message || 'Upload failed. Check the file types and sizes.');
@@ -200,6 +203,24 @@ const PrintingWorkModal = ({ isOpen, order, onClose }) => {
             </div>
           </div>
 
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+              Message for customer (optional)
+            </label>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder="e.g. Design draft attached — please review and let us know any changes before we print. Shown to the customer with the uploaded file."
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '8px 10px',
+                borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13,
+                fontFamily: "'Inter', sans-serif", color: '#0f172a', resize: 'vertical'
+              }}
+            />
+          </div>
+
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               ref={fileInputRef}
@@ -276,6 +297,11 @@ const PrintingWorkModal = ({ isOpen, order, onClose }) => {
                     <tr key={w.id} style={{ borderTop: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '10px 12px', fontWeight: 600, color: '#0f172a' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{fileIcon(w.originalName)} {w.originalName}</span>
+                        {w.message && (
+                          <div style={{ marginTop: 4, fontSize: 12, fontWeight: 500, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '4px 8px', whiteSpace: 'pre-wrap' }}>
+                            {w.message}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '10px 12px', color: '#64748b' }}>{formatBytes(w.size)}</td>
                       <td style={{ padding: '10px 12px', color: '#64748b', fontSize: 12 }}>
