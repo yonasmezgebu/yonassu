@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Search, FileText, ClipboardList, XCircle, ExternalLink } from 'lucide-react';
+import { CheckCircle, Search, FileText, ClipboardList, XCircle, ExternalLink, Trash2 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 
 const GlobalStyles = () => (
@@ -88,6 +88,10 @@ const PurchaseGeneralProcurements = () => {
   const [tenderError, setTenderError]     = useState('');
   const [tenderSuccess, setTenderSuccess] = useState('');
 
+  const [deleteModal, setDeleteModal] = useState({ open: false, request: null });
+  const [deleting, setDeleting]       = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
@@ -140,6 +144,21 @@ const PurchaseGeneralProcurements = () => {
     setTenderError('');
     setTenderSuccess('');
     setTenderModal({ open: true, request: req });
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!deleteModal.request) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await apiClient.delete(`/general-procurement/requests/${deleteModal.request.id}`);
+      setRequests(prev => prev.filter(r => r.id !== deleteModal.request.id));
+      setDeleteModal({ open: false, request: null });
+    } catch (e) {
+      setDeleteError(e.response?.data?.message || e.message || 'Failed to delete request.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleOpenTender = async () => {
@@ -223,7 +242,17 @@ const PurchaseGeneralProcurements = () => {
                         <StatusBadge status={req.status} />
                       </div>
                     </div>
-                    <div className="pg-cost">{req.estimated_cost ? `${Number(req.estimated_cost).toLocaleString()} ETB` : 'Cost TBD'}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className="pg-cost">{req.estimated_cost ? `${Number(req.estimated_cost).toLocaleString()} ETB` : 'Cost TBD'}</div>
+                      <button
+                        onClick={() => { setDeleteModal({ open: true, request: req }); setDeleteError(''); }}
+                        className="pg-btn"
+                        title="Delete this active request"
+                        style={{ height: '30px', width: '30px', padding: 0, border: '1px solid var(--color-danger)', color: 'var(--color-danger)', background: 'transparent', flexShrink: 0 }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                   <div className="pg-grid">
                     <div><span className="pg-label">Quantity</span><div className="pg-value">{req.quantity}</div></div>
@@ -444,6 +473,36 @@ const PurchaseGeneralProcurements = () => {
               <button onClick={() => setTenderModal({ open: false, request: null })} className="pg-btn" style={{ background: 'transparent' }}>Cancel</button>
               <button onClick={handleOpenTender} disabled={tenderSubmitting} className="pg-btn" style={{ background: '#166534', color: '#fff', border: 'none', fontWeight: '600', minWidth: '190px' }}>
                 {tenderSubmitting ? 'Processing...' : <><ExternalLink size={15} /> Confirm &amp; Go to Tender Page</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirm Modal ── */}
+      {deleteModal.open && deleteModal.request && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '28px', borderRadius: '14px', width: '100%', maxWidth: '440px', boxShadow: '0 16px 40px rgba(0,0,0,0.15)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '700' }}>Delete Procurement</h3>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>For: <strong>{deleteModal.request.item_name}</strong> ({deleteModal.request.request_code})</p>
+              </div>
+              <button onClick={() => !deleting && setDeleteModal({ open: false, request: null })} className="pg-btn" style={{ width: '32px', height: '32px', padding: 0, border: 'none' }}>
+                <XCircle size={18} />
+              </button>
+            </div>
+
+            <div style={{ background: 'var(--color-danger-bg)', padding: '14px 16px', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', color: 'var(--color-danger)', lineHeight: '1.6' }}>
+              <strong>Warning:</strong> This will permanently delete this active procurement request. This action cannot be undone.
+            </div>
+
+            {deleteError && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)', padding: '10px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>{deleteError}</div>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button onClick={() => setDeleteModal({ open: false, request: null })} disabled={deleting} className="pg-btn" style={{ background: 'transparent' }}>Cancel</button>
+              <button onClick={handleDeleteRequest} disabled={deleting} className="pg-btn" style={{ background: 'var(--color-danger)', color: '#fff', border: 'none', fontWeight: '600', minWidth: '120px' }}>
+                {deleting ? 'Deleting...' : <><Trash2 size={15} /> Delete</>}
               </button>
             </div>
           </div>
