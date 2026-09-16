@@ -237,8 +237,14 @@ const getLogs = async (user, filters = {}) => {
   const isSales      = roleStr.includes('sales') || deptName.includes('sales') || deptName.includes('retail');
   const isPrinting   = roleStr.includes('printing') || deptName.includes('printing');
 
-  if (isSuperAdmin || isCEO) {
-    // Full visibility — no WHERE clause
+  if (isSuperAdmin) {
+    // Super Admin — full visibility, no WHERE clause
+  } else if (isCEO) {
+    // CEO — scoped to ONE selected module at a time (never a mixed view).
+    // The dropdown selects the module; default is CEO. Admin logins and
+    // other modules are never mixed in.
+    const ceoScope = filters.module || 'CEO';
+    q = q.where('module', ceoScope).whereNotIn('user_name', AUTO_USERS);
   } else if (isHR) {
     // HR staff see all HR module logs, excluding automated system actions
     q = q.where('module', 'HR').whereNotIn('user_name', AUTO_USERS);
@@ -285,7 +291,7 @@ const getLogs = async (user, filters = {}) => {
   // (No global filter needed — access is already restricted above.)
 
   // Optional filters
-  if (filters.module) {
+  if (filters.module && !isCEO) {
     q = q.where((builder) => {
       builder.where('module', filters.module)
              .orWhere('department', filters.module);
