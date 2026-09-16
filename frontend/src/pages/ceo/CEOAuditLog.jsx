@@ -70,7 +70,7 @@ const CEOAuditLog = () => {
       if (search) params.search = search;
       if (moduleFilter) params.module = moduleFilter;
 
-      // CEO uses standard audit-logs endpoint to see EVERYTHING securely
+      // CEO audit view — backend scopes CEO to the ONE selected module only
       const res = await apiClient.get('/audit-logs', { params });
       const data = Array.isArray(res) ? res : (Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []));
       setLogs(data);
@@ -101,9 +101,9 @@ const CEOAuditLog = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
             <div style={{ width: 4, height: 30, background: `linear-gradient(180deg, ${C.forest}, ${C.emerald})`, borderRadius: 4 }} />
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: C.darkGray, letterSpacing: -0.5 }}>Central Audit Log</h1>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: C.darkGray, letterSpacing: -0.5 }}>CEO Activity Log</h1>
           </div>
-          <p style={{ margin: 0, color: C.gray, fontSize: 13, paddingLeft: 16 }}>CEO view · Append-only system record of all module activities</p>
+          <p style={{ margin: 0, color: C.gray, fontSize: 13, paddingLeft: 16 }}>Select a module to view its audit activity · Scoped to one module at a time, never mixed</p>
         </div>
         <button onClick={exportLogs} style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px',
@@ -129,28 +129,30 @@ const CEOAuditLog = () => {
             }}
           />
         </div>
-        <select
-          value={moduleFilter}
-          onChange={e => { setModuleFilter(e.target.value); setPage(1); }}
-          style={{ 
-            padding: '10px 14px', borderRadius: 8, border: `1px solid ${C.border}`, 
-            fontSize: 14, outline: 'none', background: C.white, cursor: 'pointer', minWidth: 200
-          }}
-        >
-          <option value="CEO">CEO (My Activities)</option>
-          <option value="">— All Modules —</option>
-          <option value="HR">HR</option>
-          <option value="Printing">Printing</option>
-          <option value="Finance">Finance</option>
-          <option value="Pharmacy Store">Pharmacy Store</option>
-          <option value="Pharmacy Sales">Pharmacy Sales</option>
-          <option value="Pharmacy">Pharmacy (Legacy)</option>
-          <option value="Store">Store</option>
-          <option value="Car Rental">Car Rental</option>
-          <option value="Procurement">Procurement</option>
-          <option value="Sales">Sales</option>
-          <option value="Inventory">Inventory</option>
-        </select>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <Shield size={15} color={C.forest} />
+          <select
+            value={moduleFilter}
+            onChange={e => { setModuleFilter(e.target.value); setPage(1); }}
+            style={{ 
+              padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.emerald}`, 
+              background: C.mint, cursor: 'pointer', minWidth: 200,
+              fontSize: 13, fontWeight: 700, color: C.dark, outline: 'none'
+            }}
+          >
+            <option value="CEO">CEO</option>
+            <option value="Procurement">Procurement</option>
+            <option value="HR">HR</option>
+            <option value="Finance">Finance</option>
+            <option value="Printing">Printing</option>
+            <option value="Pharmacy">Pharmacy</option>
+            <option value="Pharmacy Store">Pharmacy Store</option>
+            <option value="Pharmacy Sales">Pharmacy Sales</option>
+            <option value="Store">Store</option>
+            <option value="Sales">Sales</option>
+            <option value="Inventory">Inventory</option>
+          </select>
+        </div>
       </div>
 
       {/* ── TABLE ── */}
