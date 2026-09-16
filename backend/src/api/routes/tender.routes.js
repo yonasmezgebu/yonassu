@@ -77,5 +77,6 @@ router.put('/bids/:bidId/disqualify', bidController.disqualify);
 router.put('/bids/:bidId/mark-opened', authenticate, authorizeRoles(['Sales Manager', 'Admin']), bidController.markOpened);
 router.put('/bids/:bidId/mark-sent', authenticate, authorizeRoles(['Sales Manager', 'Admin']), bidController.markEmailSent);
 router.put('/bids/:bidId/payment-status', authenticate, authorizeRoles(['Finance', 'Sales Manager', 'Admin']), bidController.updateBidPaymentStatus);
+router.post('/bids/:bidId/submit-finance', authenticate, authorizeRoles(['Sales Manager', 'Admin']), bidController.submitToFinance);
 
 module.exports = router;
