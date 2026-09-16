@@ -252,7 +252,9 @@ exports.award = catchAsync(async (req, res) => {
 
   // Winning bids become Pending income for Finance to verify (Live Income) — the
   // Revenue Book is only written once Finance approves the payment.
-  await submitTenderIncomeSubmissions(req, bids, tender);
+  // UPDATE: We no longer auto-submit here. The Sales Manager must manually click 'Submit to Finance' 
+  // and fill out the payment method/reference.
+  // await submitTenderIncomeSubmissions(req, bids, tender);
 
   for (const b of bids) {
     await notificationRepository.create({ userId: b.customer_id, title: 'Bid Awarded!', message: `Congratulations! Your bid on ${tender.reference_number} — ${tender.title} has been selected.` });
@@ -339,7 +341,7 @@ exports.ceoApprove = catchAsync(async (req, res) => {
       .where({ status: 'awarded', ceo_approval_status: 'approved' });
     const tender = await db('tenders').where('id', req.params.tenderId).first();
     if (approvedBids.length && tender) {
-      await submitTenderIncomeSubmissions(req, approvedBids, tender);
+      // await submitTenderIncomeSubmissions(req, approvedBids, tender);
     }
   }
 
@@ -424,4 +426,40 @@ exports.updateBidPaymentStatus = catchAsync(async (req, res) => {
   }
 
   res.json({ status: 'success', data: updated });
+});
+
+exports.submitToFinance = catchAsync(async (req, res) => {
+  const { payment_method, payment_reference } = req.body;
+  const bid = await db('bids').where('id', req.params.bidId).first();
+  if (!bid) throw AppError.notFound('Bid not found');
+  if (bid.status !== 'awarded') throw AppError.badRequest('Only awarded bids can be submitted to Finance');
+  
+  const tender = await db('tenders').where('id', bid.tender_id).first();
+  if (!tender) throw AppError.notFound('Tender not found');
+
+  // Update bid with pending status and payment details
+  await db('bids').where('id', bid.id).update({
+    payment_status: 'pending_verification',
+    payment_method: payment_method || bid.payment_method || 'Cash',
+    payment_reference: payment_reference || bid.payment_reference || null,
+    updated_at: db.fn.now()
+  });
+
+  // Re-fetch bid so updated details are passed
+  const updatedBid = await db('bids').where('id', bid.id).first();
+
+  const { ensureTenderIncomeSubmission } = require('../../utils/tenderIncome.service');
+  const submission = await ensureTenderIncomeSubmission({ bid: updatedBid, tender });
+  
+  if (submission) {
+    const { sendFinanceNotification } = require('../../services/notification.service');
+    sendFinanceNotification({
+      title: '💰 Tender Income Pending Verification',
+      message: `A Compete & Buy winning bid for ${tender.reference_number || `Tender #${tender.id}`} (Bidder: ${updatedBid.bidder_full_name || updatedBid.bidder_email || 'Unknown'}) has been submitted to Revenue Live Income — verify the payment to post to the Revenue Book.`,
+      type: 'finance',
+      link: `/finance/pharmacy-sales?tab=list&id=${submission.id}`
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance of tender submission:', e.message));
+  }
+
+  res.json({ status: 'success', message: 'Bid submitted to Finance successfully' });
 });
