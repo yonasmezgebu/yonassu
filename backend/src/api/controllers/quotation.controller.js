@@ -1,6 +1,8 @@
 const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
+const { audit } = require('../../config/logger');
+const { sendNotification } = require('../../services/notification.service');
 
 // Ensure purchase_quotation_items table exists
 db.schema.hasTable('purchase_quotation_items').then(exists => {
@@ -143,12 +145,31 @@ exports.approveQuotation = catchAsync(async (req, res) => {
   if (!quote) throw AppError.notFound('Quotation not found');
   if (quote.status !== 'Pending CEO Approval') throw AppError.badRequest(`Quotation is already ${quote.status}`);
 
+  // Own the audit entry for this decision (suppress the middleware's generic write)
+  res.locals.__centralAudited = true;
+
   if (action === 'approve') {
     await db('purchase_quotations').where({ id }).update({
       status: 'Recorded',
       ceo_approved_by: req.user.id,
       ceo_approved_at: db.fn.now(),
       updated_at: db.fn.now()
+    });
+    await audit('QUOTATION_APPROVED', req.user.id, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      resource: 'quotations',
+      resourceId: String(id),
+      module: 'CEO',
+      recordIdentifier: quote.quotation_no,
+      afterState: { status: 'Recorded', ceo_approved_by: req.user.id }
+    });
+    await sendNotification('Purchase Manager', null, {
+      type: 'QUOTATION_APPROVED',
+      title: 'Quotation Approved',
+      message: `Quotation ${quote.quotation_no} was approved by the CEO and is now Recorded.`,
+      related_entity_id: id,
+      link: '/purchase/quotations'
     });
     res.json({ status: 'success', message: 'Quotation approved by CEO' });
   } else if (action === 'reject') {
@@ -158,6 +179,22 @@ exports.approveQuotation = catchAsync(async (req, res) => {
       ceo_approved_at: db.fn.now(),
       ceo_rejection_reason: reason || 'Rejected by CEO',
       updated_at: db.fn.now()
+    });
+    await audit('QUOTATION_REJECTED', req.user.id, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      resource: 'quotations',
+      resourceId: String(id),
+      module: 'CEO',
+      recordIdentifier: quote.quotation_no,
+      afterState: { status: 'Cancelled', ceo_rejection_reason: reason || 'Rejected by CEO' }
+    });
+    await sendNotification('Purchase Manager', null, {
+      type: 'QUOTATION_REJECTED',
+      title: 'Quotation Rejected',
+      message: `Quotation ${quote.quotation_no} was rejected by the CEO${reason ? ` — Reason: ${reason}` : ''}.`,
+      related_entity_id: id,
+      link: '/purchase/quotations'
     });
     res.json({ status: 'success', message: 'Quotation rejected by CEO' });
   } else {
