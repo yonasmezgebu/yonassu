@@ -309,7 +309,6 @@ const PublicBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
           <div className={styles.bidActions}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.375rem' }}>
               <StatusBadge status={bid.bid_status} />
-              <PaymentStatusBadge status={bid.payment_status} />
             </div>
             <div className={styles.bidActionBtns}>
               {canUpdate && (
@@ -353,32 +352,17 @@ const PublicBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
         {isAwarded && (
           <div style={{
             marginTop: '0.875rem', padding: '0.875rem 1rem',
-            background: bid.payment_status === 'confirmed'
-              ? 'linear-gradient(135deg,#dcfce7,#f0fdf4)'
-              : bid.payment_status === 'rejected'
-              ? 'linear-gradient(135deg,#fee2e2,#fff5f5)'
-              : 'linear-gradient(135deg,#fef9c3,#fefce8)',
+            background: 'linear-gradient(135deg,#dcfce7,#f0fdf4)',
             borderRadius: 10,
-            border: bid.payment_status === 'confirmed' ? '1.5px solid #86efac'
-              : bid.payment_status === 'rejected' ? '1.5px solid #fca5a5'
-              : '1.5px solid #fde68a',
+            border: '1.5px solid #86efac',
             display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap',
           }}>
-            <CreditCard size={18} style={{ flexShrink: 0, marginTop: 2, color: bid.payment_status === 'confirmed' ? '#16a34a' : bid.payment_status === 'rejected' ? '#dc2626' : '#d97706' }} />
+            <CreditCard size={18} style={{ flexShrink: 0, marginTop: 2, color: '#16a34a' }} />
             <div>
               <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a' }}>Your bid was awarded</div>
               <div style={{ fontSize: '0.8125rem', color: '#475569', marginTop: 2 }}>
-                {bid.payment_status === 'confirmed'
-                  ? 'Finance confirmed your payment. Proceed to fulfil the order.'
-                  : bid.payment_status === 'rejected'
-                  ? 'Finance rejected your payment. Contact the finance department.'
-                  : 'Finance is reviewing your payment. You will be notified once confirmed.'}
+                Congratulations! Your bid has been selected as the winning offer. A representative will contact you shortly to process your payment and finalize the contract.
               </div>
-              {bid.payment_method && (
-                <div style={{ fontSize: '0.8125rem', marginTop: 4, color: '#64748b' }}>
-                  <strong>Payment via:</strong> {bid.payment_method.replace('::', ' — Account ID: ')}
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -418,6 +402,17 @@ const PublicBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
                 <div className={styles.detailItem}>
                   <span className={styles.detailLabel}>Payment Terms</span>
                   <span className={styles.detailValue}>{bid.payment_terms}</span>
+                </div>
+              )}
+              {bid.payment_method && (
+                <div className={styles.detailItem} style={{ gridColumn: '1/-1' }}>
+                  <span className={styles.detailLabel}>Payment Method</span>
+                  <span className={styles.detailValue}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: bid.payment_method.toLowerCase().startsWith('internal') ? '#dcfce7' : bid.payment_method.startsWith('Telebirr') ? '#fef3c7' : '#eff6ff', color: bid.payment_method.toLowerCase().startsWith('internal') ? '#166534' : bid.payment_method.startsWith('Telebirr') ? '#92400e' : '#1d4ed8' }}>
+                      {bid.payment_method.toLowerCase().startsWith('internal') ? '🛎️' : bid.payment_method.startsWith('Telebirr') ? '📱' : '🏦'} {bid.payment_method.split('::')[0]}
+                    </span>
+                    {bid.payment_method.includes('::') && <span style={{ fontSize: 11, color: '#64748b', marginLeft: 4 }}>Ref: {bid.payment_method.split('::')[1]}</span>}
+                  </span>
                 </div>
               )}
             </div>
@@ -570,6 +565,17 @@ const SalesBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
                 <span className={styles.detailLabel}>Submitted On</span>
                 <span className={styles.detailValue}>{bid.submitted_at ? new Date(bid.submitted_at).toLocaleString() : '—'}</span>
               </div>
+              {bid.payment_method && (
+                <div className={styles.detailItem} style={{ gridColumn: '1/-1' }}>
+                  <span className={styles.detailLabel}>Payment Method</span>
+                  <span className={styles.detailValue}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: bid.payment_method.toLowerCase().startsWith('internal') ? '#dcfce7' : bid.payment_method.startsWith('Telebirr') ? '#fef3c7' : '#eff6ff', color: bid.payment_method.toLowerCase().startsWith('internal') ? '#166534' : bid.payment_method.startsWith('Telebirr') ? '#92400e' : '#1d4ed8' }}>
+                      {bid.payment_method.toLowerCase().startsWith('internal') ? '🛎️' : bid.payment_method.startsWith('Telebirr') ? '📱' : '🏦'} {bid.payment_method.split('::')[0]}
+                    </span>
+                    {bid.payment_method.includes('::') && <span style={{ fontSize: 11, color: '#64748b', marginLeft: 4 }}>Ref: {bid.payment_method.split('::')[1]}</span>}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className={styles.actionRow}>
