@@ -483,10 +483,11 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   const isAgrirent = (submission.department || '').toLowerCase().includes('agrirent')
     || (submission.department || '').toLowerCase().includes('agri rent')
     || (submission.department || '').toLowerCase() === 'agrirent';
+  const isTenderDept = (submission.department || '').toLowerCase() === 'tender';
   // Module-based departments that record their own invoice/payment details —
   // these always show the exact Bank/Telebirr/Cash verification (like Printing)
   // instead of a generic checkbox list or cash-count flow.
-  const isModuleDept = isPrinting || isRetail || isPharmacy || isCarRental || isAgrirent;
+  const isModuleDept = isPrinting || isRetail || isPharmacy || isCarRental || isAgrirent || isTenderDept;
   const proofUrl = getImageUrl(manualDetails?.proofImagePath || manualDetails?.payment_screenshot);
 
   // ── Smart payment-detail derivation ─────────────────────────────
@@ -713,6 +714,31 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                   </div>
                 )}
 
+                {/* Tender Bid Details */}
+                {isTenderDept && manualDetails && manualDetails.bidId && (
+                  <div style={{ background: "#f0fdf4", padding: 20, border: "1.5px solid #86efac", marginBottom: 20, borderRadius: 8 }}>
+                    <h4 style={{ margin: "0 0 12px", fontSize: 14, color: "#166534", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                      🏆 Compete &amp; Buy — Winning Bid Details
+                    </h4>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 13 }} className="fli-grid-2">
+                      <div><span style={{ color: "#6B7280", fontWeight: 600 }}>Tender Ref:</span> <strong style={{ color: "#111827" }}>{manualDetails.tenderReference || ("Tender #" + manualDetails.tenderId)}</strong></div>
+                      <div><span style={{ color: "#6B7280", fontWeight: 600 }}>Bidder Name:</span> <strong style={{ color: "#111827" }}>{manualDetails.bidderName || manualDetails.receivedFrom}</strong></div>
+                      {manualDetails.bidderEmail && <div><span style={{ color: "#6B7280", fontWeight: 600 }}>Bidder Email:</span> <strong style={{ color: "#111827" }}>{manualDetails.bidderEmail}</strong></div>}
+                      {manualDetails.bidderPhone && <div><span style={{ color: "#6B7280", fontWeight: 600 }}>Bidder Phone:</span> <strong style={{ color: "#111827" }}>{manualDetails.bidderPhone}</strong></div>}
+                      <div><span style={{ color: "#6B7280", fontWeight: 600 }}>Subtotal:</span> <strong style={{ color: "#111827" }}>ETB {fmt(manualDetails.subtotal)}</strong></div>
+                      <div><span style={{ color: "#6B7280", fontWeight: 600 }}>VAT:</span> <strong style={{ color: "#111827" }}>ETB {fmt(manualDetails.vatAmount)}</strong></div>
+                    </div>
+                    <div style={{ marginTop: 14, padding: "12px 16px", background: "white", border: "2px solid #86efac", borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#166534", marginBottom: 6 }}>Expected Payment Account</div>
+                      {manualDetails.paymentMethod && (
+                        <div style={{ fontSize: 13, fontWeight: 700, color: manualDetails.paymentMethod.toLowerCase().includes("tele") ? "#92400E" : "#1D4ED8", display: "flex", alignItems: "center", gap: 6 }}>
+                          {manualDetails.paymentMethod.toLowerCase().includes("tele") ? "📱" : "🏦"} {manualDetails.paymentMethod}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 6, fontStyle: "italic" }}>Verify the customer transferred <strong style={{ color: "#166534" }}>ETB {fmt(manualDetails.amount)}</strong> to the account above before confirming.</div>
+                    </div>
+                  </div>
+                )}
                 {/* Bank Details */}
                 {manualDetails.paymentMethod === 'Bank' && manualDetails.bankDetails && (
                   <div style={{ background: '#E0F2FE', padding: 20, border: '1px solid #0284C7', marginBottom: 20, borderRadius: 8 }}>
