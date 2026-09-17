@@ -404,6 +404,34 @@ const PublicBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
                   <span className={styles.detailValue}>{bid.payment_terms}</span>
                 </div>
               )}
+              {bid.proposed_pickup_date && (
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Proposed Pickup</span>
+                  <span className={styles.detailValue}>{new Date(bid.proposed_pickup_date).toLocaleDateString()}</span>
+                </div>
+              )}
+              {bid.notes && (
+                <div className={styles.detailItem} style={{ gridColumn: '1/-1' }}>
+                  <span className={styles.detailLabel}>Notes / Cover Letter</span>
+                  <span className={styles.detailValue} style={{ whiteSpace: 'pre-wrap' }}>{bid.notes}</span>
+                </div>
+              )}
+              {bid.digital_signature && (
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Digital Signature</span>
+                  <span className={styles.detailValue} style={{ fontFamily: 'cursive', color: '#166534', fontWeight: 600 }}>{bid.digital_signature}</span>
+                </div>
+              )}
+              {bid.payment_screenshot && (
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Payment Proof</span>
+                  <span className={styles.detailValue}>
+                    <a href={`${(import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '')}/uploads/tenders/${bid.payment_screenshot}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                      View Attachment <ExternalLink size={12} />
+                    </a>
+                  </span>
+                </div>
+              )}
               {bid.payment_method && (
                 <div className={styles.detailItem} style={{ gridColumn: '1/-1' }}>
                   <span className={styles.detailLabel}>Payment Method</span>
@@ -542,15 +570,37 @@ const SalesBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
 
         {expanded && (
           <div className={styles.bidExpanded}>
-            <div className={styles.priceBox}>
-              <div>
-                <div className={styles.priceBoxLabel}>My Proposed Price</div>
-                <div className={styles.priceBoxSub}>Total Value: {parseFloat(bid.total_bid_value || 0).toLocaleString()} ETB</div>
+            {bid.items && bid.items.length > 0 ? (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h5 className={styles.sectionTitle}>Bid Items</h5>
+                <div className={styles.itemList}>
+                  {bid.items.map((item, idx) => (
+                    <div key={idx} className={styles.itemRow}>
+                      <div>
+                        <div className={styles.itemName}>{item.object_type || item.item_name || `Item ${idx + 1}`}</div>
+                        <div className={styles.itemQty}>Qty: {item.quantity || 1} {item.unit || ''}</div>
+                      </div>
+                      <div className={styles.itemPrice}>
+                        {parseFloat(item.bid_price_birr || 0).toLocaleString()}.{String(item.bid_price_cent || 0).padStart(2, '0')} ETB/unit
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.priceBoxSub} style={{ marginTop: '0.5rem', textAlign: 'right' }}>
+                  Total Value: {parseFloat(bid.total_bid_value || 0).toLocaleString()} ETB
+                </div>
               </div>
-              <div className={styles.priceBoxValue}>
-                {parseFloat(bid.bid_price_per_unit || 0).toLocaleString()} <span className={styles.priceBoxUnit}>ETB/unit</span>
+            ) : (
+              <div className={styles.priceBox}>
+                <div>
+                  <div className={styles.priceBoxLabel}>My Proposed Price</div>
+                  <div className={styles.priceBoxSub}>Total Value: {parseFloat(bid.total_bid_value || 0).toLocaleString()} ETB</div>
+                </div>
+                <div className={styles.priceBoxValue}>
+                  {parseFloat(bid.bid_price_per_unit || 0).toLocaleString()} <span className={styles.priceBoxUnit}>ETB/unit</span>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className={styles.detailGrid}>
               <div className={styles.detailItem}>
@@ -565,6 +615,36 @@ const SalesBidCard = ({ bid, onUpdate, onHide, onCancel }) => {
                 <span className={styles.detailLabel}>Submitted On</span>
                 <span className={styles.detailValue}>{bid.submitted_at ? new Date(bid.submitted_at).toLocaleString() : '—'}</span>
               </div>
+              
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Proposed Pickup</span>
+                <span className={styles.detailValue}>{bid.proposed_pickup_date ? new Date(bid.proposed_pickup_date).toLocaleDateString() : '—'}</span>
+              </div>
+              
+              {bid.notes && (
+                <div className={styles.detailItem} style={{ gridColumn: '1/-1' }}>
+                  <span className={styles.detailLabel}>Notes / Cover Letter</span>
+                  <span className={styles.detailValue} style={{ whiteSpace: 'pre-wrap' }}>{bid.notes}</span>
+                </div>
+              )}
+              
+              {bid.digital_signature && (
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Digital Signature</span>
+                  <span className={styles.detailValue} style={{ fontFamily: 'cursive', color: '#166534', fontWeight: 600 }}>{bid.digital_signature}</span>
+                </div>
+              )}
+              
+              {bid.payment_screenshot && (
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Payment Proof</span>
+                  <span className={styles.detailValue}>
+                    <a href={`${(import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '')}/uploads/tenders/${bid.payment_screenshot}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                      View Attachment <ExternalLink size={12} />
+                    </a>
+                  </span>
+                </div>
+              )}
               {bid.payment_method && (
                 <div className={styles.detailItem} style={{ gridColumn: '1/-1' }}>
                   <span className={styles.detailLabel}>Payment Method</span>
