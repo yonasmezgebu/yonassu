@@ -28,19 +28,19 @@ const C = {
 
 /* ─── Status config ─── */
 const STATUS_CFG = {
-  draft:            { bg: '#F3F4F6', color: '#4B5563', label: 'Draft' },
-  open:             { bg: '#DCFCE7', color: '#16A34A', label: 'Open' },
-  closed:           { bg: '#FEF3C7', color: '#D97706', label: 'Closed' },
-  awarded:          { bg: '#DCFCE7', color: '#16A34A', label: 'Awarded' },
-  cancelled:        { bg: '#FEE2E2', color: '#DC2626', label: 'Cancelled' },
-  pending_approval: { bg: '#E0F2FE', color: '#0284C7', label: 'Pending Approval' },
+  draft:            { background: '#F3F4F6', color: '#4B5563', borderColor: '#9CA3AF', label: 'Draft' },
+  open:             { background: '#DCFCE7', color: '#16A34A', borderColor: '#16A34A', label: 'Open' },
+  closed:           { background: '#FEF3C7', color: '#B45309', borderColor: '#D97706', label: 'Closed' },
+  awarded:          { background: '#DCFCE7', color: '#166534', borderColor: '#16A34A', label: 'Winner Selected' },
+  cancelled:        { background: '#FEE2E2', color: '#DC2626', borderColor: '#DC2626', label: 'Cancelled' },
+  pending_approval: { background: '#E0F2FE', color: '#0284C7', borderColor: '#0284C7', label: 'Pending Approval' },
 };
 
 const BID_STATUS_CFG = {
-  pending:        { bg: '#E0F2FE', color: '#0284C7' },
-  awarded:        { bg: '#DCFCE7', color: '#16A34A' },
-  not_selected:   { bg: '#FEF3C7', color: '#D97706' },
-  disqualified:   { bg: '#FEE2E2', color: '#DC2626' },
+  pending:        { background: '#E0F2FE', color: '#0284C7', borderColor: '#0284C7' },
+  awarded:        { background: '#DCFCE7', color: '#166534', borderColor: '#16A34A' },
+  not_selected:   { background: '#FEF3C7', color: '#B45309', borderColor: '#D97706' },
+  disqualified:   { background: '#FEE2E2', color: '#DC2626', borderColor: '#DC2626' },
 };
 
 /* ─── Global styles ─── */
@@ -212,14 +212,18 @@ const GLOBAL_CSS = `
 
   /* Status badge */
   .status-badge {
-    display: inline-block;
-    padding: 2px 10px;
-    font-size: 11px;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 10.5px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .04em;
+    letter-spacing: .06em;
     border-radius: 999px;
     white-space: nowrap;
+    border: 1.5px solid transparent;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    backdrop-filter: blur(2px);
   }
 
   /* Section panel */
@@ -433,7 +437,7 @@ function NotifyIcon({ type }) {
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function TenderCard({ tender, selected, onClick, onEdit, onDelete, onPublish, onClose, onCancel, onApprove, onToggleHidden, isCEOorAdmin }) {
-  let st = { ...(STATUS_CFG[tender.status] || { bg: '#eee', color: '#666', label: tender.status }) };
+  let st = { ...(STATUS_CFG[tender.status] || { background: '#eee', color: '#666', label: tender.status }) };
   if (tender.status === 'awarded') {
     st.label = 'Winner Selected';
   }
@@ -537,6 +541,11 @@ function TenderCard({ tender, selected, onClick, onEdit, onDelete, onPublish, on
             </div>
           )}
         </div>
+        {parseFloat(tender.cpo_amount) > 0 && (
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#047857', marginTop: 4, background: '#d1fae5', padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>
+            🔒 CPO: {parseFloat(tender.cpo_amount).toLocaleString()} ETB
+          </div>
+        )}
       </div>
 
       {/* Footer actions */}
@@ -601,7 +610,7 @@ export default function TenderManagePage() {
 
   const [form, setForm] = useState({
     title: '', description: '', category: '', item_name: '', quantity: '',
-    starting_bid_price: '', deadline: '', terms_conditions: '',
+    starting_bid_price: '', cpo_amount: '', deadline: '', terms_conditions: '',
   });
   const [postType, setPostType] = useState('single');
   const [tenderItems, setTenderItems] = useState([
@@ -654,7 +663,7 @@ export default function TenderManagePage() {
   /* ── CRUD ── */
   const handleNew = () => {
     setEditId(null);
-    setForm({ title: '', description: '', category: '', item_name: '', quantity: '', starting_bid_price: '', deadline: '', terms_conditions: '' });
+    setForm({ title: '', description: '', category: '', item_name: '', quantity: '', starting_bid_price: '', cpo_amount: '', deadline: '', terms_conditions: '' });
     setFiles([null, null, null, null, null]); setExistingFiles([]); 
     setPostType('single');
     setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }]);
@@ -666,6 +675,7 @@ export default function TenderManagePage() {
     setForm({
       title: t.title, description: t.description || '', category: t.category || '',
       item_name: t.item_name || '', quantity: t.quantity || '', starting_bid_price: t.starting_bid_price || '',
+      cpo_amount: t.cpo_amount || '',
       deadline: t.deadline ? new Date(t.deadline).toISOString().slice(0,16) : '',
       terms_conditions: t.terms_conditions || '',
     });
@@ -1481,6 +1491,12 @@ export default function TenderManagePage() {
                 </div>
 
                 <div className="form-group full">
+                  <label>Refundable CPO / Bid Bond Amount (ETB)</label>
+                  <input type="number" step="0.01" min="0" name="cpo_amount" value={form.cpo_amount} onChange={e => setForm(f => ({ ...f, cpo_amount: e.target.value }))} placeholder="e.g. 5000" />
+                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Amount bidders must pay to submit a bid. Leave blank or 0 for free bidding.</p>
+                </div>
+
+                <div className="form-group full">
                   <label>Terms & Conditions *</label>
                   <textarea required name="terms_conditions" rows={6} value={form.terms_conditions} onChange={e => setForm(f => ({ ...f, terms_conditions: e.target.value }))} placeholder="List all terms, conditions, and requirements for bidders..." style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }} />
                 </div>
@@ -1661,3 +1677,4 @@ export default function TenderManagePage() {
     </>
   );
 }
+
