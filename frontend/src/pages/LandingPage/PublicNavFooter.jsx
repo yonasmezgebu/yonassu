@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
-  Printer, Pill, Car, Wheat, Store, Video, Users, PartyPopper,
+  Printer, Pill, Car, Wheat, Store, Video, Users, PartyPopper, User,
   Package, FileText, ShoppingCart, Menu, X, ChevronDown, LogIn, Home, Truck, Building2, Award
 } from 'lucide-react';
 import SearchDropdown from '../../components/SearchDropdown';
@@ -156,12 +156,19 @@ export const PublicNav = () => {
           <SearchDropdown />
         </div>
 
-        {/* ── Right: Login ── */}
+        {/* ── Right: Auth / User ── */}
         <div className="pub-nav-right-modern">
-          <button className="pub-btn-solid-modern" onClick={() => navigate('/login')}>
-            <LogIn size={15} style={{ marginRight: 6 }} />
-            <span>Login</span>
-          </button>
+          {localStorage.getItem('token') ? (
+            <button className="pub-btn-solid-modern" onClick={() => navigate('/dashboard')}>
+              <User size={15} style={{ marginRight: 6 }} />
+              <span>Dashboard</span>
+            </button>
+          ) : (
+            <button className="pub-btn-solid-modern" onClick={() => navigate('/login')}>
+              <LogIn size={15} style={{ marginRight: 6 }} />
+              <span>Login</span>
+            </button>
+          )}
         </div>
       </div>
 
