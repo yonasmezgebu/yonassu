@@ -999,10 +999,11 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       // For 'retail pos' without an order_id (POS cart approvals from finance_income_submissions),
       // treat as non-self-invoicing so a proper sales_invoice + sales_receipt is always created.
       const isPosWithoutOrder = (deptKey === 'retail pos' || deptKey === 'retailpos') && !manualDetails.order_id;
+      const isTender = deptKey === 'tender';
       if (!SELF_INVOICING_DEPARTMENTS.has(deptKey) || isPosWithoutOrder) {
         const newInvoiceId = await ensureInvoiceAndReceipt(trx, {
-          source: isPosWithoutOrder ? 'retail' : 'manual',
-          saleId: isPosWithoutOrder ? (parseInt(manualDetails.cart_id || id, 10) + 800000000) : (500000000 + parseInt(id, 10)),
+          source: isPosWithoutOrder ? 'retail' : (isTender ? 'tender' : 'manual'),
+          saleId: isPosWithoutOrder ? (parseInt(manualDetails.cart_id || id, 10) + 800000000) : (isTender ? parseInt(manualDetails.bidId, 10) : (500000000 + parseInt(id, 10))),
           customer: customerName,
           amount: systemTotal,
           paymentMethod: manualDetails.paymentMethod || 'Cash',
@@ -1521,7 +1522,7 @@ router.get('/book', authenticate, async (req, res) => {
   const asNum = (v) => parseFloat(v || 0) || 0;
   const round2 = (n) => Math.round(n * 100) / 100;
   const SOURCE_LABEL = { retail: 'Retail & POS', pharmacy: 'Pharmacy',
-    printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', manual: 'Manual Entry' };
+    printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', tender: 'Tender', manual: 'Manual Entry' };
   try {
     // 1. All sales invoices (Retail, Pharmacy, Printing, Car Rental, AgriRent, Manual)
     const invoices = await knex('sales_invoices as si')
@@ -1775,6 +1776,12 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
             .select('cr.customer_phone', 'cr.customer_email', 'u.full_name as manager_name')
             .first();
           if (row) { customerPhone = row.customer_phone; customerEmail = row.customer_email; salesManagerName = row.manager_name || salesManagerName; }
+        } else if (inv.source === 'tender') {
+          const row = await knex('bids')
+            .where('id', saleId)
+            .select('bidder_phone', 'bidder_email')
+            .first();
+          if (row) { customerPhone = row.bidder_phone; customerEmail = row.bidder_email; }
         }
       } catch (_) { /* ignore enrichment errors */ }
 
@@ -1782,7 +1789,7 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
       const amountPaid = receipt ? asNum(receipt.amount_paid) : 0;
       const isPaid = !!receipt;
       const SOURCE_LABEL = { retail: 'Retail & POS', pharmacy: 'Pharmacy',
-        printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', manual: 'Manual Entry' };
+        printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', tender: 'Tender', manual: 'Manual Entry' };
 
       const receivable = {
         id, customer_name: inv.customer_name || 'Walk-in Customer',
