@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Clock, Building2, MinusCircle, ChevronDown, Wallet } from 'lucide-react';
+import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Clock, Building2, MinusCircle, ChevronDown, Wallet, RefreshCw } from 'lucide-react';
 import api from '../../services/apiClient';
 
 const C = {
@@ -163,7 +163,11 @@ const PurchaseSupplierQuotations = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    const timer = setInterval(fetchQuotations, 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   const pickSupplier = (s) => {
     setFormData({ ...formData, supplier_id: s.id, supplier_name: s.company_name || s.full_name });
@@ -251,8 +255,15 @@ const PurchaseSupplierQuotations = () => {
     setSelectedQuote(q);
     setShowViewModal(true);
     try {
-      const res = await api.get(`/purchase/quotations/${q.id}/items`);
-      if (res && Array.isArray(res.data)) setSelectedItems(res.data);
+      const [itemsRes, listRes] = await Promise.all([
+        api.get(`/purchase/quotations/${q.id}/items`),
+        api.get('/purchase/quotations')
+      ]);
+      if (itemsRes && Array.isArray(itemsRes.data)) setSelectedItems(itemsRes.data);
+      if (listRes && Array.isArray(listRes.data)) {
+        const fresh = listRes.data.find(x => String(x.id) === String(q.id));
+        if (fresh) setSelectedQuote(fresh);
+      }
     } catch { setSelectedItems([]); }
   };
 
@@ -335,13 +346,16 @@ const PurchaseSupplierQuotations = () => {
     return <span style={{ display: 'inline-block', marginLeft: 6, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: map.bg, color: map.c }}>{map.t}</span>;
   };
 
-  const StoreChip = ({ s }) => {
-    if (!s) return null;
-    const map = s === 'received'
+  const StoreChip = ({ s, showNotSent = false }) => {
+    const st = s || (showNotSent ? 'not_sent' : null);
+    if (!st) return null;
+    const map = st === 'received'
       ? { t: 'General Store: Received', bg: '#DCFCE7', c: '#15803D' }
-      : s === 'pending'
+      : st === 'pending'
         ? { t: 'General Store: Waiting', bg: '#FEF9C3', c: '#854D0E' }
-        : { t: `General Store: ${s}`, bg: '#F3F4F6', c: '#4B5563' };
+        : st === 'not_sent'
+          ? { t: 'General Store: Not sent', bg: '#F3F4F6', c: '#6B7280' }
+          : { t: `General Store: ${st}`, bg: '#F3F4F6', c: '#4B5563' };
     return <span style={{ display: 'inline-block', marginLeft: 6, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: map.bg, color: map.c }}>{map.t}</span>;
   };
 
@@ -355,9 +369,14 @@ const PurchaseSupplierQuotations = () => {
           <h1><FileText size={24} color="#2563EB" /> Quotations</h1>
           <p>Record routine prices agreed offline with trusted suppliers.</p>
         </div>
-        <button className="pq-btn pq-btn-primary" onClick={() => { setShowAddModal(true); setManualSupplier(false); setLineItems([emptyItem()]); }}>
-          <Plus size={16} /> Record New Quotation
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="pq-btn" style={{ background: '#F3F4F6', color: '#374151' }} onClick={fetchData}>
+            <RefreshCw size={16} /> Refresh
+          </button>
+          <button className="pq-btn pq-btn-primary" onClick={() => { setShowAddModal(true); setManualSupplier(false); setLineItems([emptyItem()]); }}>
+            <Plus size={16} /> Record New Quotation
+          </button>
+        </div>
       </div>
 
       {/* Stat Cards */}
@@ -366,12 +385,16 @@ const PurchaseSupplierQuotations = () => {
         const pendingQ = quotations.filter(q => q.status === 'Pending CEO Approval' || (q.status === 'Recorded' && !q.finance_ceo_approved && q.finance_status === 'awaiting ceo approval')).length;
         const recordedQ = quotations.filter(q => q.status === 'Recorded' && q.finance_ceo_approved).length;
         const convertedQ = quotations.filter(q => q.status === 'Converted').length;
+        const storeWaiting = quotations.filter(q => q.status === 'Converted' && q.store_status === 'pending').length;
+        const storeReceived = quotations.filter(q => q.status === 'Converted' && q.store_status === 'received').length;
         const cancelledQ = quotations.filter(q => q.status === 'Cancelled').length;
         const totalValue = quotations.reduce((s, q) => s + parseFloat(q.total_amount || 0), 0);
         const cards = [
           { label: 'Total', val: totalQ, bg: '#EFF6FF', icon: <FileText size={20} color="#2563EB" /> },
           { label: 'Pending CEO', val: pendingQ, bg: '#FEF3C7', icon: <Clock size={20} color="#D97706" /> },
           { label: 'Approved', val: recordedQ, bg: '#E0F2FE', icon: <CheckCircle size={20} color="#0369A1" /> },
+          { label: 'Store Waiting', val: storeWaiting, bg: '#FEF3C7', icon: <Clock size={20} color="#B45309" /> },
+          { label: 'Store Received', val: storeReceived, bg: '#DCFCE7', icon: <CheckCircle size={20} color="#15803D" /> },
           { label: 'Converted', val: convertedQ, bg: '#DCFCE7', icon: <ShoppingCart size={20} color="#15803D" /> },
           { label: 'Cancelled', val: cancelledQ, bg: '#FEE2E2', icon: <Trash2 size={20} color="#DC2626" /> },
           { label: 'Total Value', val: `ETB ${totalValue.toLocaleString()}`, bg: '#F3E8FF', icon: <FileText size={20} color="#7C3AED" /> },
@@ -437,7 +460,7 @@ const PurchaseSupplierQuotations = () => {
                       <td className="right pq-amount" style={{ color: '#6B7280' }}>{parseFloat(q.vat_rate) > 0 ? `ETB ${parseFloat(q.vat_amount || 0).toLocaleString()}` : '—'}</td>
                       <td className="right pq-amount" style={{ fontWeight: 600 }}>ETB {parseFloat(q.total_amount).toLocaleString()}</td>
                       <td style={{ color: '#6B7280' }}>{q.date_agreed ? new Date(q.date_agreed).toLocaleDateString() : '—'}</td>
-                      <td><span className={`pq-badge ${badgeCls}`}>{statusLabel(status, ceoApproved)}</span><FinanceChip f={q.finance_status} ceoApproved={ceoApproved} /><StoreChip s={q.store_status} /></td>
+                      <td><span className={`pq-badge ${badgeCls}`}>{statusLabel(status, ceoApproved)}</span><FinanceChip f={q.finance_status} ceoApproved={ceoApproved} /><StoreChip s={q.store_status} showNotSent={status === 'Converted'} /></td>
                       <td className="right">
                         <button className="pq-btn pq-btn-sm" style={{ background: '#F3F4F6', color: '#374151' }} onClick={() => handleViewQuote(q)}>View</button>
                       </td>
@@ -677,6 +700,7 @@ const PurchaseSupplierQuotations = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span className={`pq-badge ${badgeCls}`}>{statusLabel(status, viewCeoApproved)}</span>
                       <FinanceChip f={selectedQuote.finance_status} ceoApproved={viewCeoApproved} />
+                      <StoreChip s={selectedQuote.store_status} />
                       <span className="pq-detail-qno">{selectedQuote.quotation_no}</span>
                     </div>
                     <span className="pq-detail-agreed">Agreed {selectedQuote.date_agreed ? new Date(selectedQuote.date_agreed).toLocaleDateString() : '—'} via {selectedQuote.agreed_via || '—'}</span>
@@ -845,7 +869,7 @@ const PurchaseSupplierQuotations = () => {
                     </div>
                     {selectedQuote.store_status === 'received' ? (
                       <div style={{ textAlign: 'center', padding: 14, background: '#DCFCE7', color: '#15803D', fontWeight: 600, borderRadius: 8, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
-                        <CheckCircle size={16} /> General Store accepted — {selectedQuote.store_delivery_no || 'goods delivered'} received{selectedQuote.store_received_at ? ` on ${new Date(selectedQuote.store_received_at).toLocaleDateString()}` : ''}. Expense marked paid.
+                        <CheckCircle size={16} /> General Store accepted — {selectedQuote.store_delivery_no || 'goods delivered'} received{selectedQuote.store_received_by_name ? ` by ${selectedQuote.store_received_by_name}` : ''}{selectedQuote.store_received_at ? ` on ${new Date(selectedQuote.store_received_at).toLocaleDateString()}` : ''}. Expense marked paid.
                       </div>
                     ) : selectedQuote.store_status === 'pending' ? (
                       <div style={{ textAlign: 'center', padding: 14, background: '#FEF3C7', color: '#854D0E', fontWeight: 600, borderRadius: 8, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
@@ -853,7 +877,7 @@ const PurchaseSupplierQuotations = () => {
                       </div>
                     ) : (
                       <div style={{ textAlign: 'center', padding: 14, background: '#F3F4F6', color: '#6B7280', fontWeight: 500, borderRadius: 8, marginTop: 12, fontSize: 13 }}>
-                        Not forwarded to the General Store.
+                        Converted to purchase — shipment not forwarded to the General Store.
                       </div>
                     )}
                   </div>
