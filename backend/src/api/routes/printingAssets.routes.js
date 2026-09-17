@@ -25,6 +25,10 @@ router.patch('/store/materials/:id/quantity',  C.updateMaterialQuantity);
 router.patch('/store/materials/:id/value',     C.updateMaterialValue);  // Finance only
 router.put('/store/materials/:id',             C.updateMaterialFull);
 
+// ─── Incoming Shipments (from converted purchase quotations) ─────────────────
+router.get('/store/incoming',                  C.listIncoming);
+router.post('/store/incoming/:id/accept',      C.acceptIncoming);
+
 // ─── Movement Requests (Store Keeper initiates) ─────────────────────────────
 router.post('/move/machine',                   C.initiateMachineMoveRequest);
 router.post('/move/material',                  C.initiateMaterialMoveRequest);
