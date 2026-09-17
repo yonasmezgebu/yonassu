@@ -49,7 +49,7 @@ const CEOQuotationApprovals = () => {
       showToast('Quotation approved successfully');
       fetchPending();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to approve', 'error');
+      showToast(err.message || 'Failed to approve', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -68,7 +68,7 @@ const CEOQuotationApprovals = () => {
       setRejectReason('');
       fetchPending();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to reject', 'error');
+      showToast(err.message || 'Failed to reject', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -141,7 +141,7 @@ const CEOQuotationApprovals = () => {
                     <Clock size={16} color="#D97706" />
                     <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 14, color: '#2563EB' }}>{q.quotation_no}</span>
                     <span style={{ fontSize: 13, color: '#6B7280' }}>•</span>
-                    <span style={{ fontSize: 13, color: '#92400E', fontWeight: 600 }}>Pending CEO Approval</span>
+                    <span style={{ fontSize: 13, color: '#92400E', fontWeight: 600 }}>{q.status === 'Recorded' ? 'Awaiting CEO Approval' : 'Pending CEO Approval'}</span>
                   </div>
                   <span style={{ fontSize: 12, color: '#9CA3AF' }}>
                     {new Date(q.created_at).toLocaleDateString()}
