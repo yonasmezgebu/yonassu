@@ -1777,11 +1777,32 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
             .first();
           if (row) { customerPhone = row.customer_phone; customerEmail = row.customer_email; salesManagerName = row.manager_name || salesManagerName; }
         } else if (inv.source === 'tender') {
-          const row = await knex('bids')
-            .where('id', saleId)
-            .select('bidder_phone', 'bidder_email')
-            .first();
-          if (row) { customerPhone = row.bidder_phone; customerEmail = row.bidder_email; }
+          // Pull bidder info from finance_income_submissions.manual_details (the original submission record)
+          // which has the full bidder details saved at submission time.
+          try {
+            const submission = await knex('finance_income_submissions')
+              .where('department', 'Tender')
+              .where('status', 'Approved')
+              .whereRaw("JSON_UNQUOTE(JSON_EXTRACT(manual_details, '$.bidId')) = ?", [String(saleId)])
+              .select('manual_details')
+              .first();
+            if (submission && submission.manual_details) {
+              const smd = JSON.parse(submission.manual_details);
+              if (smd.bidderPhone) customerPhone = smd.bidderPhone;
+              if (smd.bidderEmail) customerEmail = smd.bidderEmail;
+              if (smd.bidderName && !inv.customer_name) inv.customer_name = smd.bidderName;
+            }
+          } catch (_) { /* ignore */ }
+          // Fallback: try direct bids table lookup
+          if (!customerPhone && !customerEmail) {
+            const row = await knex('bids').where('id', saleId)
+              .select('bidder_phone', 'bidder_email', 'bidder_full_name').first();
+            if (row) {
+              customerPhone = row.bidder_phone;
+              customerEmail = row.bidder_email;
+              if (row.bidder_full_name && !inv.customer_name) inv.customer_name = row.bidder_full_name;
+            }
+          }
         }
       } catch (_) { /* ignore enrichment errors */ }
 
@@ -1790,6 +1811,49 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
       const isPaid = !!receipt;
       const SOURCE_LABEL = { retail: 'Retail & POS', pharmacy: 'Pharmacy',
         printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', tender: 'Tender', manual: 'Manual Entry' };
+
+      // Read cpo_refunded flag from sales_invoices.notes
+      let invoiceNotes = {};
+      try { if (inv.notes) invoiceNotes = JSON.parse(inv.notes); } catch (_) {}
+
+      // For tender, build rich manual_details with full bidder + tender info
+      let manualDetailsObj = receipt ? {
+        paymentMethod: receipt.payment_method,
+        receivedFrom: inv.customer_name || 'Walk-in Customer',
+        amount: amountPaid, reference: receipt.payment_reference,
+        crvNumber: receipt.receipt_no,
+        department: SOURCE_LABEL[inv.source] || inv.source,
+      } : null;
+
+      if (inv.source === 'tender' && manualDetailsObj) {
+        // Enrich with full tender/bidder details from finance_income_submissions
+        try {
+          const submission = await knex('finance_income_submissions')
+            .where('department', 'Tender')
+            .where('status', 'Approved')
+            .whereRaw("JSON_UNQUOTE(JSON_EXTRACT(manual_details, '$.bidId')) = ?", [String(inv.sale_id)])
+            .select('manual_details')
+            .first();
+          if (submission && submission.manual_details) {
+            const smd = JSON.parse(submission.manual_details);
+            manualDetailsObj = {
+              ...manualDetailsObj,
+              type: 'tender_sell',
+              bidderName: smd.bidderName || inv.customer_name,
+              bidderPhone: smd.bidderPhone || customerPhone,
+              bidderEmail: smd.bidderEmail || customerEmail,
+              tenderReference: smd.tenderReference,
+              tenderTitle: smd.tenderTitle,
+              tenderId: smd.tenderId,
+              bidId: smd.bidId,
+              cpoAmount: smd.amount || amountPaid,
+              cpo_refunded: invoiceNotes.cpo_refunded || false,
+              refunded_at: invoiceNotes.refunded_at || null,
+              refunded_by: invoiceNotes.refunded_by || null,
+            };
+          }
+        } catch (_) { /* ignore */ }
+      }
 
       const receivable = {
         id, customer_name: inv.customer_name || 'Walk-in Customer',
@@ -1806,13 +1870,8 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
         subtotal: asNum(inv.subtotal), output_vat: outputVat, input_vat: 0,
         vat_standard: asNum(inv.vat_standard), vat_exempt: asNum(inv.vat_exempt),
         vat_zero_rated: asNum(inv.vat_zero_rated), vat_total: asNum(inv.vat_total),
-        manual_details: receipt ? JSON.stringify({
-          paymentMethod: receipt.payment_method,
-          receivedFrom: inv.customer_name || 'Walk-in Customer',
-          amount: amountPaid, reference: receipt.payment_reference,
-          crvNumber: receipt.receipt_no,
-          department: SOURCE_LABEL[inv.source] || inv.source,
-        }) : null,
+        manual_details: manualDetailsObj ? JSON.stringify(manualDetailsObj) : null,
+        cpo_refunded: invoiceNotes.cpo_refunded || false,
       };
 
       return res.json({ success: true, data: {
@@ -1891,6 +1950,38 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Error fetching revenue book detail:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch detail' });
+  }
+});
+
+// ── PATCH /book/:id/mark-refunded — mark CPO tender deposit as refunded ───
+router.patch('/book/:id/mark-refunded', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { refunded } = req.body; // boolean: true = mark refunded, false = unmark
+
+    const inv = await knex('sales_invoices').where('id', id).first();
+    if (!inv) return res.status(404).json({ success: false, message: 'Invoice not found' });
+    if (inv.source !== 'tender') return res.status(400).json({ success: false, message: 'Only tender CPO deposits can be marked as refunded' });
+
+    let notes = {};
+    try { if (inv.notes) notes = JSON.parse(inv.notes); } catch (_) {}
+
+    const isRefunded = refunded !== false; // default true if not explicitly false
+    notes.cpo_refunded = isRefunded;
+    if (isRefunded) {
+      notes.refunded_at = new Date().toISOString();
+      notes.refunded_by = (req.user && (req.user.fullName || req.user.full_name)) || 'Finance Officer';
+    } else {
+      delete notes.refunded_at;
+      delete notes.refunded_by;
+    }
+
+    await knex('sales_invoices').where('id', id).update({ notes: JSON.stringify(notes), updated_at: knex.fn.now() });
+
+    return res.json({ success: true, message: isRefunded ? 'CPO marked as refunded' : 'CPO refund mark removed', cpo_refunded: isRefunded });
+  } catch (error) {
+    console.error('Error marking CPO refunded:', error);
+    res.status(500).json({ success: false, message: 'Failed to update refund status' });
   }
 });
 
