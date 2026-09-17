@@ -14,9 +14,11 @@ const { db } = require('../config/database');
 const ensureTenderIncomeSubmission = async ({ bid, tender }) => {
   if (!bid || !tender) return null;
 
-  const subtotal = parseFloat(bid.total_bid_value) || 0;
-  const vatAmount = parseFloat(bid.vat_amount) || 0;
-  const amount = Math.round((subtotal + vatAmount) * 100) / 100;
+  // Use the CPO amount (refundable deposit) for the Finance Live Income submission.
+  const amount = parseFloat(tender.cpo_amount) || 0;
+  const subtotal = amount; // Subtotal matches amount for CPO deposit
+  const vatAmount = 0; // CPO deposit does not have VAT
+
   const referenceNo = `TND-BID-${bid.id}`;
 
   // Resolve payment method (handles "Bank::5" style account refs)
