@@ -123,17 +123,31 @@ exports.getQuotations = catchAsync(async (req, res) => {
     });
     quotations.forEach(q => { Object.assign(q, financeMap[q.id] || { finance_status: null }); });
 
-    const incomingRows = await db('general_store_incoming').whereIn('quotation_id', ids);
+    const incomingRows = await db('general_store_incoming').whereIn('quotation_id', ids).orderBy('id');
+    const receiverIds = [...new Set(incomingRows.map(g => g.received_by).filter(Boolean))];
+    const receiverMap = {};
+    if (receiverIds.length) {
+      const receivers = await db('users').whereIn('id', receiverIds).select('id', 'full_name');
+      receivers.forEach(u => { receiverMap[u.id] = u.full_name; });
+    }
     const incomingMap = {};
     incomingRows.forEach(g => {
       incomingMap[g.quotation_id] = {
         store_status: g.status,
         store_delivery_no: g.delivery_note_no,
         store_received_by: g.received_by,
+        store_received_by_name: receiverMap[g.received_by] || null,
         store_received_at: g.received_at
       };
     });
-    quotations.forEach(q => { Object.assign(q, incomingMap[q.id] || { store_status: null }); });
+    quotations.forEach(q => {
+      const incoming = incomingMap[q.id];
+      if (incoming) {
+        Object.assign(q, incoming);
+      } else {
+        Object.assign(q, { store_status: q.status === 'Converted' ? 'not_sent' : null });
+      }
+    });
   }
   res.json({ status: 'success', data: quotations });
 });
