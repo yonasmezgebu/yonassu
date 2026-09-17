@@ -867,7 +867,7 @@ export const GSInventory = () => {
           </div>
         </div>
 
-        {toast && (
+{toast && (
           <div className={`gsi-toast gsi-toast--${toast.type}`}>
             <span className="gsi-toast-icon">{toast.type === 'success' ? '✓' : '✕'}</span>
             <span>{toast.msg}</span>
@@ -1188,6 +1188,30 @@ const GSR_CSS = `
     .gsr-input { height: 44px; }
     .gsr-icon-btn { width: 44px; height: 44px; }
   }
+  .gsr-income-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #FFF8E1; color: #8D6E63; border: 2px solid #A5D6A7; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 3px 3px 0 #A5D6A7; }
+  .gsr-income-btn:hover { background: #FFFDE7; }
+  .gsr-income-badge { background: #228B22; color: #fff; border-radius: 50%; min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; padding: 0 6px; }
+  .gsr-income-bar { margin-top: 10px; padding: 10px 14px; background: #E8F5E9; border: 1.5px dashed #66BB6A; border-radius: 8px; font-size: 13px; color: #2E7D32; display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; }
+  .gsr-income-bar:hover { background: #DCEDC8; }
+  .gsr-income-cta { font-weight: 800; text-decoration: underline; white-space: nowrap; }
+  .gsr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+  .gsr-inc-modal { background: #fff; border-radius: 14px; width: 760px; max-width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  .gsr-inc-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 2px solid #A5D6A7; }
+  .gsr-inc-title { font-size: 16px; font-weight: 800; color: #1B5E20; flex: 1; }
+  .gsr-inc-close { background: none; border: none; font-size: 18px; color: #8D6E63; cursor: pointer; padding: 4px; }
+  .gsr-inc-body { padding: 16px 20px 20px; overflow-y: auto; }
+  .gsr-inc-empty { text-align: center; padding: 34px 16px; color: #424242; background: #F9FBE7; border: 2px dashed #CDDC39; border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .gsr-inc-card { border: 1.5px solid #C8E6C9; border-radius: 10px; padding: 14px; margin-bottom: 14px; background: #FCFDF8; }
+  .gsr-inc-card--active { border-color: #228B22; box-shadow: 4px 4px 0 #C8E6C9; }
+  .gsr-inc-status { background: #FFF8E1; color: #F57F17; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 20px; }
+  .gsr-inc-items { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+  .gsr-inc-items th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #8D6E63; padding: 6px 8px; border-bottom: 1px solid #E0E0E0; }
+  .gsr-inc-items td { padding: 6px 8px; border-bottom: 1px solid #F1F1F1; }
+  .gsr-inc-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .gsr-inc-btn { padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 800; cursor: pointer; border: none; }
+  .gsr-inc-btn--ghost { background: #F1F8E9; color: #558B2F; border: 1.5px solid #AED581; }
+  .gsr-inc-btn--primary { background: #228B22; color: #fff; box-shadow: 3px 3px 0 #1B5E20; }
+  .gsr-inc-btn--primary:disabled { opacity: 0.6; cursor: not-allowed; }
 `;
 
 export const GSRegisterItem = () => {
@@ -1204,6 +1228,63 @@ export const GSRegisterItem = () => {
   const reorder = parseInt(form.reorder_level) || 10;
 
   const showToast = (type, msg) => { setToast({ type, msg }); setTimeout(() => setToast(null), 4500); };
+
+  const [incomingList, setIncomingList] = useState([]);
+  const [showIncoming, setShowIncoming] = useState(false);
+  const [receiving, setReceiving] = useState(false);
+  const [selectedInc, setSelectedInc] = useState(null);
+
+  const fetchIncoming = async () => {
+    try {
+      const res = await api.get('/api/v1/printing-assets/store/incoming');
+      if (res && Array.isArray(res.data)) setIncomingList(res.data);
+    } catch (e) { /* non-fatal */ }
+  };
+
+  useEffect(() => { fetchIncoming(); }, []);
+
+  const openIncoming = async () => {
+    setShowIncoming(true);
+    setSelectedInc(null);
+    await fetchIncoming();
+  };
+
+  const autoFill = (it) => {
+    if (!it) return;
+    setForm(f => ({
+      ...f,
+      material_name: f.material_name || it.item_description || '',
+      category: f.category === 'Paper' && it.item_description ? 'Other' : f.category,
+      unit: f.unit === 'roll' && it.unit ? it.unit : f.unit,
+      quantity_in_store: f.quantity_in_store || parseFloat(it.quantity) || 0,
+      unit_value: f.unit_value || parseFloat(it.unit_price) || 0,
+    }));
+    setShowIncoming(false);
+    showToast('success', `Auto-filled "${it.item_description || 'item'}" from incoming shipment — review & press Register Item.`);
+  };
+
+  const acceptShipment = async (inc) => {
+    setReceiving(true);
+    setSelectedInc(inc.id);
+    try {
+      const res = await api.post(`/api/v1/printing-assets/store/incoming/${inc.id}/accept`);
+      showToast('success', res?.data?.message || 'Shipment received and added to inventory.');
+      const got = res?.data?.data?.items;
+      if (got && got.length) {
+        setForm(f => ({
+          ...f,
+          material_name: f.material_name || got[0].material_name || '',
+          unit: f.unit || 'unit',
+          quantity_in_store: f.quantity_in_store || parseFloat(got[0].qty) || 0,
+        }));
+      }
+      await fetchIncoming();
+      setSelectedInc(null);
+    } catch (e) {
+      showToast('error', e.response?.data?.message || 'Failed to receive shipment');
+    }
+    setReceiving(false);
+  };
 
   const submit = async () => {
     if (!form.material_name.trim()) return showToast('error', 'Item Name is required');
@@ -1226,9 +1307,21 @@ export const GSRegisterItem = () => {
       <div className="gsr-header">
         <h1 className="gsr-title">➕ Register New Item</h1>
         <p className="gsr-subtitle">Add consumables to the Universal General Store · Any Department</p>
-        <div className="gsr-progress">
-          <div className="gsr-progress-fill" style={{ width: form.material_name && form.department ? '100%' : form.material_name ? '60%' : '20%' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div className="gsr-progress" style={{ flex: 1 }}>
+            <div className="gsr-progress-fill" style={{ width: form.material_name && form.department ? '100%' : form.material_name ? '60%' : '20%' }} />
+          </div>
+          <button className="gsr-income-btn" onClick={openIncoming} style={{ whiteSpace: 'nowrap' }}>
+            📥 Incoming Shipments
+            {incomingList.length > 0 && <span className="gsr-income-badge">{incomingList.length}</span>}
+          </button>
         </div>
+        {incomingList.length > 0 && (
+          <div className="gsr-income-bar" onClick={openIncoming}>
+            <span>📦 <strong>{incomingList.length}</strong> incoming shipment{incomingList.length !== 1 ? 's' : ''} waiting to be received.</span>
+            <span className="gsr-income-cta">Review & Receive →</span>
+          </div>
+        )}
       </div>
 
       <div className="gsr-main">
@@ -1414,6 +1507,64 @@ export const GSRegisterItem = () => {
           </div>
         </div>
       </div>
+
+      {/* ── INCOMING SHIPMENTS MODAL ── */}
+      {showIncoming && (
+        <div className="gsr-overlay" onClick={() => setShowIncoming(false)}>
+          <div className="gsr-inc-modal" onClick={e => e.stopPropagation()}>
+            <div className="gsr-inc-head">
+              <span style={{ fontSize: 18 }}>📥</span>
+              <span className="gsr-inc-title">Incoming Shipments</span>
+              <button className="gsr-inc-close" onClick={() => setShowIncoming(false)}>✕</button>
+            </div>
+            <div className="gsr-inc-body">
+              {incomingList.length === 0 ? (
+                <div className="gsr-inc-empty">
+                  <div style={{ fontSize: 32 }}>📭</div>
+                  <div><strong>No pending incoming shipments.</strong></div>
+                  <div style={{ fontSize: 12, color: G.darkGray }}>Shipments created by Purchase converters (Convert & Send to General Store) will appear here.</div>
+                </div>
+              ) : (
+                incomingList.map(inc => (
+                  <div key={inc.id} className={`gsr-inc-card${selectedInc === inc.id ? ' gsr-inc-card--active' : ''}`}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ fontWeight: 800, fontSize: 13 }}>
+                        {inc.delivery_note_no || `Inc-${inc.id}`}
+                        <span style={{ fontWeight: 600, color: G.darkGray, marginLeft: 8, fontSize: 12 }}>{inc.quotation_no} · {inc.supplier_name || 'supplier'}</span>
+                      </div>
+                      <span className="gsr-inc-status">PENDING</span>
+                    </div>
+                    <table className="gsr-inc-items">
+                      <thead>
+                        <tr><th>Item</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Unit</th><th style={{ textAlign: 'right' }}>Cost</th><th style={{ textAlign: 'right' }}>Total</th></tr>
+                      </thead>
+                      <tbody>
+                        {(inc.items || []).map(it => (
+                          <tr key={it.id}>
+                            <td>{it.item_description || '—'}</td>
+                            <td style={{ textAlign: 'right' }}>{it.quantity}</td>
+                            <td style={{ textAlign: 'right' }}>{it.unit || '—'}</td>
+                            <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.unit_price || 0).toLocaleString()}</td>
+                            <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.line_total || 0).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="gsr-inc-actions">
+                      <button className="gsr-inc-btn gsr-inc-btn--ghost" disabled={receiving} onClick={() => autoFill((inc.items || [])[0])}>
+                        ✏️ Auto-fill Form
+                      </button>
+                      <button className="gsr-inc-btn gsr-inc-btn--primary" disabled={receiving} onClick={() => acceptShipment(inc)}>
+                        {receiving && selectedInc === inc.id ? 'Receiving…' : '📦 Receive & Add All to Inventory'}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className={`gsr-toast gsr-toast--${toast.type}`}>
