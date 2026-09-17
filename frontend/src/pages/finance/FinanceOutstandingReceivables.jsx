@@ -435,6 +435,54 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
               </div>
             </div>
 
+            {/* ── Tender / Compete & Buy Details ── */}
+            {manualDetails.type === 'tender_sell' && (
+              <div style={{ background: '#EFF6FF', padding: 18, border: '1px solid #2563EB', borderRadius: 8, marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#2563EB', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  🏷️ Tender (Compete &amp; Buy) — CPO Deposit Record
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, fontSize: 13 }}>
+                  {manualDetails.tenderReference && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Tender Reference</div>
+                      <div style={{ fontWeight: 700, color: '#1E40AF', fontFamily: 'monospace' }}>{manualDetails.tenderReference}</div>
+                    </div>
+                  )}
+                  {manualDetails.tenderTitle && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Tender Title</div>
+                      <div style={{ fontWeight: 700, color: '#111827' }}>{manualDetails.tenderTitle}</div>
+                    </div>
+                  )}
+                  {(manualDetails.bidderName || manualDetails.receivedFrom) && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Bidder Name</div>
+                      <div style={{ fontWeight: 700, color: '#111827' }}>{manualDetails.bidderName || manualDetails.receivedFrom}</div>
+                    </div>
+                  )}
+                  {(manualDetails.bidderPhone || receivable?.customer_phone) && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Bidder Phone</div>
+                      <div style={{ fontWeight: 700, color: '#111827' }}>{manualDetails.bidderPhone || receivable?.customer_phone}</div>
+                    </div>
+                  )}
+                  {(manualDetails.bidderEmail || receivable?.customer_email) && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Bidder Email</div>
+                      <div style={{ fontWeight: 700, color: '#111827' }}>{manualDetails.bidderEmail || receivable?.customer_email}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>CPO Amount (Refundable)</div>
+                    <div style={{ fontWeight: 800, color: '#16A34A', fontSize: 15 }}>ETB {fmt(manualDetails.amount || receivable?.total_amount)}</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 14, padding: '10px 14px', background: '#FEF3C7', border: '1px solid #D97706', borderRadius: 6, fontSize: 12, color: '#92400E', fontWeight: 600 }}>
+                  ⚠️ This is a refundable CPO deposit. Contact the bidder using the details above to process refund after tender closure.
+                </div>
+              </div>
+            )}
+
             {manualDetails.paymentMethod === 'Bank' && manualDetails.bankDetails && (
               <div style={{ background: '#E0F2FE', padding: 18, border: '1px solid #0284C7', borderRadius: 8, marginBottom: 18 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#0284C7', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Bank Details</div>
@@ -752,6 +800,7 @@ const FinanceOutstandingReceivables = () => {
                     <option value="Printing">Printing</option>
                     <option value="Car Rental">Car Rental</option>
                     <option value="AgriRent">AgriRent</option>
+                    <option value="Tender">Tender</option>
                   </select>
                 </div>
 
