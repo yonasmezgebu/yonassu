@@ -1,5 +1,7 @@
 const { db } = require('../../config/database');
 const centralAudit = require('../../services/centralAudit.service');
+const { audit } = require('../../config/logger');
+const { sendFinanceNotification } = require('../../services/notification.service');
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const ok  = (res, data, msg = 'success') => res.json({ success: true, message: msg, data });
@@ -1002,5 +1004,138 @@ exports.cancelMaterialRequest = async (req, res) => {
       { status: request.status }, { status: 'CANCELLED' });
     ok(res, null, 'Request cancelled');
   } catch (e) { err(res, e.message); }
+};
+
+// ─── Incoming Shipments (from converted purchase quotations) ───────────────
+exports.listIncoming = async (req, res) => {
+  try {
+    const rows = await db('general_store_incoming')
+      .where({ status: 'pending' })
+      .orderBy('id', 'desc');
+    const ids = rows.map(r => r.id);
+    const itemsById = {};
+    if (ids.length) {
+      const items = await db('general_store_incoming_items').whereIn('incoming_id', ids).orderBy('id');
+      items.forEach(it => {
+        (itemsById[it.incoming_id] = itemsById[it.incoming_id] || []).push(it);
+      });
+    }
+    const data = rows.map(r => ({
+      ...r,
+      items: itemsById[r.id] || [],
+      total_value: (itemsById[r.id] || []).reduce((s, it) => s + parseFloat(it.line_total || 0), 0),
+    }));
+    ok(res, data);
+  } catch (e) { err(res, e.message); }
+};
+
+// Accept an incoming shipment → add (or add to) General Store inventory
+exports.acceptIncoming = async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const { id } = req.params;
+    const incoming = await trx('general_store_incoming').where({ id }).first();
+    if (!incoming) return err(res, 'Incoming shipment not found', 404);
+    if (incoming.status === 'received') return err(res, 'Shipment already received', 400);
+
+    const items = await trx('general_store_incoming_items').where({ incoming_id: id }).orderBy('id');
+    if (!items.length) return err(res, 'Shipment has no items to receive', 400);
+
+    const user = req.user || {};
+    const fullName = user.fullName || user.full_name || user.username || 'Store Keeper';
+    const maxRow = await trx('general_store_materials').max('id as m').first();
+    let nextId = (maxRow && maxRow.m) || 0;
+    const received = [];
+    for (const item of items) {
+      const qty = parseFloat(item.quantity || 0);
+      const price = parseFloat(item.unit_price || 0);
+      const name = String(item.item_description || '').trim();
+      if (!name) continue;
+
+      const existing = await trx('general_store_materials').where({ material_name: name }).first();
+      if (existing) {
+        const newQty = parseFloat(existing.quantity_in_store || 0) + qty;
+        const newValue = parseFloat(existing.unit_value || 0);
+        await trx('general_store_materials').where({ id: existing.id }).update({
+          quantity_in_store: newQty,
+          unit_value: price || newValue,
+          total_value: newQty * (price || newValue),
+          updated_at: db.fn.now(),
+        });
+        received.push({ material_id: existing.material_id, material_name: name, qty, added: true });
+      } else {
+        nextId += 1;
+        const materialId = `PSMAT-${String(nextId).padStart(3, '0')}`;
+        const total = qty * price;
+        await trx('general_store_materials').insert({
+          material_id: materialId, material_name: name, category: 'Other', unit: item.unit || 'unit',
+          quantity_in_store: qty, unit_value: price, total_value: total, reorder_level: 10,
+          department: 'Printing', registered_by: fullName,
+          date_registered: new Date().toISOString().split('T')[0],
+          created_at: db.fn.now(), updated_at: db.fn.now(),
+        });
+        received.push({ material_id: materialId, material_name: name, qty, added: false });
+      }
+
+      const newest = existing ? existing.material_id : received[received.length - 1].material_id;
+      await trx('general_movement_log').insert({
+        item_type: 'Material', item_id: newest,
+        from_location: `Incoming Shipment ${incoming.delivery_note_no || ''}`.trim(), to_location: 'Printing Store',
+        quantity: qty, department: 'Printing', moved_by: fullName,
+        action_type: 'Receive', notes: `Received from purchase ${incoming.quotation_no}: ${name}, qty: ${qty}`,
+      });
+    }
+
+    await trx('general_store_incoming').where({ id }).update({
+      status: 'received', received_by: user.id || null, received_at: db.fn.now(), updated_at: db.fn.now(),
+    });
+
+    if (incoming.quotation_id) {
+      await trx('quotation_finance').where({ quotation_id: incoming.quotation_id }).update({
+        status: 'paid',
+        paid_at: db.fn.now(),
+        updated_at: db.fn.now(),
+      });
+    }
+
+    await trx.commit();
+
+    res.locals.__centralAudited = true;
+    await audit('GENERAL_STORE_GOODS_RECEIVED', user.id || null, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      resource: 'general-store-incoming',
+      resourceId: String(id),
+      module: 'Store',
+      recordIdentifier: incoming.delivery_note_no || incoming.quotation_no,
+      previousState: { status: 'pending' },
+      afterState: { status: 'received', items: received },
+    });
+
+    if (incoming.quotation_no) {
+      await audit('QUOTATION_FINANCE_PAID', user.id || null, {
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+        resource: 'quotations',
+        resourceId: String(incoming.quotation_id || ''),
+        module: 'Finance',
+        recordIdentifier: incoming.quotation_no,
+        description: `General store received goods for quotation ${incoming.quotation_no} — expense marked paid`,
+        afterState: { quotation_no: incoming.quotation_no, finance_status: 'paid' },
+      });
+      sendFinanceNotification({
+        type: 'finance',
+        title: 'Expense Paid',
+        message: `Goods for quotation ${incoming.quotation_no} (${incoming.supplier_name || ''}) received at General Store. Expense marked paid.`,
+        related_entity_id: incoming.quotation_id,
+        link: '/finance/quotation-expenses',
+      });
+    }
+
+    ok(res, { incoming_id: id, items: received }, `Shipment received — ${received.length} item(s) added to inventory`);
+  } catch (e) {
+    if (trx) await trx.rollback();
+    err(res, e.message);
+  }
 };
 
