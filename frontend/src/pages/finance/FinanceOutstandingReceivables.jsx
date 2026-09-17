@@ -61,13 +61,32 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState(null);
+  const [markingRefund, setMarkingRefund] = useState(false);
+  const [cpoRefunded, setCpoRefunded] = useState(false);
+  const [refundedAt, setRefundedAt] = useState(null);
+  const [refundedBy, setRefundedBy] = useState(null);
+  const { toasts, show: showToast, remove: removeToast } = useToast();
   const printRef = useRef(null);
+
+
+  const [confirmRefundModal, setConfirmRefundModal] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
         const res = await apiClient.get(`/finance-receivables/book/${receivableId}/detail`);
-        setDetail(res?.data || null);
+        const data = res?.data || null;
+        setDetail(data);
+        if (data?.receivable?.cpo_refunded !== undefined) {
+           setCpoRefunded(data.receivable.cpo_refunded);
+        }
+        if (data?.receivable?.manual_details) {
+           try {
+             const md = JSON.parse(data.receivable.manual_details);
+             if (md.refunded_at) setRefundedAt(md.refunded_at);
+             if (md.refunded_by) setRefundedBy(md.refunded_by);
+           } catch(e) {}
+        }
       } catch (e) {
         setError(e.message || 'Failed to load details');
       } finally {
@@ -76,6 +95,34 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
     };
     load();
   }, [receivableId]);
+
+  const confirmRefundAction = async () => {
+    setConfirmRefundModal(false);
+    setMarkingRefund(true);
+    const currentStatus = cpoRefunded;
+    try {
+      const res = await apiClient.patch(`/finance-receivables/book/${receivableId}/mark-refunded`, { refunded: !currentStatus });
+      if (res.success) {
+        setCpoRefunded(!currentStatus);
+        if (!currentStatus) {
+           setRefundedAt(new Date().toISOString());
+        }
+        showToast(res.message, 'success');
+      } else {
+        showToast(res.message || 'Failed to update status', 'error');
+      }
+    } catch (e) {
+      showToast(e.message || 'An error occurred', 'error');
+    } finally {
+      setMarkingRefund(false);
+    }
+  };
+
+  const handleToggleRefund = (currentStatus) => {
+    setConfirmRefundModal(true);
+  };
+
+
 
   const handlePrint = () => {
     if (!printRef.current) return;
@@ -437,9 +484,31 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
 
             {/* ── Tender / Compete & Buy Details ── */}
             {manualDetails.type === 'tender_sell' && (
-              <div style={{ background: '#EFF6FF', padding: 18, border: '1px solid #2563EB', borderRadius: 8, marginBottom: 18 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#2563EB', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  🏷️ Tender (Compete &amp; Buy) — CPO Deposit Record
+              <div style={{ background: cpoRefunded ? '#F0FDF4' : '#EFF6FF', padding: 18, border: `1px solid ${cpoRefunded ? '#16A34A' : '#2563EB'}`, borderRadius: 8, marginBottom: 18, position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: cpoRefunded ? '#16A34A' : '#2563EB', textTransform: 'uppercase', letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    🏷️ Tender (Compete &amp; Buy) — CPO Deposit Record
+                  </div>
+                  <div>
+                    {cpoRefunded ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#16A34A', color: 'white', padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                           <CheckCircle2 size={12} /> REFUNDED
+                         </span>
+                         <button onClick={() => handleToggleRefund(cpoRefunded)} disabled={markingRefund} style={{ border: 'none', background: 'none', color: '#6B7280', fontSize: 11, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>
+                           {markingRefund ? 'Wait...' : 'Undo'}
+                         </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => handleToggleRefund(cpoRefunded)} 
+                        disabled={markingRefund}
+                        style={{ background: 'white', border: '1px solid #D97706', color: '#D97706', padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                         {markingRefund ? <SegmentedSpinner size={12} /> : null} Mark as Refunded
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, fontSize: 13 }}>
                   {manualDetails.tenderReference && (
@@ -473,13 +542,19 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                     </div>
                   )}
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>CPO Amount (Refundable)</div>
-                    <div style={{ fontWeight: 800, color: '#16A34A', fontSize: 15 }}>ETB {fmt(manualDetails.amount || receivable?.total_amount)}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>CPO Amount</div>
+                    <div style={{ fontWeight: 800, color: '#16A34A', fontSize: 15 }}>ETB {fmt(manualDetails.cpoAmount || manualDetails.amount || receivable?.total_amount)}</div>
                   </div>
                 </div>
-                <div style={{ marginTop: 14, padding: '10px 14px', background: '#FEF3C7', border: '1px solid #D97706', borderRadius: 6, fontSize: 12, color: '#92400E', fontWeight: 600 }}>
-                  ⚠️ This is a refundable CPO deposit. Contact the bidder using the details above to process refund after tender closure.
-                </div>
+                {cpoRefunded ? (
+                  <div style={{ marginTop: 14, padding: '10px 14px', background: '#DCFCE7', border: '1px solid #16A34A', borderRadius: 6, fontSize: 12, color: '#14532D', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle2 size={14} /> CPO Deposit Refunded {refundedAt && `on ${fmtD(refundedAt)}`} {refundedBy && `by ${refundedBy}`}
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 14, padding: '10px 14px', background: '#FEF3C7', border: '1px solid #D97706', borderRadius: 6, fontSize: 12, color: '#92400E', fontWeight: 600 }}>
+                    ⚠️ This is a refundable CPO deposit. Contact the bidder using the details above to process refund after tender closure.
+                  </div>
+                )}
               </div>
             )}
 
@@ -601,6 +676,44 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
           </div>
         )}
       </div>
+
+      {/* ── Refund Confirmation Modal ── */}
+      {confirmRefundModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', animation: 'rorSlideIn 0.2s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ padding: 10, background: cpoRefunded ? '#FEF2F2' : '#EFF6FF', color: cpoRefunded ? '#EF4444' : '#2563EB', borderRadius: '50%' }}>
+                <AlertCircle size={24} />
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>
+                {cpoRefunded ? 'Remove Refund Mark' : 'Confirm CPO Refund'}
+              </div>
+            </div>
+            
+            <p style={{ color: '#4B5563', fontSize: 14, lineHeight: 1.5, marginBottom: 24 }}>
+              {cpoRefunded 
+                ? 'Are you sure you want to remove the "Refunded" status from this CPO deposit? It will be marked as pending refund again.'
+                : 'Are you sure you want to mark this CPO deposit as refunded? This indicates that the deposit has been successfully returned to the bidder.'}
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button 
+                onClick={() => setConfirmRefundModal(false)}
+                style={{ padding: '8px 16px', background: 'white', border: '1px solid #D1D5DB', borderRadius: 6, color: '#374151', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmRefundAction}
+                style={{ padding: '8px 16px', background: cpoRefunded ? '#EF4444' : '#2563EB', border: 'none', borderRadius: 6, color: 'white', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+              >
+                {cpoRefunded ? 'Remove Mark' : 'Mark as Refunded'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
