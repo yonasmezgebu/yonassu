@@ -1062,7 +1062,7 @@ exports.acceptIncoming = async (req, res) => {
           total_value: newQty * (price || newValue),
           updated_at: db.fn.now(),
         });
-        received.push({ material_id: existing.material_id, material_name: name, qty, added: true });
+        received.push({ material_id: existing.material_id, material_name: name, qty, added: true, created: false });
       } else {
         nextId += 1;
         const materialId = `PSMAT-${String(nextId).padStart(3, '0')}`;
@@ -1074,7 +1074,7 @@ exports.acceptIncoming = async (req, res) => {
           date_registered: new Date().toISOString().split('T')[0],
           created_at: db.fn.now(), updated_at: db.fn.now(),
         });
-        received.push({ material_id: materialId, material_name: name, qty, added: false });
+        received.push({ material_id: materialId, material_name: name, qty, added: true, created: true });
       }
 
       const newest = existing ? existing.material_id : received[received.length - 1].material_id;
