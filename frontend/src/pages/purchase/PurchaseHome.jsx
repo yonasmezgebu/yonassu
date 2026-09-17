@@ -167,6 +167,8 @@ const PurchaseHome = () => {
   const [totalPOs, setTotalPOs] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [supplierBids, setSupplierBids] = useState(0);
+  const [storeAwaiting, setStoreAwaiting] = useState(0);
+  const [storeReceived, setStoreReceived] = useState(0);
   const [pendingDeliveries, setPendingDeliveries] = useState(0);
   const [receivedToday, setReceivedToday] = useState(0);
   const [totalSpend, setTotalSpend] = useState(0);
@@ -219,8 +221,17 @@ const PurchaseHome = () => {
 
     // Supplier Bids — Quotation subpage uses GET /purchase/quotations
     apiClient.get('/purchase/quotations')
-      .then(res => live(setSupplierBids)(asList(res).length))
-      .catch(() => live(setSupplierBids)(0));
+      .then(res => {
+        const list = asList(res);
+        live(setSupplierBids)(list.length);
+        live(setStoreAwaiting)(list.filter(q => String(q.status) === 'Converted' && String(q.store_status) === 'pending').length);
+        live(setStoreReceived)(list.filter(q => String(q.status) === 'Converted' && String(q.store_status) === 'received').length);
+      })
+      .catch(() => {
+        live(setSupplierBids)(0);
+        live(setStoreAwaiting)(0);
+        live(setStoreReceived)(0);
+      });
 
     // Active Returns — Returns subpage uses GET /purchase-returns
     apiClient.get('/purchase-returns')
@@ -280,6 +291,8 @@ const PurchaseHome = () => {
         <div className="grid-layout">
           <KPI title="Purchase Orders" value={totalPOs} footer="Total orders created" icon={ShoppingCart} color="#0052CC" bg="#DEEBFF" onClick={() => navigate('/purchase/orders')} />
           <KPI title="Pending Deliveries" value={pendingDeliveries} footer="Awaiting fulfillment" icon={Clock} color="#FF8B00" bg="#FFFAE6" onClick={() => navigate('/purchase/orders')} />
+          <KPI title="Store Waiting" value={storeAwaiting} footer="Sent — awaiting store acceptance" icon={Clock} color="#B45309" bg="#FEF3C7" onClick={() => navigate('/purchase/quotations')} />
+          <KPI title="Store Received" value={storeReceived} footer="Accepted by General Store" icon={Truck} color="#15803D" bg="#DCFCE7" onClick={() => navigate('/purchase/quotations')} />
           <KPI title="Received POs" value={receivedToday} footer="Inward shipments received" icon={Truck} color="#008DA6" bg="#E6FCFF" onClick={() => navigate('/purchase/orders')} />
           <KPI title="Active Returns" value={activeReturns} footer="Processing RMA" icon={RotateCcw} color="#DE350B" bg="#FFEBE6" onClick={() => navigate('/purchase/returns')} />
         </div>
