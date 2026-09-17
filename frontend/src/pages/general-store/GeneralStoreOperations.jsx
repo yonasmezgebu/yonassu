@@ -1237,11 +1237,16 @@ export const GSRegisterItem = () => {
   const fetchIncoming = async () => {
     try {
       const res = await api.get('/api/v1/printing-assets/store/incoming');
-      if (res && Array.isArray(res.data)) setIncomingList(res.data);
+      const list = res?.data?.data;
+      setIncomingList(Array.isArray(list) ? list : []);
     } catch (e) { /* non-fatal */ }
   };
 
-  useEffect(() => { fetchIncoming(); }, []);
+  useEffect(() => {
+    fetchIncoming();
+    const timer = setInterval(fetchIncoming, 20000);
+    return () => clearInterval(timer);
+  }, []);
 
   const openIncoming = async () => {
     setShowIncoming(true);
