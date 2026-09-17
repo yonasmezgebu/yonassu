@@ -7,10 +7,28 @@ const { log } = require('../../services/salesAudit.service');
 
 const genRef = async () => {
   const year = new Date().getFullYear();
-  const last = await db('tenders').whereRaw('YEAR(created_at) = ?', [year]).orderBy('id', 'desc').first();
-  const seq = last && last.reference_number ? parseInt(last.reference_number.split('-')[2]) + 1 : 1;
+  const rows = await db('tenders')
+    .select('reference_number')
+    .whereRaw('YEAR(created_at) = ?', [year])
+    .where('reference_number', 'like', `TND-${year}-%`);
+
+  let maxSeq = 0;
+  for (const row of rows) {
+    if (row && row.reference_number) {
+      const parts = row.reference_number.split('-');
+      if (parts.length >= 3) {
+        const parsed = parseInt(parts[2], 10);
+        if (!isNaN(parsed) && parsed > maxSeq) {
+          maxSeq = parsed;
+        }
+      }
+    }
+  }
+
+  const seq = maxSeq + 1;
   return `TND-${year}-${String(seq).padStart(3, '0')}`;
 };
+
 
 exports.listPublic = catchAsync(async (req, res) => {
   const { status, category, search } = req.query;
@@ -40,7 +58,7 @@ exports.getInternal = catchAsync(async (req, res) => {
 });
 
 exports.create = catchAsync(async (req, res) => {
-  const { title, description, category, item_name, quantity, starting_bid_price, deadline, terms_conditions, attachments, items } = req.body;
+  const { title, description, category, item_name, quantity, starting_bid_price, deadline, terms_conditions, attachments, items, cpo_amount } = req.body;
   
   if (!title || !description || !deadline || !terms_conditions) {
     throw AppError.badRequest('Title, description, deadline, and terms are required');
@@ -58,6 +76,7 @@ exports.create = catchAsync(async (req, res) => {
     item_name: item_name || null, 
     quantity: quantity || 1, 
     starting_bid_price: starting_bid_price || 0,
+    cpo_amount: parseFloat(cpo_amount) || 0,
     deadline: new Date(deadline), terms_conditions,
     status: 'open', created_by: req.user.id,
     attachments: files.length ? JSON.stringify(files) : null,
@@ -74,7 +93,7 @@ exports.update = catchAsync(async (req, res) => {
   if (tender.status === 'awarded') {
     throw AppError.badRequest('Cannot edit an awarded tender');
   }
-  const { title, description, category, item_name, quantity, starting_bid_price, deadline, terms_conditions, items } = req.body;
+  const { title, description, category, item_name, quantity, starting_bid_price, deadline, terms_conditions, items, cpo_amount } = req.body;
   const updates = {};
   if (title !== undefined && title !== '') updates.title = title;
   if (description !== undefined && description !== '') updates.description = description;
@@ -82,6 +101,7 @@ exports.update = catchAsync(async (req, res) => {
   if (item_name !== undefined) updates.item_name = item_name || null;
   if (quantity !== undefined && quantity !== '') updates.quantity = quantity;
   if (starting_bid_price !== undefined && starting_bid_price !== '') updates.starting_bid_price = starting_bid_price;
+  if (cpo_amount !== undefined && cpo_amount !== '') updates.cpo_amount = parseFloat(cpo_amount) || 0;
   if (deadline !== undefined && deadline !== '') updates.deadline = new Date(deadline);
   if (terms_conditions !== undefined && terms_conditions !== '') updates.terms_conditions = terms_conditions;
   if (items !== undefined) updates.items = items;
