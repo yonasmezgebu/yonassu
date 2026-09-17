@@ -42,6 +42,7 @@ import ManagerChat from '../../components/ManagerChat';
 import CentralAuditLog from '../admin/CentralAuditLog';
 import styles from './PurchaseDashboard.module.css';
 import PurchaseTasks from './PurchaseTasks';
+import QuotationExpenses from '../shared/QuotationExpenses';
 
 const PurchaseDashboard = () => {
   const menuItems = [
@@ -53,6 +54,7 @@ const PurchaseDashboard = () => {
         { label: 'Tender & Bid',            path: '/purchase/smart-tenders',   icon: 'dollar-sign',  color: '#10b981' },
         { label: 'Quotation',               path: '/purchase/quotations',             icon: 'file',         color: '#22c55e' },
         { label: 'General Procurements',    path: '/purchase/general-procurements', icon: 'truck',   color: '#8b5cf6' },
+        { label: 'Expense',                 path: '/purchase/expenses',               icon: 'book',        color: '#d97706' },
       ]
     },
     { type: 'divider' },
@@ -99,6 +101,7 @@ const PurchaseDashboard = () => {
             <Route path="orders" element={<PurchaseOrders />} />
             <Route path="returns" element={<PurchaseReturns />} />
             <Route path="general-procurements" element={<PurchaseGeneralProcurements />} />
+            <Route path="expenses" element={<QuotationExpenses />} />
 
             {/* 2. Supplier Management */}
             <Route path="suppliers" element={<PurchaseSupplierList />} />
