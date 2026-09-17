@@ -50,8 +50,8 @@ router.put('/my-bids/:id/cancel', authenticate, async (req, res) => {
   await db('bids').where({ id: req.params.id }).update({ status: 'cancelled' });
   res.json({ status: 'success', message: 'Bid cancelled' });
 });
-router.post('/:tenderId/bid', authenticate, bidController.submitBid);
-router.put('/:tenderId/bid', authenticate, bidController.updateMyBid);
+router.post('/:tenderId/bid', authenticate, tenderUpload.single('payment_screenshot'), bidController.submitBid);
+router.put('/:tenderId/bid', authenticate, tenderUpload.single('payment_screenshot'), bidController.updateMyBid);
 router.get('/:tenderId/my-bid', authenticate, bidController.getMyBid);
 router.get('/:tenderId/winner', authenticate, bidController.getWinner);
 
