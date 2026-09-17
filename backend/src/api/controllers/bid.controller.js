@@ -33,7 +33,9 @@ const submitTenderIncomeSubmissions = async (req, bids, tender) => {
 
 exports.submitBid = catchAsync(async (req, res) => {
   const { bid_price_per_unit, quantity_requested, proposed_pickup_date, notes, items,
-    bidder_full_name, bidder_email, bidder_phone, digital_signature, payment_method } = req.body;
+    bidder_full_name, bidder_email, bidder_phone, digital_signature, payment_method, payment_reference } = req.body;
+  const payment_screenshot = req.file ? req.file.filename : null;
+
   const tender = await db('tenders').where('id', req.params.tenderId).first();
   if (!tender) throw AppError.notFound('Tender not found');
   if (tender.status !== 'open') throw AppError.badRequest('This tender is not accepting bids');
@@ -93,6 +95,8 @@ exports.submitBid = catchAsync(async (req, res) => {
       bidder_phone: bidder_phone || existing.bidder_phone || null,
       digital_signature: digital_signature || existing.digital_signature || null,
       payment_method: payment_method || existing.payment_method || null,
+      payment_reference: payment_reference || existing.payment_reference || null,
+      payment_screenshot: payment_screenshot || existing.payment_screenshot || null,
       updated_at: db.fn.now(),
     });
     const bid = await db('bids').where('id', existing.id).first();
@@ -110,6 +114,8 @@ exports.submitBid = catchAsync(async (req, res) => {
     bidder_phone: bidder_phone || null,
     digital_signature: digital_signature || null,
     payment_method: payment_method || null,
+    payment_reference: payment_reference || null,
+    payment_screenshot: payment_screenshot || null,
   });
   const bid = await db('bids').where('id', id).first();
   await notificationRepository.create({ roleTarget: 'Sales Manager', title: 'New Bid Received', message: `New bid on ${tender.reference_number} — ${tender.title}: contact: ${bidder_full_name || 'N/A'} (${bidder_phone || ''})` });
@@ -118,7 +124,9 @@ exports.submitBid = catchAsync(async (req, res) => {
 
 exports.updateMyBid = catchAsync(async (req, res) => {
   const { bid_price_per_unit, quantity_requested, proposed_pickup_date, notes, items,
-    bidder_full_name, bidder_email, bidder_phone, digital_signature, payment_method } = req.body;
+    bidder_full_name, bidder_email, bidder_phone, digital_signature, payment_method, payment_reference } = req.body;
+  const payment_screenshot = req.file ? req.file.filename : null;
+
   const tender = await db('tenders').where('id', req.params.tenderId).first();
   if (!tender) throw AppError.notFound('Tender not found');
   if (tender.status !== 'open') throw AppError.badRequest('This tender is no longer accepting bids');
@@ -156,6 +164,8 @@ exports.updateMyBid = catchAsync(async (req, res) => {
     bidder_phone: bidder_phone !== undefined ? bidder_phone : existing.bidder_phone,
     digital_signature: digital_signature !== undefined ? digital_signature : existing.digital_signature,
     payment_method: payment_method !== undefined ? payment_method : existing.payment_method,
+    payment_reference: payment_reference !== undefined ? payment_reference : existing.payment_reference,
+    payment_screenshot: payment_screenshot !== null ? payment_screenshot : existing.payment_screenshot,
     updated_at: db.fn.now(),
   });
 
