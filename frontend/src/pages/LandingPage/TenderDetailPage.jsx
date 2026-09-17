@@ -104,6 +104,8 @@ export default () => {
   const [vatCtx, setVatCtx] = useState(null);
   const [financeAccounts, setFinanceAccounts] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentScreenshot, setPaymentScreenshot] = useState(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
@@ -216,16 +218,39 @@ export default () => {
       setRoleWarning(true);
       return;
     }
+
+    // Validate bid price >= starting bid price
+    const startPrice = parseFloat(tender.starting_bid_price || 0);
+    const bidPrice = parseFloat(form.bid_price_per_unit || 0);
+    if (bidPrice < startPrice) {
+      setMessage({ type: 'error', text: `Your bid of ${bidPrice.toLocaleString()} ETB is below the minimum starting price of ${startPrice.toLocaleString()} ETB. Please enter a higher amount.` });
+      return;
+    }
+
+    // Validate payment proof if CPO is required and account is selected
+    const cpoAmount = parseFloat(tender.cpo_amount || 0);
+    if (cpoAmount > 0 && paymentMethod) {
+      if (!paymentReference.trim() && !paymentScreenshot) {
+        setMessage({ type: 'error', text: 'Payment proof is required. Please enter a reference number OR upload a screenshot of your payment.' });
+        return;
+      }
+    }
+
     if (submitting) return; // block double-click
     setSubmitting(true);
     setMessage(null);
     try {
       let res;
-      const payload = { ...form, payment_method: paymentMethod };
+      const formData = new FormData();
+      Object.entries({ ...form, payment_method: paymentMethod, payment_reference: paymentReference }).forEach(([k, v]) => {
+        if (v !== null && v !== undefined) formData.append(k, v);
+      });
+      if (paymentScreenshot) formData.append('payment_screenshot', paymentScreenshot);
+
       if (myBid) {
-        res = await axios.put(`/tenders/${tender.id}/bid`, payload);
+        res = await axios.put(`/tenders/${tender.id}/bid`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       } else {
-        res = await axios.post(`/tenders/${tender.id}/bid`, payload);
+        res = await axios.post(`/tenders/${tender.id}/bid`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       }
       if (res.status === 'success') {
         setMessage({ type: 'success', text: res.message || (myBid ? 'Bid updated successfully!' : 'Bid submitted successfully!') });
@@ -277,25 +302,50 @@ export default () => {
       });
     }
 
+    // Validate payment proof if CPO is required and account is selected
+    const cpoAmount = parseFloat(tender.cpo_amount || 0);
+    if (cpoAmount > 0 && paymentMethod) {
+      if (!paymentReference.trim() && !paymentScreenshot) {
+        setMessage({ type: 'error', text: 'Payment proof is required. Please enter a reference number OR upload a screenshot of your payment.' });
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
+      const formData = new FormData();
+      const totalBidValue = itemsWithBids.reduce((sum, item) => {
+        const b = parseFloat(item.bidPriceBirr) || 0;
+        const c = parseFloat(item.bidPriceCent) || 0;
+        const q = parseFloat(item.quantity || 1);
+        return sum + (b + c / 100) * q;
+      }, 0);
+
       const payload = {
         notes: itemBids.notes || '',
         proposed_pickup_date: itemBids.proposed_pickup_date || '',
         items: JSON.stringify(itemsWithBids),
         bid_price_per_unit: 0,
+        total_bid_value: totalBidValue,
         quantity_requested: items.length,
         bidder_full_name: form.bidder_full_name,
         bidder_email: form.bidder_email,
         bidder_phone: form.bidder_phone,
         digital_signature: form.digital_signature,
         payment_method: paymentMethod,
+        payment_reference: paymentReference,
       };
+
+      Object.entries(payload).forEach(([k, v]) => {
+        if (v !== null && v !== undefined) formData.append(k, v);
+      });
+      if (paymentScreenshot) formData.append('payment_screenshot', paymentScreenshot);
       
       let res;
       if (myBid) {
-        res = await axios.put(`/tenders/${tender.id}/bid`, payload);
+        res = await axios.put(`/tenders/${tender.id}/bid`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       } else {
-        res = await axios.post(`/tenders/${tender.id}/bid`, payload);
+        res = await axios.post(`/tenders/${tender.id}/bid`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       }
       
       if (res.status === 'success') {
@@ -540,10 +590,12 @@ export default () => {
                       {/* VAT Summary */}
                       <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
                         {items.map((item, idx) => {
-                          const birr = parseFloat(itemBids[`birr_${idx}`] || 0);
-                          const cent = parseFloat(itemBids[`cent_${idx}`] || 0);
+                          const birrStr = itemBids[`birr_${idx}`];
+                          const centStr = itemBids[`cent_${idx}`];
+                          const birr = parseFloat(birrStr) || 0;
+                          const cent = parseFloat(centStr) || 0;
                           const qty = parseFloat(item.quantity || 1);
-                          const unitBid = (birr || parseFloat(item.startPrice || 0)) + cent / 100;
+                          const unitBid = (birrStr || centStr) ? (birr + cent / 100) : 0;
                           const v = getVatForItem(vatCtx, 'tender_sell', item.id != null ? item.id : idx, unitBid * qty);
                           return (
                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', padding: '0.25rem 0', color: 'hsl(var(--foreground))' }}>
@@ -555,10 +607,12 @@ export default () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 600, borderTop: '1px solid hsl(var(--border))', marginTop: '0.5rem', paddingTop: '0.5rem', color: 'hsl(var(--foreground))' }}>
                           <span>Grand Total (incl. VAT)</span>
                           <span>{items.reduce((sum, item, idx) => {
-                            const birr = parseFloat(itemBids[`birr_${idx}`] || 0);
-                            const cent = parseFloat(itemBids[`cent_${idx}`] || 0);
+                            const birrStr = itemBids[`birr_${idx}`];
+                            const centStr = itemBids[`cent_${idx}`];
+                            const birr = parseFloat(birrStr) || 0;
+                            const cent = parseFloat(centStr) || 0;
                             const qty = parseFloat(item.quantity || 1);
-                            const unitBid = (birr || parseFloat(item.startPrice || 0)) + cent / 100;
+                            const unitBid = (birrStr || centStr) ? (birr + cent / 100) : 0;
                             return sum + getVatForItem(vatCtx, 'tender_sell', item.id != null ? item.id : idx, unitBid * qty).total;
                           }, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ETB</span>
                         </div>
@@ -622,12 +676,17 @@ export default () => {
 
                           {/* Payment Method selector for multi-item tenders */}
                           {(() => {
+                            const cpoAmount = parseFloat(tender.cpo_amount || 0);
+                            if (cpoAmount <= 0) return null;
                             const telebirrAccounts = financeAccounts.filter(a => a.status === 'Active' && a.account_type === 'Mobile Wallet');
                             const bankAccounts = financeAccounts.filter(a => a.status === 'Active' && a.account_type === 'Bank');
                             const selectedAccObj = financeAccounts.find(a => paymentMethod && paymentMethod === `${a.account_type === 'Mobile Wallet' ? 'Telebirr' : 'Bank Transfer'}::${a.id}`);
                             return (
                               <div style={{ margin: '1.5rem 0', padding: '1.5rem', background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
-                                <label className="form-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
+                                <div style={{ marginBottom: '1rem', padding: '1rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6 }}>
+                                  <strong style={{ color: '#1d4ed8' }}>Refundable Bid Bond (CPO) Required:</strong> You must pay a refundable CPO of <strong>{cpoAmount.toLocaleString()} ETB</strong> to submit this bid.
+                                </div>
+                                <label className="form-label" style={{ marginBottom: '0.75rem', display: 'block' }}>
                                   Payment Method &amp; Account *
                                 </label>
                                 <select required value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="input-field">
@@ -647,22 +706,64 @@ export default () => {
                                     </optgroup>
                                   )}
                                 </select>
+                                
+                                {paymentMethod && (
+                                  <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <p style={{ margin: 0, fontSize: 13, color: '#374151' }}>Please provide <strong>one</strong> of the following as proof of payment:</p>
+                                    <div>
+                                      <label className="form-label">Payment Reference / Transaction ID</label>
+                                      <input type="text" className="input-field" 
+                                        placeholder="e.g. FT231..."
+                                        value={paymentReference}
+                                        onChange={e => { setPaymentReference(e.target.value); setPaymentScreenshot(null); }}
+                                        disabled={!!paymentScreenshot}
+                                      />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                      <hr style={{ flex: 1, borderColor: '#e5e7eb' }} />
+                                      <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>OR</span>
+                                      <hr style={{ flex: 1, borderColor: '#e5e7eb' }} />
+                                    </div>
+                                    <div>
+                                      <label className="form-label">Upload Receipt Screenshot</label>
+                                      <input type="file" className="input-field" 
+                                        accept="image/*"
+                                        onChange={e => { setPaymentScreenshot(e.target.files[0]); setPaymentReference(''); }}
+                                        disabled={!!paymentReference}
+                                        style={{ padding: '8px' }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
                                 {selectedAccObj && (
-                                  <div style={{ marginTop: '1rem', padding: '1rem', background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}>
-                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'hsl(var(--muted-foreground))', marginBottom: '0.5rem' }}>Transfer Payment To</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'baseline' }}>
-                                        <span style={{ fontWeight: 600, minWidth: '90px' }}>Account Name:</span>
-                                        <span>{selectedAccObj.account_name}</span>
+                                  <div style={{ marginTop: '1rem', padding: '1.25rem', background: '#f0fdf4', border: '2px solid #86efac', borderRadius: 8 }}>
+                                    
+                                    {/* Total Price Prominent Display */}
+                                    <div style={{ marginBottom: '1rem', padding: '0.875rem 1rem', background: 'white', border: '1.5px solid #86efac', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                      <div>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Total Amount to Pay</div>
+                                        <div style={{ fontSize: '0.8125rem', color: '#4b7c5c' }}>Transfer this exact amount to the account below</div>
                                       </div>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
-                                        <span style={{ fontWeight: 600, minWidth: '90px' }}>Account No:</span>
-                                        <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{selectedAccObj.account_number}</span>
+                                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#059669' }}>
+                                        {cpoAmount.toLocaleString()} <span style={{ fontSize: '1rem', fontWeight: 600 }}>ETB</span>
+                                      </div>
+                                    </div>
+
+                                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#166534', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Transfer Payment To</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '1rem' }}>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'baseline' }}>
+                                        <span style={{ fontWeight: 500, minWidth: '110px', color: '#374151' }}>Account Name:</span>
+                                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{selectedAccObj.account_name}</span>
+                                      </div>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                                        <span style={{ fontWeight: 500, minWidth: '110px', color: '#374151' }}>Account No:</span>
+                                        <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#0f172a', fontSize: '1.0625rem', background: '#dcfce7', padding: '2px 8px', borderRadius: 4 }}>{selectedAccObj.account_number}</span>
                                       </div>
                                       {selectedAccObj.bank_provider && (
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'baseline' }}>
-                                          <span style={{ fontWeight: 600, minWidth: '90px' }}>Provider:</span>
-                                          <span>{selectedAccObj.bank_provider}</span>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'baseline' }}>
+                                          <span style={{ fontWeight: 500, minWidth: '110px', color: '#374151' }}>Provider:</span>
+                                          <span style={{ fontWeight: 700, color: '#0f172a' }}>{selectedAccObj.bank_provider}</span>
                                         </div>
                                       )}
                                     </div>
@@ -788,6 +889,56 @@ export default () => {
                     )}
 
                     <form onSubmit={handleBidSubmit}>
+
+                      {/* ── Step 1: Your Bid Price ── */}
+                      <div style={{ background: '#eff6ff', border: '2px solid #3b82f6', borderRadius: 10, padding: '1.5rem', marginBottom: '1.5rem' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.75rem' }}>
+                          Step 1 — Enter Your Bid Price
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem', alignItems: 'flex-end' }}>
+                          <div>
+                            <label className="form-label" style={{ color: '#1d4ed8', fontWeight: 700 }}>
+                              Bid Price (ETB / unit) *
+                              <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 8, fontSize: '0.8125rem' }}>
+                                Min: {parseFloat(tender.starting_bid_price || 0).toLocaleString()} ETB
+                              </span>
+                            </label>
+                            <input
+                              className="input-field"
+                              required
+                              type="number"
+                              step="0.01"
+                              min={parseFloat(tender.starting_bid_price || 0)}
+                              value={form.bid_price_per_unit}
+                              onChange={e => setForm(f => ({ ...f, bid_price_per_unit: e.target.value }))}
+                              placeholder={`e.g. ${parseFloat(tender.starting_bid_price || 0).toLocaleString()}`}
+                              style={{ fontSize: '1.125rem', fontWeight: 700, borderColor: '#3b82f6', borderWidth: 2 }}
+                              autoFocus
+                            />
+                          </div>
+                          <div style={{ textAlign: 'right', paddingBottom: '0.25rem' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Bid</div>
+                            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', lineHeight: 1.1 }}>
+                              {form.bid_price_per_unit && !isNaN(form.bid_price_per_unit)
+                                ? (parseFloat(form.bid_price_per_unit) * parseFloat(tender.quantity || 1)).toLocaleString()
+                                : '—'}
+                            </div>
+                            <div style={{ fontSize: '0.8125rem', color: '#4b7c5c', fontWeight: 600 }}>
+                              ETB × {tender.quantity || 1} unit{(tender.quantity || 1) > 1 ? 's' : ''}
+                            </div>
+                          </div>
+                        </div>
+                        {form.bid_price_per_unit && parseFloat(form.bid_price_per_unit) < parseFloat(tender.starting_bid_price || 0) && (
+                          <div style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.875rem', fontWeight: 600 }}>
+                            ⚠ Bid must be at least {parseFloat(tender.starting_bid_price).toLocaleString()} ETB
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ── Step 2: Competitor Details ── */}
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '1rem' }}>
+                        Step 2 — Your Details
+                      </div>
                       <div className="form-group">
                         <label className="form-label">Full Name *</label>
                         <input className="input-field" required type="text"
@@ -815,26 +966,6 @@ export default () => {
                         </div>
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Bid Price (ETB/unit) *</label>
-                        <input className="input-field" required type="number" step="0.01" min={tender.starting_bid_price}
-                          value={form.bid_price_per_unit}
-                          onChange={e => setForm(f => ({ ...f, bid_price_per_unit: e.target.value }))}
-                          placeholder={`Min: ${parseFloat(tender.starting_bid_price).toLocaleString()} ETB`}
-                        />
-                      </div>
-
-                      {/* Total Price Display */}
-                      <div className="form-group" style={{ background: '#f0fdf4', padding: '1rem', border: '1px solid #bbf7d0', borderRadius: '4px', marginBottom: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          <span style={{ fontWeight: 600, color: '#166534' }}>Total Bid Amount:</span>
-                          <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#059669' }}>
-                            {form.bid_price_per_unit && !isNaN(form.bid_price_per_unit) 
-                              ? (parseFloat(form.bid_price_per_unit) * (tender.quantity || 1)).toLocaleString() 
-                              : '0'} ETB
-                          </span>
-                        </div>
-                      </div>
-                      <div className="form-group">
                         <label className="form-label">Proposed Pickup Date</label>
                         <input className="input-field" type="date" value={form.proposed_pickup_date}
                           onChange={e => setForm(f => ({ ...f, proposed_pickup_date: e.target.value }))}
@@ -852,8 +983,14 @@ export default () => {
                         const bankAccounts = financeAccounts.filter(a => a.status === 'Active' && a.account_type === 'Bank');
                         const selectedAccObj = financeAccounts.find(a => paymentMethod && paymentMethod === `${a.account_type === 'Mobile Wallet' ? 'Telebirr' : 'Bank Transfer'}::${a.id}`);
                         
+                        const cpoAmount = parseFloat(tender.cpo_amount || 0);
+                        if (cpoAmount <= 0) return null;
+
                         return (
                           <div style={{ margin: '1.5rem 0', padding: '1.5rem', background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
+                            <div style={{ marginBottom: '1rem', padding: '1rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6 }}>
+                              <strong style={{ color: '#1d4ed8' }}>Refundable Bid Bond (CPO) Required:</strong> You must pay a refundable CPO of <strong>{cpoAmount.toLocaleString()} ETB</strong> to participate in this bid.
+                            </div>
                             <label className="form-label" style={{ marginBottom: '0.75rem', display: 'block' }}>
                               Payment Method &amp; Account *
                             </label>
@@ -887,18 +1024,45 @@ export default () => {
                               )}
                             </select>
 
+                            {paymentMethod && (
+                              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <p style={{ margin: 0, fontSize: 13, color: '#374151' }}>Please provide <strong>one</strong> of the following as proof of payment:</p>
+                                <div>
+                                  <label className="form-label">Payment Reference / Transaction ID</label>
+                                  <input type="text" className="input-field" 
+                                    placeholder="e.g. FT231..."
+                                    value={paymentReference}
+                                    onChange={e => { setPaymentReference(e.target.value); setPaymentScreenshot(null); }}
+                                    disabled={!!paymentScreenshot}
+                                  />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                  <hr style={{ flex: 1, borderColor: '#e5e7eb' }} />
+                                  <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>OR</span>
+                                  <hr style={{ flex: 1, borderColor: '#e5e7eb' }} />
+                                </div>
+                                <div>
+                                  <label className="form-label">Upload Receipt Screenshot</label>
+                                  <input type="file" className="input-field" 
+                                    accept="image/*"
+                                    onChange={e => { setPaymentScreenshot(e.target.files[0]); setPaymentReference(''); }}
+                                    disabled={!!paymentReference}
+                                    style={{ padding: '8px' }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
                             {selectedAccObj && (
                               <div style={{ marginTop: '1rem', padding: '1.25rem', background: '#f0fdf4', border: '2px solid #86efac', borderRadius: 8 }}>
                                 {/* Total Price Prominent Display */}
                                 <div style={{ marginBottom: '1rem', padding: '0.875rem 1rem', background: 'white', border: '1.5px solid #86efac', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                                   <div>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Total Amount to Pay</div>
-                                    <div style={{ fontSize: '0.8125rem', color: '#4b7c5c' }}>Transfer this exact amount to the account below</div>
+                                    <div style={{ fontSize: '0.8125rem', color: '#4b7c5c' }}>Transfer this exact CPO amount to the account below</div>
                                   </div>
                                   <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#059669' }}>
-                                    {form.bid_price_per_unit && !isNaN(form.bid_price_per_unit)
-                                      ? (parseFloat(form.bid_price_per_unit) * (tender.quantity || 1)).toLocaleString()
-                                      : '0'} <span style={{ fontSize: '1rem', fontWeight: 600 }}>ETB</span>
+                                    {cpoAmount.toLocaleString()} <span style={{ fontSize: '1rem', fontWeight: 600 }}>ETB</span>
                                   </div>
                                 </div>
 
