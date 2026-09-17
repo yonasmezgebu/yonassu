@@ -35,6 +35,7 @@ import FinancePharmacyAssets from './FinancePharmacyAssets';
 import FinanceVehicleAssets from './FinanceVehicleAssets';
 import FinanceTractorAssets from './FinanceTractorAssets';
 import CentralAuditLog from '../admin/CentralAuditLog';
+import QuotationExpenses from '../shared/QuotationExpenses';
 import styles from './FinanceDashboard.module.css';
 
 const FinanceDashboard = () => {
@@ -46,6 +47,7 @@ const FinanceDashboard = () => {
         { label: 'Expense Vouchers (EV)',         path: '/finance/ev',                    icon: 'file-text',     color: '#f59e0b' },
         { label: 'Procurement (Drug/Stock)',       path: '/finance/procurement',           icon: 'package',       color: '#15803d' },
         { label: 'General Procurement',           path: '/finance/general-procurement',   icon: 'truck',         color: '#047857' },
+        { label: 'Quotation Expenses',        path: '/finance/quotation-expenses',     icon: 'file-text',     color: '#6d28d9' },
         { label: 'Expense Book',                  path: '/finance/cash-book',             icon: 'book',          color: '#06b6d4' },
         { label: 'Liabilities & Accounts Payable',path: '/finance/liabilities',           icon: 'alert-circle',  color: '#eab308' },
       ] },
@@ -111,6 +113,7 @@ const FinanceDashboard = () => {
             {/* Procurement */}
             <Route path="procurement" element={<FinanceProcurement />} />
             <Route path="general-procurement" element={<FinanceGeneralProcurement />} />
+            <Route path="quotation-expenses" element={<QuotationExpenses />} />
             
             {/* Live Income & Equity */}
             <Route path="pharmacy-sales" element={<FinanceLiveIncome />} />
