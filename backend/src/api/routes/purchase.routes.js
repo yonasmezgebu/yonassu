@@ -330,9 +330,12 @@ router.patch('/workflow/:id/status', wfAuth([...storeRoles, ...poRoles, ...finRo
 
 // ── Quotations (Manual Record-Only) ──
 router.get('/quotations', authenticate, authorize(['purchase_orders:read']), QuotationController.getQuotations);
+router.get('/quotations/expenses', authenticate, authorizeRoles(['Purchase', 'Purchase Manager', 'Market Team', 'Finance', 'Finance Manager', 'Admin']), QuotationController.getFinanceExpenses);
 router.get('/quotations/pending-ceo', authenticate, authorize(['purchase_orders:read']), QuotationController.getPendingQuotations);
 router.get('/quotations/:id/items', authenticate, authorize(['purchase_orders:read']), QuotationController.getQuotationItems);
 router.post('/quotations', authenticate, authorize(['purchase_orders:create']), QuotationController.createQuotation);
+router.post('/quotations/:id/ask-finance', authenticate, authorize(['purchase_orders:create']), QuotationController.askFinanceBudget);
+router.post('/quotations/:id/finance-approve', authenticate, authorizeRoles(['Finance', 'Finance Manager', 'Accountant', 'Admin']), QuotationController.financeApproveQuotation);
 router.post('/quotations/:id/convert', authenticate, authorize(['purchase_orders:create']), QuotationController.convertQuotation);
 router.post('/quotations/:id/ceo-approve', authenticate, authorizeRoles(['CEO', 'Admin']), QuotationController.approveQuotation);
 router.put('/quotations/:id/cancel', authenticate, authorize(['purchase_orders:update']), QuotationController.cancelQuotation);
