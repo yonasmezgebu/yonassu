@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Clock, Building2, MinusCircle, ChevronDown } from 'lucide-react';
+import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Clock, Building2, MinusCircle, ChevronDown, Wallet } from 'lucide-react';
 import api from '../../services/apiClient';
 
 const C = {
@@ -116,6 +116,9 @@ const PurchaseSupplierQuotations = () => {
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [toast, setToast] = useState(null);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [askingFinance, setAskingFinance] = useState(false);
 
   const [formData, setFormData] = useState({
     supplier_id: '',
@@ -256,10 +259,7 @@ const PurchaseSupplierQuotations = () => {
   const handleAction = async (action, id) => {
     if (!window.confirm(`Are you sure you want to ${action} this quotation?`)) return;
     try {
-      if (action === 'convert') {
-        await api.post(`/purchase/quotations/${id}/convert`);
-        showToast('Converted to Purchase Order successfully!');
-      } else if (action === 'cancel') {
+      if (action === 'cancel') {
         await api.put(`/purchase/quotations/${id}/cancel`);
         showToast('Quotation cancelled successfully');
       }
@@ -270,20 +270,79 @@ const PurchaseSupplierQuotations = () => {
     }
   };
 
+  const handleConvert = async (sendToStore) => {
+    if (selectedQuote.finance_status !== 'ready') {
+      showToast('Finance approval is required before converting this quotation', 'error');
+      return;
+    }
+    setConverting(true);
+    try {
+      await api.post(`/purchase/quotations/${selectedQuote.id}/convert`, { send_to_general_store: sendToStore });
+      showToast(sendToStore ? 'Converted to Purchase Order and forwarded to the General Store!' : 'Converted to Purchase Order successfully!');
+      setShowConvertModal(false);
+      setShowViewModal(false);
+      fetchData();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to convert quotation', 'error');
+    } finally {
+      setConverting(false);
+    }
+  };
+
+  const handleAskFinance = async (qid) => {
+    setAskingFinance(true);
+    try {
+      const res = await api.post(`/purchase/quotations/${qid}/ask-finance`);
+      showToast(res.message || 'Finance budget requested');
+      fetchData();
+    } catch (err) {
+      showToast(err.message || 'Failed to request finance budget', 'error');
+    } finally {
+      setAskingFinance(false);
+    }
+  };
+
   const filteredQuotes = (quotations || []).filter(q =>
     q.quotation_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     q.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     q.item_description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const Badge = ({ status }) => {
+  const isCeoApproved = (q) => q.status === 'Recorded' && !!q.finance_ceo_approved;
+
+  const statusLabel = (s, ceoApproved = false) => (s === 'Recorded' ? (ceoApproved ? 'Approved' : 'Recorded') : s);
+
+  const Badge = ({ status, ceoApproved }) => {
     const s = {
       Recorded: { bg: '#e0f2fe', color: '#0369a1' },
       Converted: { bg: '#dcfce7', color: '#15803d' },
       Cancelled: { bg: '#fee2e2', color: '#b91c1c' },
       'Pending CEO Approval': { bg: '#fef3c7', color: '#92400e' }
     }[status] || { bg: '#f1f5f9', color: '#475569' };
-    return <span className="pq-badge" style={{ background: s.bg, color: s.color }}>{status}</span>;
+    return <span className="pq-badge" style={{ background: s.bg, color: s.color }}>{statusLabel(status, ceoApproved)}</span>;
+  };
+
+  const FinanceChip = ({ f, ceoApproved }) => {
+    if (!f) return null;
+    const map = {
+      'awaiting ceo approval': ceoApproved
+        ? { t: 'Finance: CEO Approved — Awaiting Release', bg: '#DCFCE7', c: '#15803D' }
+        : { t: 'Finance: Awaiting CEO Approval', bg: '#FEF9C3', c: '#854D0E' },
+      ready: { t: 'Finance: Ready', bg: '#DCFCE7', c: '#15803D' },
+      paid: { t: 'Finance: Paid', bg: '#E0F2FE', c: '#0369A1' },
+      cancelled: { t: 'Finance: Cancelled', bg: '#FEE2E2', c: '#B91C1C' }
+    }[f] || { t: `Finance: ${f}`, bg: '#F3F4F6', c: '#4B5563' };
+    return <span style={{ display: 'inline-block', marginLeft: 6, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: map.bg, color: map.c }}>{map.t}</span>;
+  };
+
+  const StoreChip = ({ s }) => {
+    if (!s) return null;
+    const map = s === 'received'
+      ? { t: 'General Store: Received', bg: '#DCFCE7', c: '#15803D' }
+      : s === 'pending'
+        ? { t: 'General Store: Waiting', bg: '#FEF9C3', c: '#854D0E' }
+        : { t: `General Store: ${s}`, bg: '#F3F4F6', c: '#4B5563' };
+    return <span style={{ display: 'inline-block', marginLeft: 6, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: map.bg, color: map.c }}>{map.t}</span>;
   };
 
   return (
@@ -304,15 +363,15 @@ const PurchaseSupplierQuotations = () => {
       {/* Stat Cards */}
       {!loading && quotations.length > 0 && (() => {
         const totalQ = quotations.length;
-        const pendingQ = quotations.filter(q => q.status === 'Pending CEO Approval').length;
-        const recordedQ = quotations.filter(q => q.status === 'Recorded').length;
+        const pendingQ = quotations.filter(q => q.status === 'Pending CEO Approval' || (q.status === 'Recorded' && !q.finance_ceo_approved && q.finance_status === 'awaiting ceo approval')).length;
+        const recordedQ = quotations.filter(q => q.status === 'Recorded' && q.finance_ceo_approved).length;
         const convertedQ = quotations.filter(q => q.status === 'Converted').length;
         const cancelledQ = quotations.filter(q => q.status === 'Cancelled').length;
         const totalValue = quotations.reduce((s, q) => s + parseFloat(q.total_amount || 0), 0);
         const cards = [
           { label: 'Total', val: totalQ, bg: '#EFF6FF', icon: <FileText size={20} color="#2563EB" /> },
           { label: 'Pending CEO', val: pendingQ, bg: '#FEF3C7', icon: <Clock size={20} color="#D97706" /> },
-          { label: 'Recorded', val: recordedQ, bg: '#E0F2FE', icon: <CheckCircle size={20} color="#0369A1" /> },
+          { label: 'Approved', val: recordedQ, bg: '#E0F2FE', icon: <CheckCircle size={20} color="#0369A1" /> },
           { label: 'Converted', val: convertedQ, bg: '#DCFCE7', icon: <ShoppingCart size={20} color="#15803D" /> },
           { label: 'Cancelled', val: cancelledQ, bg: '#FEE2E2', icon: <Trash2 size={20} color="#DC2626" /> },
           { label: 'Total Value', val: `ETB ${totalValue.toLocaleString()}`, bg: '#F3E8FF', icon: <FileText size={20} color="#7C3AED" /> },
@@ -368,6 +427,7 @@ const PurchaseSupplierQuotations = () => {
                 filteredQuotes.map(q => {
                   const status = q.status || 'Recorded';
                   const badgeCls = status === 'Converted' ? 'pq-badge-converted' : status === 'Cancelled' ? 'pq-badge-cancelled' : status === 'Recorded' ? 'pq-badge-recorded' : status === 'Pending CEO Approval' ? 'pq-badge-pending' : 'pq-badge-default';
+                  const ceoApproved = isCeoApproved(q);
                   return (
                     <tr key={q.id}>
                       <td style={{ fontWeight: 600, color: '#2563EB', fontFamily: 'monospace', fontSize: 13 }}>{q.quotation_no}</td>
@@ -377,7 +437,7 @@ const PurchaseSupplierQuotations = () => {
                       <td className="right pq-amount" style={{ color: '#6B7280' }}>{parseFloat(q.vat_rate) > 0 ? `ETB ${parseFloat(q.vat_amount || 0).toLocaleString()}` : '—'}</td>
                       <td className="right pq-amount" style={{ fontWeight: 600 }}>ETB {parseFloat(q.total_amount).toLocaleString()}</td>
                       <td style={{ color: '#6B7280' }}>{q.date_agreed ? new Date(q.date_agreed).toLocaleDateString() : '—'}</td>
-                      <td><span className={`pq-badge ${badgeCls}`}>{status}</span></td>
+                      <td><span className={`pq-badge ${badgeCls}`}>{statusLabel(status, ceoApproved)}</span><FinanceChip f={q.finance_status} ceoApproved={ceoApproved} /><StoreChip s={q.store_status} /></td>
                       <td className="right">
                         <button className="pq-btn pq-btn-sm" style={{ background: '#F3F4F6', color: '#374151' }} onClick={() => handleViewQuote(q)}>View</button>
                       </td>
@@ -600,6 +660,7 @@ const PurchaseSupplierQuotations = () => {
       {showViewModal && selectedQuote && (() => {
         const status = selectedQuote.status || 'Recorded';
         const badgeCls = status === 'Converted' ? 'pq-badge-converted' : status === 'Cancelled' ? 'pq-badge-cancelled' : status === 'Recorded' ? 'pq-badge-recorded' : status === 'Pending CEO Approval' ? 'pq-badge-pending' : 'pq-badge-default';
+        const viewCeoApproved = isCeoApproved(selectedQuote);
         const viewSubtotal = selectedItems.reduce((s, i) => s + parseFloat(i.line_total || 0), 0);
         const viewVat = parseFloat(selectedQuote.vat_amount || 0);
         return (
@@ -614,7 +675,8 @@ const PurchaseSupplierQuotations = () => {
                 <div className="pq-detail-strip">
                   <div className="pq-detail-strip-head">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span className={`pq-badge ${badgeCls}`}>{status}</span>
+                      <span className={`pq-badge ${badgeCls}`}>{statusLabel(status, viewCeoApproved)}</span>
+                      <FinanceChip f={selectedQuote.finance_status} ceoApproved={viewCeoApproved} />
                       <span className="pq-detail-qno">{selectedQuote.quotation_no}</span>
                     </div>
                     <span className="pq-detail-agreed">Agreed {selectedQuote.date_agreed ? new Date(selectedQuote.date_agreed).toLocaleDateString() : '—'} via {selectedQuote.agreed_via || '—'}</span>
@@ -719,24 +781,81 @@ const PurchaseSupplierQuotations = () => {
                     <div style={{ textAlign: 'center', padding: 14, background: '#FEF3C7', color: '#92400E', fontWeight: 600, borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
                       <Clock size={16} /> Waiting for CEO approval before conversion.
                     </div>
+                    {selectedQuote.finance_requested ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, marginBottom: 12, background: '#F3F4F6', color: '#6B7280', fontWeight: 600, borderRadius: 8, fontSize: 14 }}>
+                        <Clock size={16} /> Asked — Awaiting Finance Response
+                      </div>
+                    ) : (
+                      <button className="pq-btn" style={{ height: 44, width: '100%', background: '#D97706', color: '#fff', justifyContent: 'center', marginBottom: 12 }} disabled={askingFinance} onClick={() => handleAskFinance(selectedQuote.id)}>
+                        {askingFinance ? <span>Requesting…</span> : <><Wallet size={16} /> Ask Finance Budget</>}
+                      </button>
+                    )}
                     <button className="pq-btn pq-btn-danger" style={{ height: 44, width: '100%' }} onClick={() => handleAction('cancel', selectedQuote.id)}>
                       <Trash2 size={16} /> Cancel Quotation
                     </button>
                   </div>
                 )}
                 {selectedQuote.status === 'Recorded' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 24 }}>
-                    <button className="pq-btn pq-btn-success" style={{ height: 44 }} onClick={() => handleAction('convert', selectedQuote.id)}>
-                      <ShoppingCart size={16} /> Convert to Purchase
-                    </button>
-                    <button className="pq-btn pq-btn-danger" style={{ height: 44 }} onClick={() => handleAction('cancel', selectedQuote.id)}>
-                      <Trash2 size={16} /> Cancel Quotation
-                    </button>
+                  <div style={{ marginTop: 24 }}>
+                    {selectedQuote.finance_status !== 'ready' ? (
+                      <div>
+                        {!viewCeoApproved ? (
+                          <div style={{ textAlign: 'center', padding: 14, background: '#FEF3C7', color: '#92400E', fontWeight: 600, borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
+                            <Clock size={16} /> Awaiting CEO approval — Finance can release funds only after the CEO approves.
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', padding: 14, background: '#FEF3C7', color: '#92400E', fontWeight: 600, borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
+                            <Clock size={16} /> Awaiting Finance approval — conversion is locked until Finance releases funds.
+                          </div>
+                        )}
+                        {selectedQuote.finance_requested ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, marginBottom: 12, background: '#F3F4F6', color: '#6B7280', fontWeight: 600, borderRadius: 8, fontSize: 14 }}>
+                            <Clock size={16} /> Asked — Awaiting Finance Response
+                          </div>
+                        ) : (
+                          <button className="pq-btn" style={{ height: 44, width: '100%', background: '#D97706', color: '#fff', justifyContent: 'center', marginBottom: 12 }} disabled={askingFinance} onClick={() => handleAskFinance(selectedQuote.id)}>
+                            {askingFinance ? <span>Requesting…</span> : <><Wallet size={16} /> Ask Finance Budget</>}
+                          </button>
+                        )}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <button className="pq-btn pq-btn-success" style={{ height: 44, opacity: 0.5, cursor: 'not-allowed' }} disabled>
+                            <ShoppingCart size={16} /> Convert to Purchase
+                          </button>
+                          <button className="pq-btn pq-btn-danger" style={{ height: 44, opacity: 0.5, cursor: 'not-allowed' }} disabled>
+                            <Trash2 size={16} /> Cancel Quotation
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <button className="pq-btn pq-btn-success" style={{ height: 44 }} onClick={() => setShowConvertModal(true)}>
+                          <ShoppingCart size={16} /> Convert to Purchase
+                        </button>
+                        <button className="pq-btn pq-btn-danger" style={{ height: 44 }} onClick={() => handleAction('cancel', selectedQuote.id)}>
+                          <Trash2 size={16} /> Cancel Quotation
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {selectedQuote.status === 'Converted' && (
-                  <div style={{ textAlign: 'center', padding: 14, background: '#DCFCE7', color: '#16A34A', fontWeight: 600, borderRadius: 8, marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
-                    <CheckCircle size={16} /> Converted to Purchase Order.
+                  <div>
+                    <div style={{ textAlign: 'center', padding: 14, background: '#DCFCE7', color: '#16A34A', fontWeight: 600, borderRadius: 8, marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
+                      <CheckCircle size={16} /> Converted to Purchase Order.
+                    </div>
+                    {selectedQuote.store_status === 'received' ? (
+                      <div style={{ textAlign: 'center', padding: 14, background: '#DCFCE7', color: '#15803D', fontWeight: 600, borderRadius: 8, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
+                        <CheckCircle size={16} /> General Store accepted — {selectedQuote.store_delivery_no || 'goods delivered'} received{selectedQuote.store_received_at ? ` on ${new Date(selectedQuote.store_received_at).toLocaleDateString()}` : ''}. Expense marked paid.
+                      </div>
+                    ) : selectedQuote.store_status === 'pending' ? (
+                      <div style={{ textAlign: 'center', padding: 14, background: '#FEF3C7', color: '#854D0E', fontWeight: 600, borderRadius: 8, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
+                        <Clock size={16} /> Sent to General Store ({selectedQuote.store_delivery_no || 'delivery note'}) — awaiting acceptance. Expense stays Ready until received.
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 14, background: '#F3F4F6', color: '#6B7280', fontWeight: 500, borderRadius: 8, marginTop: 12, fontSize: 13 }}>
+                        Not forwarded to the General Store.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -744,6 +863,32 @@ const PurchaseSupplierQuotations = () => {
           </div>
         );
       })()}
+
+      {/* Convert Choice Modal */}
+      {showConvertModal && selectedQuote && (
+        <div className="pq-modal-overlay">
+          <div className="pq-modal pq-modal-sm">
+            <div className="pq-modal-header">
+              <h2><ShoppingCart size={18} color="#2563EB" style={{ verticalAlign: 'middle', marginRight: 8 }} />Convert Quotation</h2>
+              <button className="pq-close-btn" onClick={() => setShowConvertModal(false)}><X size={20} /></button>
+            </div>
+            <div className="pq-modal-body">
+              <p style={{ color: '#6B7280', fontSize: 14, margin: '0 0 16px 0' }}>
+                <strong style={{ fontFamily: 'monospace' }}>{selectedQuote.quotation_no}</strong> is approved and finance-ready (funds released). Choose how to continue.
+              </p>
+              <button className="pq-btn pq-btn-success" style={{ height: 48, width: '100%', marginBottom: 8, justifyContent: 'center' }} disabled={converting} onClick={() => handleConvert(false)}>
+                {converting ? <span>Converting…</span> : <><ShoppingCart size={16} /> Convert to Purchase Order</>}
+              </button>
+              <button className="pq-btn" style={{ height: 48, width: '100%', background: '#1D4ED8', color: '#fff', justifyContent: 'center' }} disabled={converting} onClick={() => handleConvert(true)}>
+                {converting ? <span>Converting…</span> : <><ShoppingCart size={16} /> Convert & Send to General Store</>}
+              </button>
+              <p style={{ color: '#9CA3AF', fontSize: 12, margin: '12px 0 0 0', lineHeight: 1.5 }}>
+                Sending to the General Store creates a pending incoming shipment so the Store Keeper can receive the goods into inventory.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
