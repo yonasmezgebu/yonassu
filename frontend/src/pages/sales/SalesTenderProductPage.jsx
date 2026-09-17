@@ -415,7 +415,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                     <td style={{ padding: '10px 8px', color: '#334155' }}>{parseFloat(t.starting_bid_price || 0).toLocaleString()}</td>
                     <td style={{ padding: '10px 8px', color: '#64748b', whiteSpace: 'nowrap' }}>{t.deadline ? new Date(t.deadline).toLocaleDateString() : '—'}</td>
                     <td style={{ padding: '10px 8px' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', background: t.status === 'open' ? '#dcfce7' : t.status === 'closed' ? '#fef3c7' : t.status === 'draft' ? '#e0e7ff' : t.status === 'awarded' ? '#f0fdf4' : t.status === 'awaiting_ceo_approval' ? '#fff7ed' : '#fee2e2', color: t.status === 'open' ? '#166534' : t.status === 'closed' ? '#92400e' : t.status === 'draft' ? '#3730a3' : t.status === 'awarded' ? '#065f46' : t.status === 'awaiting_ceo_approval' ? '#c2410c' : '#991b1b' }}>{t.status.replace(/_/g, ' ')}</span>
+                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', background: t.status === 'open' ? '#dcfce7' : t.status === 'closed' ? '#fef3c7' : t.status === 'draft' ? '#e0e7ff' : t.status === 'awarded' ? '#f0fdf4' : t.status === 'awaiting_ceo_approval' ? '#fff7ed' : '#fee2e2', color: t.status === 'open' ? '#166534' : t.status === 'closed' ? '#92400e' : t.status === 'draft' ? '#3730a3' : t.status === 'awarded' ? '#065f46' : t.status === 'awaiting_ceo_approval' ? '#c2410c' : '#991b1b' }}>{t.status === 'awarded' ? 'Winner Selected' : t.status === 'awaiting_ceo_approval' ? 'Awaiting CEO' : t.status.replace(/_/g, ' ')}</span>
                     </td>
                     <td style={{ padding: '10px 8px' }}>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -947,3 +947,5 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
 };
 
 export default SalesTenderProductPage;
+
+
