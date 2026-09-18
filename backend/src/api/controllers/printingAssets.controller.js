@@ -1009,10 +1009,18 @@ exports.cancelMaterialRequest = async (req, res) => {
 // ─── Incoming Shipments (from converted purchase quotations) ───────────────
 exports.listIncoming = async (req, res) => {
   try {
+    const isReceived = req.query.status === 'received';
     const rows = await db('general_store_incoming')
-      .where({ status: 'pending' })
-      .orderBy('id', 'desc');
+      .where({ status: isReceived ? 'received' : 'pending' })
+      .orderBy('id', 'desc')
+      .limit(50);
     const ids = rows.map(r => r.id);
+    const receiverIds = [...new Set(rows.map(r => r.received_by).filter(Boolean))];
+    const receiverMap = {};
+    if (receiverIds.length) {
+      const receivers = await db('users').whereIn('id', receiverIds).select('id', 'full_name');
+      receivers.forEach(u => { receiverMap[u.id] = u.full_name; });
+    }
     const itemsById = {};
     if (ids.length) {
       const items = await db('general_store_incoming_items').whereIn('incoming_id', ids).orderBy('id');
@@ -1020,11 +1028,24 @@ exports.listIncoming = async (req, res) => {
         (itemsById[it.incoming_id] = itemsById[it.incoming_id] || []).push(it);
       });
     }
-    const data = rows.map(r => ({
-      ...r,
-      items: itemsById[r.id] || [],
-      total_value: (itemsById[r.id] || []).reduce((s, it) => s + parseFloat(it.line_total || 0), 0),
-    }));
+    const data = rows.map(r => {
+      const allItems = itemsById[r.id] || [];
+      const pendingItems = allItems.filter(it => String(it.status || 'pending') !== 'received');
+      const totalValue = allItems.reduce((s, it) => s + parseFloat(it.line_total || 0), 0);
+      const receivedValue = allItems.filter(it => String(it.status || 'pending') === 'received')
+        .reduce((s, it) => s + parseFloat(it.line_total || 0), 0);
+      const receivedCount = allItems.filter(it => String(it.status || 'pending') === 'received').length;
+      return {
+        ...r,
+        items: isReceived ? allItems : pendingItems,
+        received_by_name: receiverMap[r.received_by] || null,
+        total_value: totalValue,
+        received_value: receivedValue,
+        received_count: receivedCount,
+        item_count: allItems.length,
+        percent: totalValue > 0 ? Math.round((receivedValue / totalValue) * 100) : (receivedCount > 0 ? 100 : 0),
+      };
+    });
     ok(res, data);
   } catch (e) { err(res, e.message); }
 };
@@ -1041,56 +1062,102 @@ exports.acceptIncoming = async (req, res) => {
     const items = await trx('general_store_incoming_items').where({ incoming_id: id }).orderBy('id');
     if (!items.length) return err(res, 'Shipment has no items to receive', 400);
 
+    const body = req.body || {};
+    const singleItemId = body.item_id ? Number(body.item_id) : null;
+    const bulkMode = !singleItemId;
+
     const user = req.user || {};
     const fullName = user.fullName || user.full_name || user.username || 'Store Keeper';
     const maxRow = await trx('general_store_materials').max('id as m').first();
     let nextId = (maxRow && maxRow.m) || 0;
     const received = [];
     for (const item of items) {
+      if (String(item.status || 'pending') === 'received') continue;
+      if (singleItemId && Number(item.id) !== singleItemId) continue;
       const qty = parseFloat(item.quantity || 0);
       const price = parseFloat(item.unit_price || 0);
       const name = String(item.item_description || '').trim();
-      if (!name) continue;
+      if (!name) throw new Error(`Item "${item.item_description || item.id}" has no name`);
 
-      const existing = await trx('general_store_materials').where({ material_name: name }).first();
-      if (existing) {
-        const newQty = parseFloat(existing.quantity_in_store || 0) + qty;
-        const newValue = parseFloat(existing.unit_value || 0);
-        await trx('general_store_materials').where({ id: existing.id }).update({
-          quantity_in_store: newQty,
-          unit_value: price || newValue,
-          total_value: newQty * (price || newValue),
-          updated_at: db.fn.now(),
-        });
-        received.push({ material_id: existing.material_id, material_name: name, qty, added: true, created: false });
+      if (bulkMode) {
+        const existing = await trx('general_store_materials').where({ material_name: name }).first();
+        if (existing) {
+          const newQty = parseFloat(existing.quantity_in_store || 0) + qty;
+          const newValue = parseFloat(existing.unit_value || 0);
+          await trx('general_store_materials').where({ id: existing.id }).update({
+            quantity_in_store: newQty,
+            unit_value: price || newValue,
+            total_value: newQty * (price || newValue),
+            updated_at: db.fn.now(),
+          });
+          await trx('general_movement_log').insert({
+            item_type: 'Material', item_id: existing.material_id,
+            from_location: `Incoming Shipment ${incoming.delivery_note_no || ''}`.trim(), to_location: 'Printing Store',
+            quantity: qty, department: 'Printing', moved_by: fullName,
+            action_type: 'Receive', notes: `Received from purchase ${incoming.quotation_no}: ${name}, qty: ${qty}`,
+          });
+          received.push({ incoming_item_id: item.id, material_id: existing.material_id, material_name: name, qty, added: true, created: false });
+        } else {
+          nextId += 1;
+          const materialId = `PSMAT-${String(nextId).padStart(3, '0')}`;
+          const total = qty * price;
+          await trx('general_store_materials').insert({
+            material_id: materialId, material_name: name, category: 'Other', unit: item.unit || 'unit',
+            quantity_in_store: qty, unit_value: price, total_value: total, reorder_level: 10,
+            department: 'Printing', registered_by: fullName,
+            date_registered: new Date().toISOString().split('T')[0],
+            created_at: db.fn.now(), updated_at: db.fn.now(),
+          });
+          await trx('general_movement_log').insert({
+            item_type: 'Material', item_id: materialId,
+            from_location: `Incoming Shipment ${incoming.delivery_note_no || ''}`.trim(), to_location: 'Printing Store',
+            quantity: qty, department: 'Printing', moved_by: fullName,
+            action_type: 'Receive', notes: `Received from purchase ${incoming.quotation_no}: ${name}, qty: ${qty}`,
+          });
+          received.push({ incoming_item_id: item.id, material_id: materialId, material_name: name, qty, added: true, created: true });
+        }
       } else {
-        nextId += 1;
-        const materialId = `PSMAT-${String(nextId).padStart(3, '0')}`;
-        const total = qty * price;
-        await trx('general_store_materials').insert({
-          material_id: materialId, material_name: name, category: 'Other', unit: item.unit || 'unit',
-          quantity_in_store: qty, unit_value: price, total_value: total, reorder_level: 10,
-          department: 'Printing', registered_by: fullName,
-          date_registered: new Date().toISOString().split('T')[0],
-          created_at: db.fn.now(), updated_at: db.fn.now(),
-        });
-        received.push({ material_id: materialId, material_name: name, qty, added: true, created: true });
+        received.push({ incoming_item_id: item.id, material_name: name, qty, added: false, created: false });
       }
 
-      const newest = existing ? existing.material_id : received[received.length - 1].material_id;
-      await trx('general_movement_log').insert({
-        item_type: 'Material', item_id: newest,
-        from_location: `Incoming Shipment ${incoming.delivery_note_no || ''}`.trim(), to_location: 'Printing Store',
-        quantity: qty, department: 'Printing', moved_by: fullName,
-        action_type: 'Receive', notes: `Received from purchase ${incoming.quotation_no}: ${name}, qty: ${qty}`,
+      await trx('general_store_incoming_items').where({ id: item.id }).update({
+        status: 'received',
+        received_by: user.id || null,
+        received_at: db.fn.now(),
       });
     }
 
-    await trx('general_store_incoming').where({ id }).update({
-      status: 'received', received_by: user.id || null, received_at: db.fn.now(), updated_at: db.fn.now(),
-    });
+    if (singleItemId && !received.length) throw new Error('Incoming item not found');
 
-    if (incoming.quotation_id) {
+    const remaining = await trx('general_store_incoming_items')
+      .where({ incoming_id: id })
+      .whereNot({ status: 'received' })
+      .count({ n: '*' })
+      .first();
+    const pendingCount = Number(remaining.n || 0);
+    const complete = pendingCount === 0;
+
+    if (complete) {
+      await trx('general_store_incoming').where({ id }).update({
+        status: 'received', received_by: user.id || null, received_at: db.fn.now(), updated_at: db.fn.now(),
+      });
+    } else {
+      await trx('general_store_incoming').where({ id }).update({ updated_at: db.fn.now() });
+    }
+
+    const totals = await trx('general_store_incoming_items')
+      .where({ incoming_id: id })
+      .select(
+        db.raw("COALESCE(SUM(line_total),0) as total_value"),
+        db.raw("COALESCE(SUM(CASE WHEN status = 'received' THEN line_total ELSE 0 END),0) as received_value"),
+        db.raw("COUNT(CASE WHEN status = 'received' THEN 1 END) as received_count")
+      )
+      .first();
+    const totalValue = parseFloat(totals.total_value || 0);
+    const receivedValue = parseFloat(totals.received_value || 0);
+    const percent = totalValue > 0 ? Math.round((receivedValue / totalValue) * 100) : 100;
+
+    if (complete && incoming.quotation_id) {
       await trx('quotation_finance').where({ quotation_id: incoming.quotation_id }).update({
         status: 'paid',
         paid_at: db.fn.now(),
@@ -1109,10 +1176,10 @@ exports.acceptIncoming = async (req, res) => {
       module: 'Store',
       recordIdentifier: incoming.delivery_note_no || incoming.quotation_no,
       previousState: { status: 'pending' },
-      afterState: { status: 'received', items: received },
+      afterState: { status: complete ? 'received' : 'pending', items: received },
     });
 
-    if (incoming.quotation_no) {
+    if (complete && incoming.quotation_no) {
       await audit('QUOTATION_FINANCE_PAID', user.id || null, {
         ip: req.ip,
         userAgent: req.get('user-agent'),
@@ -1120,19 +1187,30 @@ exports.acceptIncoming = async (req, res) => {
         resourceId: String(incoming.quotation_id || ''),
         module: 'Finance',
         recordIdentifier: incoming.quotation_no,
-        description: `General store received goods for quotation ${incoming.quotation_no} — expense marked paid`,
+        description: `General store received all goods for quotation ${incoming.quotation_no} — expense marked paid`,
         afterState: { quotation_no: incoming.quotation_no, finance_status: 'paid' },
       });
       sendFinanceNotification({
         type: 'finance',
         title: 'Expense Paid',
-        message: `Goods for quotation ${incoming.quotation_no} (${incoming.supplier_name || ''}) received at General Store. Expense marked paid.`,
+        message: `All goods for quotation ${incoming.quotation_no} (${incoming.supplier_name || ''}) received at General Store. Expense marked paid.`,
         related_entity_id: incoming.quotation_id,
         link: '/finance/quotation-expenses',
       });
     }
 
-    ok(res, { incoming_id: id, items: received }, `Shipment received — ${received.length} item(s) added to inventory`);
+    ok(res, {
+      incoming_id: id,
+      items: received,
+      shipment_complete: complete,
+      pending_count: pendingCount,
+      received_count: Number(totals.received_count || 0),
+      total_value: totalValue,
+      received_value: receivedValue,
+      percent,
+    }, complete
+      ? `Shipment accepted — ${received.length} item(s) done, purchase expense marked paid (${percent}%)`
+      : `${received.length} item(s) accepted — ${percent}% of purchase value received, ${pendingCount} remaining`);
   } catch (e) {
     if (trx) await trx.rollback();
     err(res, e.message);
