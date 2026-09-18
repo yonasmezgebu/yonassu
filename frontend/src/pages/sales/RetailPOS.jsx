@@ -1213,29 +1213,29 @@ const addToCart = (item) => {
           background: white;
           overflow: hidden;
           border: 1px solid #E5E7EB;
-          border-radius: 10px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+          border-radius: 0.75rem;
+          box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
           display: flex;
           flex-direction: column;
           animation: fadeUp 0.3s ease both;
         }
         .rsp-card:hover {
-          transform: translateY(-1px);
-          border-color: var(--amber);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(245,158,11,0.35);
+          transform: translateY(-4px);
+          box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+          border-color: #D1FAE5;
         }
-        .rsp-card-img-wrap { position: relative; overflow: hidden; aspect-ratio: 4/3; background: #F9FAFB; display: flex; align-items: center; justify-content: center; }
-        .rsp-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-        .rsp-card:hover .rsp-card-img { transform: scale(1.04); }
-        .rsp-card-oos { position: absolute; inset: 0; background: rgba(17,24,39,0.6); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 10px; }
-        .rsp-card-body { padding: 14px; flex: 1; display: flex; flex-direction: column; }
-        .rsp-card-name { font-size: 14px; font-weight: 700; color: var(--text-main); margin: 0 0 6px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7em; }
-        .rsp-card-desc { font-size: 12px; color: var(--text-muted); margin: 0 0 10px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-        .rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid #F3F4F6; }
-        .rsp-price { font-size: 16px; font-weight: 800; color: var(--primary); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-        .rsp-stock-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+        .rsp-card-img-wrap { position: relative; overflow: hidden; aspect-ratio: 16/9; width: 100%; background: #F3F4F6; display: flex; align-items: center; justify-content: center; }
+        .rsp-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s ease; }
+        .rsp-card:hover .rsp-card-img { transform: scale(1.05); }
+        .rsp-card-oos { position: absolute; inset: 0; background: rgba(17,24,39,0.6); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.06em; text-transform: uppercase; }
+        .rsp-card-body { padding: 1.25rem; flex: 1; display: flex; flex-direction: column; }
+        .rsp-card-name { font-size: 1.125rem; font-weight: 700; color: var(--text-main); margin: 0 0 0.5rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .rsp-card-desc { font-size: 0.875rem; color: var(--text-muted); margin: 0 0 1rem; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: 1; }
+        .rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .rsp-price { font-size: 1.125rem; font-weight: 700; color: var(--primary); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+        .rsp-stock-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 0.5rem; }
         .rsp-stock-normal { background: #DCFCE7; color: #166534; }
         .rsp-stock-low { background: #FEF3C7; color: #B45309; }
         .rsp-stock-oos { background: #FEE2E2; color: #B91C1C; }
@@ -1243,24 +1243,23 @@ const addToCart = (item) => {
         .rsp-add-btn {
           background: var(--primary);
           color: white;
-          border: 1px solid var(--primary);
-          border-radius: 8px;
-          padding: 8px 16px;
-          min-height: 36px;
+          border: none;
+          border-radius: 0.5rem;
+          padding: 0.6rem 1.25rem;
           cursor: pointer;
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 5px;
+          justify-content: center;
+          gap: 6px;
           font-weight: 600;
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-          transition: all 0.15s;
+          font-size: 0.9rem;
+          transition: background 0.2s ease, transform 0.1s ease;
+          white-space: nowrap;
         }
-        .rsp-add-btn:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); transform: translateY(-1px); }
-        .rsp-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .rsp-add-btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-2px); }
+        .rsp-add-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
         .rsp-add-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
-        .rsp-add-btn.in-cart { background: var(--primary-hover); border-color: var(--primary-hover); }
+        .rsp-add-btn.in-cart { background: var(--primary-hover); }
 
         /* Product card manager controls */
         .rsp-card-cat { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
@@ -1273,9 +1272,9 @@ const addToCart = (item) => {
         .rsp-icon-btn.danger { background: var(--danger); border-color: var(--danger); color: white; }
         .rsp-icon-btn.danger:hover { background: #B91C1C; border-color: #B91C1C; }
 
-        .pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-        @media (max-width: 1024px) { .pos-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; } }
-        @media (max-width: 580px) { .pos-grid { grid-template-columns: 1fr; gap: 10px; } }
+        .pos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; padding: 0 0.5rem; }
+        @media (max-width: 1024px) { .pos-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; padding: 0; } }
+        @media (max-width: 580px) { .pos-grid { grid-template-columns: 1fr; gap: 0.75rem; padding: 0; } }
 
         /* Cart section */
         .cart-section { background: white; border: 1px solid #E5E7EB; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
@@ -1873,7 +1872,7 @@ const addToCart = (item) => {
       </div>
 
       {/* Content */}
-      <div className="pos-content" style={{ padding: '16px 20px', background: 'var(--bg-page)', width: '100%', boxSizing: 'border-box', minHeight: 'calc(100vh - 200px)' }}>
+      <div className="pos-content" style={{ padding: '16px 20px', background: 'var(--bg-page)', width: 'auto', boxSizing: 'border-box', minHeight: 'calc(100vh - 200px)' }}>
 
       {tab === 'retail-walkin' && !showAudit && (
         <div style={{ background: 'var(--bg-page)', minHeight: '60vh' }}>
@@ -1899,7 +1898,7 @@ const addToCart = (item) => {
                   </div>
                 </div>
 
-                <div style={{ padding: '16px 0' }}>
+                <div style={{ padding: '16px 16px' }}>
                   <div className="pos-grid">
                   {/* Product Grid */}
                   {(() => {
