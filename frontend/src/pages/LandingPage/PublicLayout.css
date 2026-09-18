@@ -1366,6 +1366,224 @@ body.dark-theme .active-sublink::after {
 }
 body.dark-theme .pub-dropdown-icon { color: #A5D6A7; }
 
+/* ── Services Mega-Dropdown Panel ─────────────────────────────── */
+/* ── Services Mega-Dropdown Panel (Grid Layout) ───────────────── */
+.svc-mega-panel {
+  position: absolute;
+  top: calc(100% - 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.09);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px -10px rgba(0,0,0,0.18), 0 8px 24px -4px rgba(0,0,0,0.1);
+  padding: 20px;
+  width: 900px;
+  max-width: 90vw;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  z-index: 999;
+  animation: dropdownFadeIn 0.18s ease both;
+}
+
+.svc-mega-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.svc-mega-row .svc-card {
+  width: calc(33.333% - 11px); /* exactly one-third minus the gap space */
+  flex-shrink: 0;
+}
+
+.svc-card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  background: #f8fafc;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.svc-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -8px rgba(0,0,0,0.15);
+  border-color: #A5D6A7;
+}
+
+.svc-card-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+}
+
+.svc-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.svc-card:hover .svc-card-img {
+  transform: scale(1.05);
+}
+
+.svc-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 40%);
+}
+
+.svc-card-top-label {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  z-index: 2;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.svc-card-footer {
+  padding: 14px 16px;
+  background: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.svc-card-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.svc-card:hover .svc-card-name {
+  color: #1B5E20;
+}
+
+body.dark-theme .svc-mega-panel {
+  background: #1a2a1a;
+  border-color: rgba(255,255,255,0.1);
+  box-shadow: 0 20px 60px -10px rgba(0,0,0,0.5);
+}
+body.dark-theme .svc-card {
+  background: #111a11;
+  border-color: rgba(255,255,255,0.1);
+}
+body.dark-theme .svc-card-footer {
+  background: #111a11;
+  border-color: rgba(255,255,255,0.1);
+}
+body.dark-theme .svc-card-name { color: #f3f4f6; }
+body.dark-theme .svc-card:hover .svc-card-name { color: #A5D6A7; }
+
+/* ── Marketplace Mega-Dropdown ───────────────────────────────── */
+.mkt-mega-panel {
+  position: absolute;
+  top: calc(100% - 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.09);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px -10px rgba(0,0,0,0.15), 0 6px 16px -4px rgba(0,0,0,0.08);
+  width: 360px;
+  z-index: 999;
+  animation: dropdownFadeIn 0.18s ease both;
+  padding: 8px;
+}
+
+.mkt-divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 4px 12px;
+}
+
+.mkt-card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  padding: 18px 20px;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.mkt-card:hover,
+.mkt-card--active {
+  background: #f8fafc;
+}
+
+.mkt-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 6px;
+  position: relative;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+/* Bold Animated Underline */
+.mkt-card-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 3px;
+  background: #10B981;
+  border-radius: 2px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mkt-card:hover .mkt-card-title::after,
+.mkt-card--active .mkt-card-title::after {
+  width: 100%;
+}
+
+.mkt-card:hover .mkt-card-title {
+  color: #10B981;
+}
+
+.mkt-card-desc {
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+body.dark-theme .mkt-mega-panel {
+  background: #1a2a1a;
+  border-color: rgba(255,255,255,0.1);
+  box-shadow: 0 20px 60px -10px rgba(0,0,0,0.5);
+}
+body.dark-theme .mkt-card:hover,
+body.dark-theme .mkt-card--active {
+  background: rgba(255,255,255,0.04);
+}
+body.dark-theme .mkt-card-title { color: #f3f4f6; }
+body.dark-theme .mkt-card-desc { color: #9ca3af; }
+body.dark-theme .mkt-divider { background: rgba(255,255,255,0.06); }
+
 .pub-nav-right-modern {
   display: flex;
   align-items: center;
