@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import PrintingHome from './PrintingHome';
 import PrintingTasks from './PrintingTasks';
+import PrintingPosts from './PrintingPosts';
 
 // Jobs (1-8)
 import PrintingNewJob from './PrintingNewJob';
@@ -44,6 +45,7 @@ const PrintingDashboard = () => {
         { label: 'Job History',            path: '/printing-manager/jobs/history',    icon: 'archive',      color: '#1B5E20' },
         { label: 'Redo Request',           path: '/printing-manager/prod/reprints',   icon: 'rotate-ccw',   color: '#6B8E23' },
         { label: 'Uploaded Work',        path: '/printing-manager/jobs/upload-work', icon: 'upload',     color: '#2563EB' },
+        { label: 'Posts',                path: '/printing-manager/posts',            icon: 'layout',     color: '#7C3AED' },
       ]
     },
     { type: 'divider' },
@@ -98,6 +100,7 @@ const PrintingDashboard = () => {
             <Route path="jobs/delivery" element={<PrintingDelivery />} />
             <Route path="jobs/history" element={<PrintingHistory />} />
             <Route path="jobs/upload-work" element={<PrintingUploadWork />} />
+            <Route path="posts" element={<PrintingPosts />} />
 
             {/* Production */}
             <Route path="prod/machines" element={<PrintingProdMachines />} />
