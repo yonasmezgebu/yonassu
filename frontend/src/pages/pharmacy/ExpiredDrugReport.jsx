@@ -62,8 +62,23 @@ export default function ExpiredDrugReport({ hideHeader = false }) {
       || (item.category_name || '').toLowerCase().includes(search.toLowerCase());
   });
 
-  const handleNotifyManager = (item) => {
-    showToast(`Manager Notified: ${item.name} is expired.`, 'success');
+  const [notifiedIds, setNotifiedIds] = useState(new Set());
+
+  const handleNotifyManager = async (item) => {
+    try {
+      await apiClient.post('/pharmacy/expired-drugs', {
+        drug_id: item.id,
+        drug_name: item.name || item.generic_name || 'Unknown',
+        quantity: item.quantity,
+        expiry_date: item.expiry_date,
+        location: 'Pharmacy Store',
+        action_required: 'DISPOSE'
+      });
+      showToast(`Expired item notification sent to CEO.`, 'success');
+      setNotifiedIds(prev => new Set(prev).add(item.id));
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error notifying CEO', 'error');
+    }
   };
 
   const handleMoveToQuarantine = (item) => {
@@ -201,9 +216,15 @@ export default function ExpiredDrugReport({ hideHeader = false }) {
                   </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => handleNotifyManager(item)} style={{ padding: '6px 12px', background: 'white', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                        <Bell size={12} /> Notify
-                      </button>
+                      {notifiedIds.has(item.id) ? (
+                        <span style={{ padding: '6px 12px', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', borderRadius: 6, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          Waiting CEO
+                        </span>
+                      ) : (
+                        <button onClick={() => handleNotifyManager(item)} style={{ padding: '6px 12px', background: 'white', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                          <Bell size={12} /> Notify
+                        </button>
+                      )}
                       <button onClick={() => handleMoveToQuarantine(item)} style={{ padding: '6px 12px', background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 2px 4px rgba(225,29,72,0.1)' }}>
                         <Trash2 size={12} /> Quarantine
                       </button>
