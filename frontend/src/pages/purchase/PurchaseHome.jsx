@@ -224,8 +224,8 @@ const PurchaseHome = () => {
       .then(res => {
         const list = asList(res);
         live(setSupplierBids)(list.length);
-        live(setStoreAwaiting)(list.filter(q => String(q.status) === 'Converted' && String(q.store_status) === 'pending').length);
-        live(setStoreReceived)(list.filter(q => String(q.status) === 'Converted' && String(q.store_status) === 'received').length);
+        live(setStoreAwaiting)(list.filter(q => String(q.status) === 'Converted' && (q.destination === 'pharmacy' ? (String(q.pharmacy_store_status) === 'pending' || String(q.pharmacy_store_status) === 'partial') : String(q.store_status) === 'pending')).length);
+        live(setStoreReceived)(list.filter(q => String(q.status) === 'Converted' && (q.destination === 'pharmacy' ? String(q.pharmacy_store_status) === 'received' : String(q.store_status) === 'received')).length);
       })
       .catch(() => {
         live(setSupplierBids)(0);
