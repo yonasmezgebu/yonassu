@@ -2,12 +2,190 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Printer, Pill, Car, Wheat, Store, Video, Users, PartyPopper, User,
-  Package, FileText, ShoppingCart, Menu, X, ChevronDown, LogIn, Home, Truck, Building2, Award
+  Package, FileText, ShoppingCart, Menu, X, ChevronDown, LogIn, Home, Truck, Building2, Award, ArrowRight
 } from 'lucide-react';
 import SearchDropdown from '../../components/SearchDropdown';
 import './PublicLayout.css';
 
-/* ─── Helper: a single dropdown group ─────────────────────────── */
+import imgPrinting   from '../../assets/drop_down/printing_dropdown.jpg';
+import imgPharmacy   from '../../assets/drop_down/pharmacy_dropdown.jpg';
+import imgCarRental  from '../../assets/drop_down/carRental_dropdown.jpg';
+import imgAgriRental from '../../assets/drop_down/agrirental_dropdown.jpg';
+import imgRetail     from '../../assets/drop_down/retailStore_dropdown.jpg';
+
+/* ─── Services Mega-Dropdown ────────────────────────────────────── */
+const SERVICES = [
+  { label: 'Commercial Printing', path: '/services/printing',  img: imgPrinting   },
+  { label: 'Pharmacy & Health',   path: '/services/pharmacy',  img: imgPharmacy   },
+  { label: 'Car Rental',          path: '/fleet-gallery',      img: imgCarRental  },
+  { label: 'AgriRent',            path: '/services/farming',   img: imgAgriRental },
+  { label: 'Retail Store',        path: '/services/retail',    img: imgRetail     },
+];
+
+const ServicesMegaDropdown = ({ isOpen, onOpen, onClose, isActive, onClose: closeAll }) => {
+  const navigate = useNavigate();
+  return (
+    <div
+      className={`pub-dropdown-wrapper${isOpen ? ' pub-dropdown-wrapper--open' : ''}`}
+      onMouseEnter={onOpen}
+      onMouseLeave={onClose}
+    >
+      <span className={`pub-link-modern${isActive ? ' active' : ''}`} role="button" tabIndex={0}>
+        Services
+        <ChevronDown size={13} className={`pub-chevron${isOpen ? ' pub-chevron--open' : ''}`} />
+      </span>
+
+      {isOpen && (
+        <div className="svc-mega-panel">
+          {/* Top row: 3 cards */}
+          <div className="svc-mega-row svc-mega-row--3">
+            {SERVICES.slice(0, 3).map(svc => (
+              <Link key={svc.path} to={svc.path} className="svc-card" onClick={closeAll}>
+                <div className="svc-card-img-wrap">
+                  <img src={svc.img} alt={svc.label} className="svc-card-img" />
+                  <div className="svc-card-top-label">{svc.label}</div>
+                  <div className="svc-card-overlay" />
+                </div>
+                <div className="svc-card-footer">
+                  <span className="svc-card-name">{svc.label}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {/* Bottom row: 2 cards */}
+          <div className="svc-mega-row svc-mega-row--2">
+            {SERVICES.slice(3).map(svc => (
+              <Link key={svc.path} to={svc.path} className="svc-card" onClick={closeAll}>
+                <div className="svc-card-img-wrap">
+                  <img src={svc.img} alt={svc.label} className="svc-card-img" />
+                  <div className="svc-card-top-label">{svc.label}</div>
+                  <div className="svc-card-overlay" />
+                </div>
+                <div className="svc-card-footer">
+                  <span className="svc-card-name">{svc.label}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+/* ─── Marketplace Mega-Dropdown ─────────────────────────────────── */
+const MarketplaceDropdown = ({ isOpen, onOpen, onClose, isActive, onClose: closeAll, location }) => {
+  const isSellActive = location.pathname === '/tenders/smart-bids' || location.pathname === '/tenders';
+  const isBuyActive = location.pathname === '/tenders/buy' || (location.pathname.startsWith('/tenders/') && !location.pathname.startsWith('/tenders/smart-bids') && !location.pathname.startsWith('/tenders/manage'));
+
+  return (
+    <div
+      className={`pub-dropdown-wrapper${isOpen ? ' pub-dropdown-wrapper--open' : ''}`}
+      onMouseEnter={onOpen}
+      onMouseLeave={onClose}
+    >
+      <span className={`pub-link-modern${isActive ? ' active' : ''}`} role="button" tabIndex={0}>
+        Marketplace
+        <ChevronDown size={13} className={`pub-chevron${isOpen ? ' pub-chevron--open' : ''}`} />
+      </span>
+
+      {isOpen && (
+        <div className="mkt-mega-panel">
+          <Link to="/tenders/smart-bids" className={`mkt-card${isSellActive ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Compete &amp; Sell</span>
+            <span className="mkt-card-desc">Participate in open tenders, submit smart bids, and win lucrative contracts for your business.</span>
+          </Link>
+          <div className="mkt-divider" />
+          <Link to="/tenders/buy" className={`mkt-card${isBuyActive ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Compete &amp; Buy</span>
+            <span className="mkt-card-desc">Publish your own tenders, receive competitive bids, and find the best verified suppliers.</span>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+/* ─── Gallery Mega-Dropdown ─────────────────────────────────────── */
+const GalleryDropdown = ({ isOpen, onOpen, onClose, isActive, onClose: closeAll, isActiveHash }) => {
+  return (
+    <div
+      className={`pub-dropdown-wrapper${isOpen ? ' pub-dropdown-wrapper--open' : ''}`}
+      onMouseEnter={onOpen}
+      onMouseLeave={onClose}
+    >
+      <span className={`pub-link-modern${isActive ? ' active' : ''}`} role="button" tabIndex={0}>
+        Gallery
+        <ChevronDown size={13} className={`pub-chevron${isOpen ? ' pub-chevron--open' : ''}`} />
+      </span>
+
+      {isOpen && (
+        <div className="mkt-mega-panel" style={{ width: '380px' }}>
+          <Link to="/gallery#section-cars" className={`mkt-card${isActiveHash('/gallery', '#section-cars') ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Cars &amp; Fleet</span>
+            <span className="mkt-card-desc">View our premium rental cars and heavy machinery fleet.</span>
+          </Link>
+          <div className="mkt-divider" />
+          <Link to="/gallery#section-workplace" className={`mkt-card${isActiveHash('/gallery', '#section-workplace') ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Workers &amp; Workplace</span>
+            <span className="mkt-card-desc">Take a look at our dedicated team and modern facilities.</span>
+          </Link>
+          <div className="mkt-divider" />
+          <Link to="/gallery#section-events" className={`mkt-card${isActiveHash('/gallery', '#section-events') ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Events &amp; Activities</span>
+            <span className="mkt-card-desc">Explore highlights from our latest company events and campaigns.</span>
+          </Link>
+          <div className="mkt-divider" />
+          <Link to="/gallery#section-products" className={`mkt-card${isActiveHash('/gallery', '#section-products') ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Products Showcase</span>
+            <span className="mkt-card-desc">Browse a showcase of our top commercial and retail products.</span>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── News Mega-Dropdown ────────────────────────────────────────── */
+const NewsDropdown = ({ isOpen, onOpen, onClose, isActive, onClose: closeAll, location }) => {
+  return (
+    <div
+      className={`pub-dropdown-wrapper${isOpen ? ' pub-dropdown-wrapper--open' : ''}`}
+      onMouseEnter={onOpen}
+      onMouseLeave={onClose}
+    >
+      <span className={`pub-link-modern${isActive ? ' active' : ''}`} role="button" tabIndex={0}>
+        News
+        <ChevronDown size={13} className={`pub-chevron${isOpen ? ' pub-chevron--open' : ''}`} />
+      </span>
+
+      {isOpen && (
+        <div className="mkt-mega-panel" style={{ width: '380px' }}>
+          <Link to="/news" className={`mkt-card${location.pathname === '/news' ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">All Updates</span>
+            <span className="mkt-card-desc">Stay informed with the latest company updates, announcements, and press releases.</span>
+          </Link>
+          <div className="mkt-divider" />
+          <Link to="/news/news" className={`mkt-card${location.pathname === '/news/news' ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Latest News</span>
+            <span className="mkt-card-desc">Read our recent blog posts and detailed articles about our services and achievements.</span>
+          </Link>
+          <div className="mkt-divider" />
+          <Link to="/news/hiring" className={`mkt-card${location.pathname === '/news/hiring' ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Careers &amp; Hiring</span>
+            <span className="mkt-card-desc">Explore open positions and join our dedicated team of professionals.</span>
+          </Link>
+          <div className="mkt-divider" />
+          <Link to="/news/video" className={`mkt-card${location.pathname === '/news/video' ? ' mkt-card--active' : ''}`} onClick={closeAll}>
+            <span className="mkt-card-title">Video Gallery</span>
+            <span className="mkt-card-desc">Watch video highlights, tutorials, and showcases of our top services.</span>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const NavDropdown = ({ label, isOpen, onOpen, onClose, children, isActive }) => {
   const [mobileExpanded, setMobileExpanded] = useState(false);
   return (
@@ -96,56 +274,41 @@ export const PublicNav = () => {
 
         {/* ── Desktop nav links ── */}
         <nav className="pub-nav-links-desktop">
-          <NavDropdown
-            label="Services"
+          <ServicesMegaDropdown
             isOpen={servicesOpen}
             onOpen={() => setServicesOpen(true)}
             onClose={() => setServicesOpen(false)}
             isActive={isActiveAt('/services') || isActiveAt('/fleet-gallery')}
-          >
-            <Link to="/services/printing"  className={`pub-dropdown-item${isActive('/services/printing')  ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Printer size={17}/></span><span>Commercial Printing</span></Link>
-            <Link to="/services/pharmacy"  className={`pub-dropdown-item${isActive('/services/pharmacy')  ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Pill size={17}/></span><span>Pharmacy &amp; Health</span></Link>
-            <Link to="/fleet-gallery"      className={`pub-dropdown-item${isActive('/fleet-gallery')      ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Car size={17}/></span><span>Car Rental</span></Link>
-            <Link to="/services/farming"   className={`pub-dropdown-item${isActive('/services/farming')   ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Wheat size={17}/></span><span>AgriRent</span></Link>
-            <Link to="/services/retail"    className={`pub-dropdown-item${isActive('/services/retail')    ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Store size={17}/></span><span>Retail Store</span></Link>
-          </NavDropdown>
+            onClose={closeAll}
+          />
 
-          <NavDropdown
-            label="Marketplace"
+
+          <MarketplaceDropdown
             isOpen={marketOpen}
             onOpen={() => setMarketOpen(true)}
             onClose={() => setMarketOpen(false)}
             isActive={isActiveAt('/tenders') || isActiveAt('/marketplace')}
-          >
-            <Link to="/tenders/smart-bids" className={`pub-dropdown-item${(isActive('/tenders/smart-bids') || isActive('/tenders')) ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Award size={17}/></span><span>Compete &amp; Sell</span></Link>
-            <Link to="/tenders/buy"        className={`pub-dropdown-item${(isActive('/tenders/buy') || (isActiveAt('/tenders/') && !isActiveAt('/tenders/smart-bids') && !isActiveAt('/tenders/manage'))) ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><ShoppingCart size={17}/></span><span>Compete &amp; Buy</span></Link>
-          </NavDropdown>
+            onClose={closeAll}
+            location={location}
+          />
 
-          <NavDropdown
-            label="Gallery"
+          <GalleryDropdown
             isOpen={galleryOpen}
             onOpen={() => setGalleryOpen(true)}
             onClose={() => setGalleryOpen(false)}
             isActive={isActiveAt('/gallery')}
-          >
-            <Link to="/gallery#section-cars"       className={`pub-dropdown-item${isActiveHash('/gallery', '#section-cars') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Car size={17}/></span><span>Cars &amp; Fleet</span></Link>
-            <Link to="/gallery#section-workplace"  className={`pub-dropdown-item${isActiveHash('/gallery', '#section-workplace') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Users size={17}/></span><span>Workers &amp; Workplace</span></Link>
-            <Link to="/gallery#section-events"     className={`pub-dropdown-item${isActiveHash('/gallery', '#section-events') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><PartyPopper size={17}/></span><span>Events &amp; Activities</span></Link>
-            <Link to="/gallery#section-products"   className={`pub-dropdown-item${isActiveHash('/gallery', '#section-products') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Package size={17}/></span><span>Products Showcase</span></Link>
-          </NavDropdown>
+            onClose={closeAll}
+            isActiveHash={isActiveHash}
+          />
 
-          <NavDropdown
-            label="News"
+          <NewsDropdown
             isOpen={newsOpen}
             onOpen={() => setNewsOpen(true)}
             onClose={() => setNewsOpen(false)}
             isActive={isActiveAt('/news')}
-          >
-            <Link to="/news"          className={`pub-dropdown-item${isActive('/news')         ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon">📡</span><span>All News</span></Link>
-            <Link to="/news/news"     className={`pub-dropdown-item${isActive('/news/news')    ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon">📰</span><span>News</span></Link>
-            <Link to="/news/hiring"   className={`pub-dropdown-item${isActive('/news/hiring')  ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon">💼</span><span>Hiring</span></Link>
-            <Link to="/news/video"    className={`pub-dropdown-item${isActive('/news/video')   ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Video size={17}/></span><span>Video</span></Link>
-          </NavDropdown>
+            onClose={closeAll}
+            location={location}
+          />
 
           <Link to="/track-order" className={`pub-link-modern${isActive('/track-order') ? ' active' : ''}`}>Track Order</Link>
           <Link to="/about"       className={`pub-link-modern${isActive('/about')       ? ' active' : ''}`}>About Us</Link>
