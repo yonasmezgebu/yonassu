@@ -340,4 +340,9 @@ router.post('/quotations/:id/convert', authenticate, authorize(['purchase_orders
 router.post('/quotations/:id/ceo-approve', authenticate, authorizeRoles(['CEO', 'Admin']), QuotationController.approveQuotation);
 router.put('/quotations/:id/cancel', authenticate, authorize(['purchase_orders:update']), QuotationController.cancelQuotation);
 
+// ── Pharmacy Store: pending incoming shipments from pharmacy quotations ──
+router.get('/pharmacy-incoming', authenticate, authorize(['inventory:read']), QuotationController.listPharmacyIncoming);
+router.get('/pharmacy-incoming/:id', authenticate, authorize(['inventory:read']), QuotationController.getPharmacyIncoming);
+router.post('/pharmacy-incoming/:id/accept-item', authenticate, authorize(['inventory:update']), QuotationController.acceptPharmacyIncomingItem);
+
 module.exports = router;
