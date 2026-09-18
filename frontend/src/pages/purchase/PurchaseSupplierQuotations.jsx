@@ -104,7 +104,7 @@ const PQ_STYLES = `
   @media (max-width: 768px) { .pq-header { flex-direction: column; align-items: flex-start; } .pq-filter { flex-direction: column; align-items: stretch; } .pq-search-wrap { max-width: 100%; } .pq-modal { max-height: 95vh; } }
 `;
 
-const emptyItem = () => ({ item_description: '', quantity: '1', unit: '', unit_price: '' });
+const emptyItem = () => ({ item_description: '', quantity: '1', unit: '', unit_price: '', category: '', batch_no: '', strength: '', expiry_date: '' });
 
 const PurchaseSupplierQuotations = () => {
   const [quotations, setQuotations] = useState([]);
@@ -126,7 +126,8 @@ const PurchaseSupplierQuotations = () => {
     date_agreed: new Date().toISOString().split('T')[0],
     agreed_via: 'Phone',
     notes: '',
-    vat_rate: '15'
+    vat_rate: '15',
+    destination: 'general'
   });
   const [manualSupplier, setManualSupplier] = useState(false);
   const [supplierOpen, setSupplierOpen] = useState(false);
@@ -242,7 +243,7 @@ const PurchaseSupplierQuotations = () => {
       });
       showToast('Quotation recorded successfully');
       setShowAddModal(false);
-      setFormData({ supplier_id: '', supplier_name: '', date_agreed: new Date().toISOString().split('T')[0], agreed_via: 'Phone', notes: '', vat_rate: '15' });
+      setFormData({ supplier_id: '', supplier_name: '', date_agreed: new Date().toISOString().split('T')[0], agreed_via: 'Phone', notes: '', vat_rate: '15', destination: 'general' });
       setManualSupplier(false);
       setLineItems([emptyItem()]);
       fetchData();
@@ -501,6 +502,28 @@ const PurchaseSupplierQuotations = () => {
             </div>
             <form onSubmit={handleAddSubmit}>
               <div className="pq-modal-body">
+                {/* Destination toggle: General store vs Pharmacy store */}
+                <div style={{ display: 'flex', gap: 10, marginBottom: 20, background: '#F3F4F6', borderRadius: 10, padding: 6 }}>
+                  {[
+                    { key: 'general', label: '🏪 General Store', hint: 'Items listed by description only' },
+                    { key: 'pharmacy', label: '💊 Pharmacy', hint: 'Drugs with batch, strength, expiry + money' }
+                  ].map(opt => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, destination: opt.key })}
+                      style={{
+                        flex: 1, border: 'none', borderRadius: 8, padding: '10px 12px', cursor: 'pointer',
+                        background: formData.destination === opt.key ? '#2563EB' : 'transparent',
+                        color: formData.destination === opt.key ? '#fff' : '#374151', fontSize: 13, fontWeight: 600
+                      }}
+                    >
+                      <div>{opt.label}</div>
+                      <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.85, marginTop: 2 }}>{opt.hint}</div>
+                    </button>
+                  ))}
+                </div>
+
                 {/* Supplier & Meta */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                   <div style={{ gridColumn: '1 / -1' }}>
@@ -618,6 +641,43 @@ const PurchaseSupplierQuotations = () => {
                           <MinusCircle size={18} />
                         </button>
                       )}
+
+                      {formData.destination === 'pharmacy' ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 0.8fr 1.1fr 1fr 0.8fr 1fr', gap: 10, paddingTop: 6 }}>
+                          <div>
+                            <label>Drug Name</label>
+                            <input required className="pq-input" value={item.item_description} onChange={e => updateLineItem(idx, 'item_description', e.target.value)} placeholder="e.g. Paracetamol" />
+                          </div>
+                          <div>
+                            <label>Category</label>
+                            <input className="pq-input" value={item.category} onChange={e => updateLineItem(idx, 'category', e.target.value)} placeholder="e.g. Analgesic" />
+                          </div>
+                          <div>
+                            <label>Batch No</label>
+                            <input className="pq-input" value={item.batch_no} onChange={e => updateLineItem(idx, 'batch_no', e.target.value)} placeholder="e.g. BAT-2026-01" />
+                          </div>
+                          <div>
+                            <label>Strength</label>
+                            <input className="pq-input" value={item.strength} onChange={e => updateLineItem(idx, 'strength', e.target.value)} placeholder="e.g. 500mg" />
+                          </div>
+                          <div>
+                            <label>Expiry Date</label>
+                            <input type="date" className="pq-input" value={item.expiry_date} onChange={e => updateLineItem(idx, 'expiry_date', e.target.value)} />
+                          </div>
+                          <div>
+                            <label>Qty</label>
+                            <input required type="number" min="1" step="1" className="pq-input" value={item.quantity} onChange={e => updateLineItem(idx, 'quantity', e.target.value)} />
+                          </div>
+                          <div>
+                            <label>Unit</label>
+                            <input className="pq-input" value={item.unit} onChange={e => updateLineItem(idx, 'unit', e.target.value)} placeholder="pcs" />
+                          </div>
+                          <div>
+                            <label>Cost Price (ETB)</label>
+                            <input required type="number" min="0" step="0.01" className="pq-input" value={item.unit_price} onChange={e => updateLineItem(idx, 'unit_price', e.target.value)} />
+                          </div>
+                        </div>
+                      ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: '2fr 0.6fr 0.5fr 1fr 1fr', gap: 10, paddingTop: 6 }}>
                         <div>
                           <label>Item Description</label>
@@ -640,6 +700,12 @@ const PurchaseSupplierQuotations = () => {
                           <div className="pq-input pq-input-static" style={{ display: 'flex', alignItems: 'center', height: 42 }}>ETB {lineSubtotal(item).toLocaleString()}</div>
                         </div>
                       </div>
+                      )}
+                      {formData.destination === 'pharmacy' && (
+                        <div style={{ textAlign: 'right', paddingTop: 6, fontSize: 13, color: '#6B7280' }}>
+                          Line Total: <strong style={{ color: '#111827' }}>ETB {lineSubtotal(item).toLocaleString()}</strong>
+                        </div>
+                      )}
                     </div>
                   ))}
 
@@ -900,14 +966,17 @@ const PurchaseSupplierQuotations = () => {
               <p style={{ color: '#6B7280', fontSize: 14, margin: '0 0 16px 0' }}>
                 <strong style={{ fontFamily: 'monospace' }}>{selectedQuote.quotation_no}</strong> is approved and finance-ready (funds released). Choose how to continue.
               </p>
-              <button className="pq-btn pq-btn-success" style={{ height: 48, width: '100%', marginBottom: 8, justifyContent: 'center' }} disabled={converting} onClick={() => handleConvert(false)}>
-                {converting ? <span>Converting…</span> : <><ShoppingCart size={16} /> Convert to Purchase Order</>}
-              </button>
               <button className="pq-btn" style={{ height: 48, width: '100%', background: '#1D4ED8', color: '#fff', justifyContent: 'center' }} disabled={converting} onClick={() => handleConvert(true)}>
-                {converting ? <span>Converting…</span> : <><ShoppingCart size={16} /> Convert & Send to General Store</>}
+                {converting
+                  ? <span>Converting…</span>
+                  : selectedQuote.destination === 'pharmacy'
+                    ? <><ShoppingCart size={16} /> Convert & Send to {selectedQuote.destination === 'pharmacy' ? 'Pharmacy' : 'General'} Store</>
+                    : <><ShoppingCart size={16} /> Convert & Send to General Store</>}
               </button>
               <p style={{ color: '#9CA3AF', fontSize: 12, margin: '12px 0 0 0', lineHeight: 1.5 }}>
-                Sending to the General Store creates a pending incoming shipment so the Store Keeper can receive the goods into inventory.
+                {selectedQuote.destination === 'pharmacy'
+                  ? 'Sending to the Pharmacy Store creates a pending incoming shipment so the Pharmacy Store Keeper can receive each drug batch (with strength and expiry) into pharmacy inventory.'
+                  : 'Sending to the General Store creates a pending incoming shipment so the Store Keeper can receive the goods into inventory.'}
               </p>
             </div>
           </div>
