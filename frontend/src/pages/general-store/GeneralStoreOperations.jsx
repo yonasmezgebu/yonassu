@@ -1199,11 +1199,15 @@ const GSR_CSS = `
   .gsr-inc-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 2px solid #A5D6A7; }
   .gsr-inc-title { font-size: 16px; font-weight: 800; color: #1B5E20; flex: 1; }
   .gsr-inc-close { background: none; border: none; font-size: 18px; color: #8D6E63; cursor: pointer; padding: 4px; }
+  .gsr-inc-tabs { display: flex; gap: 8px; padding: 12px 20px 0; }
+  .gsr-inc-tab { padding: 7px 16px; border-radius: 8px 8px 0 0; border: 1.5px solid #C8E6C9; border-bottom: none; background: #EEF6EC; color: #33691E; font-size: 12px; font-weight: 800; cursor: pointer; }
+  .gsr-inc-tab--on { background: #228B22; color: #fff; border-color: #228B22; }
   .gsr-inc-body { padding: 16px 20px 20px; overflow-y: auto; }
   .gsr-inc-empty { text-align: center; padding: 34px 16px; color: #424242; background: #F9FBE7; border: 2px dashed #CDDC39; border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
   .gsr-inc-card { border: 1.5px solid #C8E6C9; border-radius: 10px; padding: 14px; margin-bottom: 14px; background: #FCFDF8; }
   .gsr-inc-card--active { border-color: #228B22; box-shadow: 4px 4px 0 #C8E6C9; }
   .gsr-inc-status { background: #FFF8E1; color: #F57F17; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 20px; }
+  .gsr-inc-status--ok { background: #DCFCE7; color: #15803D; }
   .gsr-inc-items { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
   .gsr-inc-items th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #8D6E63; padding: 6px 8px; border-bottom: 1px solid #E0E0E0; }
   .gsr-inc-items td { padding: 6px 8px; border-bottom: 1px solid #F1F1F1; }
@@ -1230,15 +1234,26 @@ export const GSRegisterItem = () => {
   const showToast = (type, msg) => { setToast({ type, msg }); setTimeout(() => setToast(null), 4500); };
 
   const [incomingList, setIncomingList] = useState([]);
+  const [acceptedList, setAcceptedList] = useState([]);
+  const [incTab, setIncTab] = useState('pending');
   const [showIncoming, setShowIncoming] = useState(false);
   const [receiving, setReceiving] = useState(false);
   const [selectedInc, setSelectedInc] = useState(null);
+  const [acceptTarget, setAcceptTarget] = useState(null);
 
   const fetchIncoming = async () => {
     try {
       const res = await api.get('/api/v1/printing-assets/store/incoming');
       const list = res?.data?.data;
       setIncomingList(Array.isArray(list) ? list : []);
+    } catch (e) { /* non-fatal */ }
+  };
+
+  const fetchAccepted = async () => {
+    try {
+      const res = await api.get('/api/v1/printing-assets/store/incoming?status=received');
+      const list = res?.data?.data;
+      setAcceptedList(Array.isArray(list) ? list : []);
     } catch (e) { /* non-fatal */ }
   };
 
@@ -1251,7 +1266,8 @@ export const GSRegisterItem = () => {
   const openIncoming = async () => {
     setShowIncoming(true);
     setSelectedInc(null);
-    await fetchIncoming();
+    setIncTab('pending');
+    await Promise.all([fetchIncoming(), fetchAccepted()]);
   };
 
   const autoFill = (it) => {
@@ -1266,6 +1282,21 @@ export const GSRegisterItem = () => {
     }));
     setShowIncoming(false);
     showToast('success', `Auto-filled "${it.item_description || 'item'}" from incoming shipment — review & press Register Item.`);
+  };
+
+  const acceptItem = (inc, item) => {
+    if (!item) return;
+    setAcceptTarget({ incomingId: inc.id, itemId: item.id });
+    setForm(f => ({
+      ...f,
+      material_name: f.material_name || item.item_description || '',
+      category: f.category === 'Paper' && item.item_description ? 'Other' : f.category,
+      unit: f.unit === 'roll' && item.unit ? item.unit : f.unit,
+      quantity_in_store: f.quantity_in_store || parseFloat(item.quantity) || 0,
+      unit_value: f.unit_value || parseFloat(item.unit_price) || 0,
+    }));
+    setShowIncoming(false);
+    showToast('success', `"${item.item_description}" selected — fill the remaining fields & press Register Item to accept just this product.`);
   };
 
   const acceptShipment = async (inc) => {
@@ -1283,7 +1314,7 @@ export const GSRegisterItem = () => {
           quantity_in_store: f.quantity_in_store || parseFloat(got[0].qty) || 0,
         }));
       }
-      await fetchIncoming();
+      await Promise.all([fetchIncoming(), fetchAccepted()]);
       setSelectedInc(null);
     } catch (e) {
       showToast('error', e.response?.data?.message || 'Failed to receive shipment');
@@ -1297,9 +1328,23 @@ export const GSRegisterItem = () => {
     setSaving(true);
     try {
       await api.post('/api/v1/printing-assets/store/materials', form);
-      showToast('success', `"${form.material_name}" registered — ETB ${total.toLocaleString(undefined,{minimumFractionDigits:2})} total`);
+      let acceptMsg = '';
+if (acceptTarget) {
+  try {
+  const ar = await api.post(`/api/v1/printing-assets/store/incoming/${acceptTarget.incomingId}/accept`, { item_id: acceptTarget.itemId });
+  const info = ar?.data?.data || {};
+  if (info.shipment_complete) {
+    acceptMsg = ` · Shipment complete (${info.percent}%) — purchase marked received & expense paid.`;
+  } else {
+    acceptMsg = ` · ${info.received_count} of ${info.item_count || '?'} items accepted — ETB ${Number(info.received_value || 0).toLocaleString(undefined,{maximumFractionDigits:0})} / ${Number(info.total_value || 0).toLocaleString(undefined,{maximumFractionDigits:0})} (${info.percent}%) — keep registering remaining products.`;
+  }
+  setAcceptTarget(null);
+} catch (ae) { acceptMsg = ` · Item saved, but shipment accept failed (${ae.response?.data?.message || 'error'}).`; }
+}
+showToast('success', `"${form.material_name}" registered — ETB ${total.toLocaleString(undefined,{minimumFractionDigits:2})} total${acceptMsg}`);
       setForm({ material_name: '', category: 'Paper', unit: 'roll', quantity_in_store: 0, department: 'Printing', unit_value: 0, reorder_level: 10, has_input_vat: false, vat_rate: 15 });
       setCustomDept(false);
+      await Promise.all([fetchIncoming(), fetchAccepted()]);
     } catch (e) { showToast('error', e.response?.data?.message || 'Registration failed'); }
     setSaving(false);
   };
@@ -1522,49 +1567,113 @@ export const GSRegisterItem = () => {
               <span className="gsr-inc-title">Incoming Shipments</span>
               <button className="gsr-inc-close" onClick={() => setShowIncoming(false)}>✕</button>
             </div>
+            <div className="gsr-inc-tabs">
+                <button className={`gsr-inc-tab${incTab === 'pending' ? ' gsr-inc-tab--on' : ''}`} onClick={() => setIncTab('pending')}>
+                  Pending ({incomingList.length})
+                </button>
+                <button className={`gsr-inc-tab${incTab === 'received' ? ' gsr-inc-tab--on' : ''}`} onClick={() => setIncTab('received')}>
+                  Accepted ({acceptedList.length})
+                </button>
+              </div>
             <div className="gsr-inc-body">
-              {incomingList.length === 0 ? (
-                <div className="gsr-inc-empty">
-                  <div style={{ fontSize: 32 }}>📭</div>
-                  <div><strong>No pending incoming shipments.</strong></div>
-                  <div style={{ fontSize: 12, color: G.darkGray }}>Shipments created by Purchase converters (Convert & Send to General Store) will appear here.</div>
-                </div>
-              ) : (
-                incomingList.map(inc => (
-                  <div key={inc.id} className={`gsr-inc-card${selectedInc === inc.id ? ' gsr-inc-card--active' : ''}`}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <div style={{ fontWeight: 800, fontSize: 13 }}>
-                        {inc.delivery_note_no || `Inc-${inc.id}`}
-                        <span style={{ fontWeight: 600, color: G.darkGray, marginLeft: 8, fontSize: 12 }}>{inc.quotation_no} · {inc.supplier_name || 'supplier'}</span>
-                      </div>
-                      <span className="gsr-inc-status">PENDING</span>
-                    </div>
-                    <table className="gsr-inc-items">
-                      <thead>
-                        <tr><th>Item</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Unit</th><th style={{ textAlign: 'right' }}>Cost</th><th style={{ textAlign: 'right' }}>Total</th></tr>
-                      </thead>
-                      <tbody>
-                        {(inc.items || []).map(it => (
-                          <tr key={it.id}>
-                            <td>{it.item_description || '—'}</td>
-                            <td style={{ textAlign: 'right' }}>{it.quantity}</td>
-                            <td style={{ textAlign: 'right' }}>{it.unit || '—'}</td>
-                            <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.unit_price || 0).toLocaleString()}</td>
-                            <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.line_total || 0).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className="gsr-inc-actions">
-                      <button className="gsr-inc-btn gsr-inc-btn--ghost" disabled={receiving} onClick={() => autoFill((inc.items || [])[0])}>
-                        ✏️ Auto-fill Form
-                      </button>
-                      <button className="gsr-inc-btn gsr-inc-btn--primary" disabled={receiving} onClick={() => acceptShipment(inc)}>
-                        {receiving && selectedInc === inc.id ? 'Receiving…' : '📦 Receive & Add All to Inventory'}
-                      </button>
-                    </div>
+              {incTab === 'pending' ? (
+                incomingList.length === 0 ? (
+                  <div className="gsr-inc-empty">
+                    <div style={{ fontSize: 32 }}>📭</div>
+                    <div><strong>No pending incoming shipments.</strong></div>
+                    <div style={{ fontSize: 12, color: G.darkGray }}>Shipments created by Purchase converters (Convert & Send to General Store) will appear here.</div>
                   </div>
-                ))
+                ) : (
+                  incomingList.map(inc => {
+                      const totalValue = Number(inc.total_value || 0);
+                      const receivedValue = Number(inc.received_value || 0);
+                      const pct = Math.min(100, Number(inc.percent || 0));
+                      return (
+                    <div key={inc.id} className={`gsr-inc-card${selectedInc === inc.id ? ' gsr-inc-card--active' : ''}`}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ fontWeight: 800, fontSize: 13 }}>
+                          {inc.delivery_note_no || `Inc-${inc.id}`}
+                          <span style={{ fontWeight: 600, color: G.darkGray, marginLeft: 8, fontSize: 12 }}>{inc.quotation_no} · {inc.supplier_name || 'supplier'}</span>
+                        </div>
+                        <span className="gsr-inc-status">PENDING</span>
+                      </div>
+                      <div className="gsr-inc-progress">
+                        <div className="gsr-inc-progress-track">
+                          <div className="gsr-inc-progress-fill" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="gsr-inc-progress-txt">
+                          Accepted {inc.received_count || 0} of {inc.item_count || (inc.items || []).length} item(s) · ETB {receivedValue.toLocaleString(undefined,{maximumFractionDigits:0})} / {totalValue.toLocaleString(undefined,{maximumFractionDigits:0})} ({pct}%)
+                        </span>
+                      </div>
+                      <table className="gsr-inc-items">
+                        <thead>
+                          <tr><th>Item</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Unit</th><th style={{ textAlign: 'right' }}>Cost</th><th style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'center' }}>Action</th></tr>
+                        </thead>
+                        <tbody>
+                          {(inc.items || []).map(it => (
+                            <tr key={it.id}>
+                              <td>{it.item_description || '—'}</td>
+                              <td style={{ textAlign: 'right' }}>{it.quantity}</td>
+                              <td style={{ textAlign: 'right' }}>{it.unit || '—'}</td>
+                              <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.unit_price || 0).toLocaleString()}</td>
+                              <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.line_total || 0).toLocaleString()}</td>
+                              <td style={{ textAlign: 'center' }}>
+                                <button className="gsr-inc-btn gsr-inc-btn--primary gsr-inc-btn--sm" disabled={receiving} onClick={() => acceptItem(inc, it)}>
+                                  ✅ Receive
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="gsr-inc-actions">
+                        <button className="gsr-inc-btn gsr-inc-btn--ghost" disabled={receiving} onClick={() => acceptShipment(inc)}>
+                          {receiving && selectedInc === inc.id ? 'Receiving…' : '📦 Receive All at Once'}
+                        </button>
+                      </div>
+                    </div>
+                      );
+                    })
+                )
+              ) : (
+                acceptedList.length === 0 ? (
+                  <div className="gsr-inc-empty">
+                    <div style={{ fontSize: 32 }}>📦</div>
+                    <div><strong>No accepted shipments yet.</strong></div>
+                    <div style={{ fontSize: 12, color: G.darkGray }}>Shipments you accepted will be listed here.</div>
+                  </div>
+                ) : (
+                  acceptedList.map(inc => (
+                    <div key={inc.id} className="gsr-inc-card">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ fontWeight: 800, fontSize: 13 }}>
+                          {inc.delivery_note_no || `Inc-${inc.id}`}
+                          <span style={{ fontWeight: 600, color: G.darkGray, marginLeft: 8, fontSize: 12 }}>{inc.quotation_no} · {inc.supplier_name || 'supplier'}</span>
+                        </div>
+                        <span className="gsr-inc-status gsr-inc-status--ok">ACCEPTED</span>
+                      </div>
+                      <table className="gsr-inc-items">
+                        <thead>
+                          <tr><th>Item</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Unit</th><th style={{ textAlign: 'right' }}>Cost</th><th style={{ textAlign: 'right' }}>Total</th></tr>
+                        </thead>
+                        <tbody>
+                          {(inc.items || []).map(it => (
+                            <tr key={it.id}>
+                              <td>{it.item_description || '—'}</td>
+                              <td style={{ textAlign: 'right' }}>{it.quantity}</td>
+                              <td style={{ textAlign: 'right' }}>{it.unit || '—'}</td>
+                              <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.unit_price || 0).toLocaleString()}</td>
+                              <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.line_total || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div style={{ fontSize: 12, color: '#15803D', fontWeight: 600, marginTop: 8 }}>
+                        ✓ Accepted{inc.received_by_name ? ` by ${inc.received_by_name}` : ''}{inc.received_at ? ` on ${new Date(inc.received_at).toLocaleString()}` : ''}
+                      </div>
+                    </div>
+                  ))
+                )
               )}
             </div>
           </div>
