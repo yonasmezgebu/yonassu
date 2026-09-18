@@ -10,6 +10,9 @@ const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 const { uploads, handleUploadError } = require('../../config/multer');
 const { limiters } = require('../../config/rateLimit');
+const { catchAsync } = require('../../utils/catchAsync');
+const { db } = require('../../config/database');
+
 const createOrderValidation = [
   body('customerId')
     .optional()
@@ -111,9 +114,9 @@ const orderIdParamValidation = [
     .isInt().withMessage('Order ID must be a valid integer')
     .toInt()
 ];
-// ── Upload Work (the finished job file shown to the customer) ────────────
+// â”€â”€ Upload Work (the finished job file shown to the customer) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Allowed: images (JPG/PNG/GIF/WEBP/BMP), PDF, DOC/DOCX, ZIP. Max 25MB per
-// file, up to 5 files per upload request. Validated here (server-side) — the
+// file, up to 5 files per upload request. Validated here (server-side) â€” the
 // frontend also validates before sending so the user gets instant feedback.
 const WORK_UPLOAD_DIR = './uploads/orders';
 const WORK_MAX_MB = 25;
@@ -157,7 +160,7 @@ const handleWorkUploadError = (err, req, res, next) => {
       return res.status(400).json({ status: 'error', message: `Too many files. Max: ${WORK_MAX_FILES} files at once.` });
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ status: 'error', message: 'Unexpected form field name — use "files" (upload) or "file" (replace).' });
+      return res.status(400).json({ status: 'error', message: 'Unexpected form field name â€” use "files" (upload) or "file" (replace).' });
     }
     return res.status(400).json({ status: 'error', message: err.message });
   }
@@ -178,14 +181,14 @@ const printTaxReceiptValidation = [
     .optional()
     .isString()
 ];
-// ── Public (no login required) ──────────────────────────────────
+// â”€â”€ Public (no login required) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/public/product-types', PrintingController.getProductTypes);
 router.get('/public/paper-types', PrintingController.getPaperTypes);
 router.get('/public/binding-types', PrintingController.getBindingTypes);
 router.get('/public/calculate-price', PrintingController.calculatePrice);
 router.get('/public/track/:orderNumber', PrintingController.trackOrder);
 
-// ── Customer (login required) ──────────────────────────────────
+// â”€â”€ Customer (login required) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post(
   '/customer/orders',
   authenticate,
@@ -203,7 +206,7 @@ router.delete('/customer/orders/:id', authenticate, async (req, res) => {
   res.json({ message: 'Order removed from your dashboard' });
 });
 
-// ── Worker / Manager (role required) ──────────────────────────
+// â”€â”€ Worker / Manager (role required) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get(
   '/orders',
   authenticate,
@@ -232,7 +235,7 @@ router.post(
   authorize(['orders:create']),
   uploads.singleOrderAttachment.fields([{ name: 'paymentScreenshot', maxCount: 1 }]),
   handleUploadError,
-  // multipart/form-data arrives from the walk-in form — JSON-typed fields come
+  // multipart/form-data arrives from the walk-in form â€” JSON-typed fields come
   // through as strings, so normalize them back before validation runs.
   (req, _res, next) => {
     if (!req.body || typeof req.body !== 'object') return next();
@@ -300,7 +303,7 @@ router.get(
   validate,
   PrintingController.getOrderHistory
 );
-// ── Uploaded Work (job output files for the customer) ─────────────────────
+// â”€â”€ Uploaded Work (job output files for the customer) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get(
   '/works',
   authenticate,
@@ -420,4 +423,181 @@ router.post(
   PrintingController.closeShift
 );
 
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// POSTS (Service Cards) â€” managed by supervisor, displayed on public page
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const POST_IMG_DIR = './uploads/printing-posts';
+const postImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (!fs.existsSync(POST_IMG_DIR)) fs.mkdirSync(POST_IMG_DIR, { recursive: true });
+    cb(null, POST_IMG_DIR);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    cb(null, `post-${Date.now()}-${uuidv4().substring(0, 8)}${ext}`);
+  }
+});
+const postImageFilter = (req, file, cb) => {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  if (allowed.includes(file.mimetype)) return cb(null, true);
+  cb(new Error('Only image files allowed (JPG, PNG, WEBP, GIF)'));
+};
+const postImageUpload = multer({ storage: postImageStorage, fileFilter: postImageFilter, limits: { fileSize: 5 * 1024 * 1024 } });
+
+// Public â€” list visible posts (for public printing page)
+router.get('/posts', async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const posts = await db('printing_posts').where({ is_visible: true }).orderBy('sort_order', 'asc');
+    res.json({ success: true, data: posts });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Admin â€” list ALL posts including hidden (supervisor only)
+router.get('/posts/admin', authenticate, authorize(['orders:read']), async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const posts = await db('printing_posts').orderBy('sort_order', 'asc');
+    res.json({ success: true, data: posts });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Create new post (supervisor)
+router.post('/posts', authenticate, authorize(['orders:create']), postImageUpload.single('image'), async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const { code, name, description, badge_label, base_price_per_page, is_visible, sort_order } = req.body;
+    if (!code || !name) return res.status(400).json({ success: false, message: 'code and name are required' });
+
+    const image_url = req.file ? `uploads/printing-posts/${req.file.filename}` : null;
+
+    const [id] = await db('printing_posts').insert({
+      code: code.trim(),
+      name: name.trim(),
+      description: description?.trim() || null,
+      badge_label: badge_label?.trim() || code.trim(),
+      base_price_per_page: parseFloat(base_price_per_page) || 0.50,
+      image_url,
+      is_visible: is_visible === 'false' || is_visible === false ? false : true,
+      sort_order: parseInt(sort_order) || 0,
+    });
+    const post = await db('printing_posts').where({ id }).first();
+    res.json({ success: true, message: 'Post created', data: post });
+  } catch (e) {
+    if (e.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'A post with this code already exists.' });
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Update post (supervisor)
+router.put('/posts/:id', authenticate, authorize(['orders:update']), postImageUpload.single('image'), async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const { id } = req.params;
+    const existing = await db('printing_posts').where({ id }).first();
+    if (!existing) return res.status(404).json({ success: false, message: 'Post not found' });
+
+    const { code, name, description, badge_label, base_price_per_page, is_visible, sort_order } = req.body;
+    const updates = { updated_at: new Date() };
+    if (code !== undefined) updates.code = code.trim();
+    if (name !== undefined) updates.name = name.trim();
+    if (description !== undefined) updates.description = description?.trim() || null;
+    if (badge_label !== undefined) updates.badge_label = badge_label?.trim() || null;
+    if (base_price_per_page !== undefined) updates.base_price_per_page = parseFloat(base_price_per_page) || 0.50;
+    if (is_visible !== undefined) updates.is_visible = is_visible === 'false' || is_visible === false ? false : true;
+    if (sort_order !== undefined) updates.sort_order = parseInt(sort_order) || 0;
+
+    if (req.file) {
+      // Delete old image if exists
+      if (existing.image_url) {
+        const oldPath = path.join('.', existing.image_url);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      updates.image_url = `uploads/printing-posts/${req.file.filename}`;
+    }
+
+    await db('printing_posts').where({ id }).update(updates);
+    const post = await db('printing_posts').where({ id }).first();
+    res.json({ success: true, message: 'Post updated', data: post });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Toggle visibility (supervisor)
+router.patch('/posts/:id/visibility', authenticate, authorize(['orders:update']), async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const { id } = req.params;
+    const post = await db('printing_posts').where({ id }).first();
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+    const newVisibility = !post.is_visible;
+    await db('printing_posts').where({ id }).update({ is_visible: newVisibility, updated_at: new Date() });
+    res.json({ success: true, message: newVisibility ? 'Post is now visible to public' : 'Post is now hidden from public', data: { id, is_visible: newVisibility } });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Delete post (supervisor)
+router.delete('/posts/:id', authenticate, authorize(['orders:delete']), async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const { id } = req.params;
+    const post = await db('printing_posts').where({ id }).first();
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+    // Delete image file if exists
+    if (post.image_url) {
+      const imgPath = path.join('.', post.image_url);
+      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+    }
+    await db('printing_posts').where({ id }).delete();
+    res.json({ success: true, message: 'Post deleted' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ==========================================
+// PRICING MANAGEMENT (Papers & Bindings)
+// ==========================================
+router.get('/pricing/papers', authenticate, authorize(['orders:read']), catchAsync(async (req, res) => {
+  const data = await db('printing_paper_types').orderBy('id', 'asc');
+  res.json({ success: true, data });
+}));
+router.post('/pricing/papers', authenticate, authorize(['orders:read']), catchAsync(async (req, res) => {
+  const [id] = await db('printing_paper_types').insert(req.body);
+  res.json({ success: true, message: 'Added' });
+}));
+router.put('/pricing/papers/:id', authenticate, authorize(['orders:read']), catchAsync(async (req, res) => {
+  await db('printing_paper_types').where({ id: req.params.id }).update(req.body);
+  res.json({ success: true, message: 'Updated' });
+}));
+router.delete('/pricing/papers/:id', authenticate, authorize(['orders:read']), catchAsync(async (req, res) => {
+  await db('printing_paper_types').where({ id: req.params.id }).del();
+  res.json({ success: true, message: 'Deleted' });
+}));
+
+router.get('/pricing/bindings', authenticate, authorize(['orders:read']), catchAsync(async (req, res) => {
+  const data = await db('printing_binding_types').orderBy('id', 'asc');
+  res.json({ success: true, data });
+}));
+router.post('/pricing/bindings', authenticate, authorize(['orders:read']), catchAsync(async (req, res) => {
+  const [id] = await db('printing_binding_types').insert(req.body);
+  res.json({ success: true, message: 'Added' });
+}));
+router.put('/pricing/bindings/:id', authenticate, authorize(['orders:read']), catchAsync(async (req, res) => {
+  await db('printing_binding_types').where({ id: req.params.id }).update(req.body);
+  res.json({ success: true, message: 'Updated' });
+}));
+router.delete('/pricing/bindings/:id', authenticate, authorize(['orders:read']), catchAsync(async (req, res) => {
+  await db('printing_binding_types').where({ id: req.params.id }).del();
+  res.json({ success: true, message: 'Deleted' });
+}));
+
 module.exports = router;
+
