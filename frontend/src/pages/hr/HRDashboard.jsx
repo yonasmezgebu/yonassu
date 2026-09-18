@@ -22,6 +22,7 @@ import HRPerformanceReview from './HRPerformanceReview';
 import HRFeedback from './HRFeedback';
 import HRPolicies from './HRPolicies';
 import HRAnnouncements from './HRAnnouncements';
+import HRAttendance from './HRAttendance';
 import HRNotices from './HRNotices';
 import NewsManager from '../admin/NewsManager';
 import GalleryManager from '../admin/GalleryManager';
@@ -36,6 +37,8 @@ const HRDashboard = () => {
     { label: 'Dashboard', path: '/hr/employee-summary', icon: 'home' },
     { type: 'divider' },
     { label: 'Employees', path: '/hr/employees', icon: 'users' },
+    { type: 'divider' },
+    { label: 'Attendance', path: '/hr/attendance', icon: 'clock', color: '#0f172a' },
     { type: 'divider' },
     {
       label: 'Payroll', icon: 'wallet',
@@ -74,6 +77,7 @@ const HRDashboard = () => {
     '/hr/employee-summary',
     '/hr/overview',
     '/hr/employees',
+    '/hr/attendance',
     '/hr/monthly-payroll',
     '/hr/salary-list',
     '/hr/deductions',
@@ -95,6 +99,7 @@ const HRDashboard = () => {
       <Route path="employee-summary"    element={<HRHome />} />
       <Route path="todays-activities"   element={<HRActivities />} />
       <Route path="employees"           element={<HREmployeesWrapper />} />
+      <Route path="attendance"          element={<HRAttendance />} />
       <Route path="salary-list"         element={<HRPayroll />} />
         <Route path="monthly-payroll"      element={<HRPayrollDashboard />} />
         <Route path="deductions"          element={<HRDeductions />} />
