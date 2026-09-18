@@ -52,8 +52,23 @@ db.schema.hasTable('general_store_incoming_items').then(exists => {
       table.string('unit', 50).defaultTo('unit');
       table.decimal('unit_price', 15, 2).defaultTo(0);
       table.decimal('line_total', 15, 2).defaultTo(0);
+      table.string('status', 20).defaultTo('pending');
+      table.integer('received_by').unsigned().nullable();
+      table.timestamp('received_at').nullable();
     });
   }
+}).catch(console.error);
+
+// Per-item acceptance columns (idempotent for existing databases)
+db.schema.hasColumn('general_store_incoming_items', 'status').then(exists => {
+  if (exists) return Promise.resolve();
+  return db.schema.alterTable('general_store_incoming_items', table => {
+    table.string('status', 20).defaultTo('pending');
+    table.integer('received_by').unsigned().nullable();
+    table.timestamp('received_at').nullable();
+  }).then(() => db.raw(`UPDATE general_store_incoming_items it
+      JOIN general_store_incoming g ON g.id = it.incoming_id AND g.status = 'received'
+      SET it.status = 'received', it.received_by = g.received_by, it.received_at = g.received_at`));
 }).catch(console.error);
 
 // Ensure quotation_finance table exists (finance approval gate before conversion)
@@ -140,12 +155,39 @@ exports.getQuotations = catchAsync(async (req, res) => {
         store_received_at: g.received_at
       };
     });
+    const itemAggMap = {};
+    if (ids.length) {
+      const itemAggs = await db('general_store_incoming as g')
+        .join('general_store_incoming_items as it', 'it.incoming_id', 'g.id')
+        .whereIn('g.quotation_id', ids)
+        .groupBy('g.quotation_id')
+        .select('g.quotation_id',
+          db.raw("COALESCE(SUM(it.line_total),0) as total_value"),
+          db.raw("COALESCE(SUM(CASE WHEN it.status = 'received' THEN it.line_total ELSE 0 END),0) as received_value"),
+          db.raw("COUNT(CASE WHEN it.status = 'received' THEN 1 END) as received_count"),
+          db.raw('COUNT(*) as item_count'));
+      itemAggs.forEach(a => { itemAggMap[a.quotation_id] = a; });
+    }
     quotations.forEach(q => {
       const incoming = incomingMap[q.id];
       if (incoming) {
         Object.assign(q, incoming);
       } else {
         Object.assign(q, { store_status: q.status === 'Converted' ? 'not_sent' : null });
+      }
+      const agg = itemAggMap[q.id];
+      if (agg) {
+        const totalValue = parseFloat(agg.total_value || 0);
+        const receivedValue = parseFloat(agg.received_value || 0);
+        Object.assign(q, {
+          store_total_value: totalValue,
+          store_received_value: receivedValue,
+          store_received_count: Number(agg.received_count || 0),
+          store_item_count: Number(agg.item_count || 0),
+          store_percent: totalValue > 0
+            ? Math.round((receivedValue / totalValue) * 100)
+            : (Number(agg.received_count || 0) > 0 ? 100 : 0)
+        });
       }
     });
   }
@@ -217,7 +259,8 @@ exports.getPendingQuotations = catchAsync(async (req, res) => {
 });
 
 exports.createQuotation = catchAsync(async (req, res) => {
-  const { supplier_id, supplier_name, items, date_agreed, agreed_via, notes, vat_rate } = req.body;
+  const { supplier_id, supplier_name, items, date_agreed, agreed_via, notes, vat_rate, destination } = req.body;
+  const dest = destination === 'pharmacy' ? 'pharmacy' : 'general';
 
   if (!supplier_name) throw AppError.badRequest('Supplier name is required');
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -235,11 +278,15 @@ exports.createQuotation = catchAsync(async (req, res) => {
     subtotal += lineTotal;
     return {
       line_no: idx + 1,
-      item_description: item.item_description || '',
+      item_description: item.item_description || item.name || '',
       quantity: qty,
       unit: item.unit || '',
       unit_price: price,
-      line_total: lineTotal
+      line_total: lineTotal,
+      category: item.category || null,
+      batch_no: item.batch_no || null,
+      strength: item.strength || null,
+      expiry_date: item.expiry_date || null
     };
   });
 
@@ -272,7 +319,8 @@ exports.createQuotation = catchAsync(async (req, res) => {
     status: 'Pending CEO Approval',
     recorded_by: req.user.id,
     vat_rate: vatPct,
-    vat_amount: vatAmt
+    vat_amount: vatAmt,
+    destination: dest
   });
 
   // Insert line items
@@ -284,6 +332,10 @@ exports.createQuotation = catchAsync(async (req, res) => {
     unit: item.unit,
     unit_price: item.unit_price,
     line_total: item.line_total,
+    category: item.category || null,
+    batch_no: item.batch_no || null,
+    strength: item.strength || null,
+    expiry_date: item.expiry_date || null,
     created_at: db.fn.now(),
     updated_at: db.fn.now()
   }));
@@ -664,6 +716,49 @@ exports.convertQuotation = catchAsync(async (req, res) => {
     });
   }
 
+  // ── Pharmacy destination: create a pending Pharmacy Store shipment ──
+  if (quote.destination === 'pharmacy') {
+    const shipmentNo = `PHS-${Date.now().toString().slice(-6)}`;
+    const [pharmacyShipmentId] = await db('pharmacy_store_incoming').insert({
+      quotation_id: id,
+      purchase_order_id: poId,
+      quotation_no: quote.quotation_no,
+      shipment_no: shipmentNo,
+      supplier_name: quote.supplier_name || null,
+      status: 'pending',
+      total_amount: quote.total_amount,
+      vat_amount: quote.vat_amount || 0,
+      recorded_by: req.user.id,
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+    if (items.length > 0) {
+      const shipmentItems = items.map(item => ({
+        incoming_id: pharmacyShipmentId,
+        item_description: item.item_description,
+        category: item.category || null,
+        batch_no: item.batch_no || null,
+        strength: item.strength || null,
+        expiry_date: item.expiry_date || null,
+        quantity: item.quantity,
+        unit: item.unit || 'unit',
+        unit_price: item.unit_price,
+        line_total: item.line_total,
+        status: 'pending',
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      }));
+      await db('pharmacy_store_incoming_items').insert(shipmentItems);
+    }
+    await sendNotification('Pharmacy Store Keeper', null, {
+      type: 'PHARMACY_STORE_INCOMING',
+      title: 'Pending Pharmacy Store Shipment',
+      message: `Shipment ${shipmentNo} (${quote.quotation_no}) from ${quote.supplier_name || 'supplier'} is waiting for the Pharmacy Store Keeper to receive into pharmacy inventory.`,
+      related_entity_id: pharmacyShipmentId,
+      link: '/pharmacy/pending-incoming'
+    });
+  }
+
   await sendNotification('Purchase Manager', null, {
     type: 'QUOTATION_CONVERTED',
     title: 'Quotation Converted',
@@ -689,4 +784,134 @@ exports.cancelQuotation = catchAsync(async (req, res) => {
   });
 
   res.json({ status: 'success', message: 'Quotation cancelled' });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+//  PHARMACY STORE INCOMING FLOW (pharmacy-destination quotations)
+//  Route handlers wired in purchase.routes.js under /pharmacy-incoming
+// ─────────────────────────────────────────────────────────────────────
+
+exports.listPharmacyIncoming = catchAsync(async (req, res) => {
+  const { status } = req.query;
+  let query = db('pharmacy_store_incoming as psi')
+    .leftJoin('pharmacy_store_incoming_items as psii', 'psii.incoming_id', 'psi.id')
+    .groupBy('psi.id')
+    .orderBy('psi.created_at', 'desc')
+    .select(
+      'psi.id', 'psi.shipment_no', 'psi.quotation_no', 'psi.quotation_id',
+      'psi.purchase_order_id', 'psi.supplier_name', 'psi.status', 'psi.total_amount',
+      'psi.vat_amount', 'psi.created_at',
+      db.raw('COUNT(psii.id) as total_lines'),
+      db.raw('SUM(CASE WHEN psii.status = "received" THEN 1 ELSE 0 END) as received_lines'),
+      db.raw('SUM(CASE WHEN psii.status = "pending" THEN 1 ELSE 0 END) as pending_lines'),
+      db.raw('COALESCE(SUM(psii.quantity), 0) as total_quantity'),
+      db.raw('COALESCE(SUM(CASE WHEN psii.status = "received" THEN psii.quantity ELSE 0 END), 0) as received_quantity')
+    );
+  if (status && status !== 'All') query = query.having('psi.status', status);
+  const rows = await query;
+  res.json({ status: 'success', data: rows });
+});
+
+exports.getPharmacyIncoming = catchAsync(async (req, res) => {
+  const header = await db('pharmacy_store_incoming').where({ id: req.params.id }).first();
+  if (!header) throw AppError.notFound('Pharmacy incoming shipment not found');
+  const items = await db('pharmacy_store_incoming_items').where({ incoming_id: header.id }).orderBy('id');
+  res.json({ status: 'success', data: { ...header, items } });
+});
+
+exports.acceptPharmacyIncomingItem = catchAsync(async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const { id, itemId } = req.params;
+    const item = await trx('pharmacy_store_incoming_items').where({ id: itemId, incoming_id: id }).first();
+    if (!item) throw AppError.notFound('Pharmacy incoming item not found');
+    if (item.status === 'received') throw AppError.badRequest('Item already received');
+
+    const name = item.item_description;
+    const strength = item.strength || null;
+    const qty = parseFloat(item.quantity) || 0;
+    const batchNo = item.batch_no || null;
+    const expiry = item.expiry_date || null;
+    const unitPrice = parseFloat(item.unit_price) || 0;
+    const unit = item.unit || 'unit';
+
+    // Upsert drug by name + strength (pharmacy catalogue)
+    let drug = await trx('drugs')
+      .where({ name })
+      .andWhere(function () {
+        this.where('strength', strength).orWhere(function () { this.whereNull('strength'); });
+      })
+      .first();
+    let drugId;
+    if (drug) {
+      drugId = drug.id;
+    } else {
+      [drugId] = await trx('drugs').insert({
+        name,
+        strength,
+        unit,
+        unit_price: unitPrice,
+        selling_price: unitPrice,
+        reorder_level: 0,
+        created_at: trx.fn.now(),
+        updated_at: trx.fn.now()
+      });
+    }
+
+    // One pharmacy_inventory row per batch + strength + expiry (per user choice)
+    const existing = await trx('pharmacy_inventory')
+      .where({ drug_id: drugId, batch_no: batchNo })
+      .andWhere(function () {
+        this.where('strength', strength).orWhere(function () { this.whereNull('strength'); });
+      })
+      .andWhere(function () {
+        this.where('expiry_date', expiry).orWhere(function () { this.whereNull('expiry_date'); });
+      })
+      .first();
+    if (existing) {
+      await trx('pharmacy_inventory').where('id', existing.id).update({
+        quantity: trx.raw('quantity + ?', [qty]),
+        updated_at: trx.fn.now()
+      });
+    } else {
+      await trx('pharmacy_inventory').insert({
+        drug_id: drugId,
+        quantity: qty,
+        batch_no: batchNo,
+        strength,
+        expiry_date: expiry,
+        unit_cost: unitPrice,
+        reorder_level: 0,
+        created_at: trx.fn.now(),
+        updated_at: trx.fn.now()
+      });
+    }
+
+    await trx('pharmacy_store_incoming_items').where({ id: itemId }).update({
+      status: 'received',
+      received_by: req.user.id,
+      received_at: trx.fn.now(),
+      updated_at: trx.fn.now()
+    });
+
+    const pending = await trx('pharmacy_store_incoming_items')
+      .where({ incoming_id: id }).whereNot('status', 'received').first();
+    await trx('pharmacy_store_incoming').where({ id }).update({
+      status: pending ? 'partial' : 'received',
+      updated_at: trx.fn.now()
+    });
+
+    await trx.commit();
+    await audit('PHARMACY_INCOMING_ITEM_RECEIVED', req.user.id, {
+      module: 'Pharmacy Store',
+      recordIdentifier: `${item.item_description || 'item'} (${batchNo || 'no batch'})`,
+      afterState: { incoming_id: id, item_id: itemId, drug_id: drugId, quantity: qty, batch_no: batchNo, strength, expiry_date: expiry },
+      resource: 'pharmacy_store_incoming',
+      resourceId: String(id)
+    });
+    res.json({ status: 'success', message: 'Item received into pharmacy inventory', data: { drug_id: drugId } });
+  } catch (e) {
+    await trx.rollback();
+    throw e;
+  }
 });
