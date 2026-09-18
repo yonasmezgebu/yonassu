@@ -17,6 +17,7 @@ const EmployeePortalDashboard = () => {
       children: [
         { label: 'My Tasks',     path: '/employee/tasks/mine',          icon: 'list' },
         { label: 'Daily Report', path: '/employee/work/daily-report',   icon: 'file-text' },
+        { label: 'My Attendance', path: '/employee/attendance',         icon: 'clock', color: '#0284c7' },
         { label: 'My Payslips',  path: '/employee/payslips',            icon: 'banknote', color: '#059669' },
       ]
     },
