@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Package, Plus, CheckCircle, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Package, Plus, CheckCircle, AlertTriangle, Truck, ArrowLeft, Trash2 } from 'lucide-react';
 import { NotifStore } from './StoreHomeNew';
-import { addNewStock } from '../../utils/storeApi';
+import { addNewStock, getPharmacyIncomingList, getPharmacyIncoming, receivePharmacyIncoming } from '../../utils/storeApi';
 
 /* ── Enterprise CSS ─────────────────────────────────────────────── */
 const CSS = `
@@ -307,6 +307,116 @@ const CSS = `
     flex-shrink: 0;
   }
   @keyframes ans-spin { to { transform: rotate(360deg); } }
+
+  /* ── Pending Deliveries from Purchasing ── */
+  .ans-delivery {
+    background: #FFF7ED;
+    border: 1px solid #FDBA74;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .ans-delivery-hd {
+    background: #F97316;
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .ans-delivery-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    padding: 16px;
+  }
+  .ans-delivery-card {
+    text-align: left;
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 150ms ease;
+  }
+  .ans-delivery-card:hover {
+    border-color: #F97316;
+    box-shadow: 0 4px 12px rgba(249,115,22,.16);
+    transform: translateY(-1px);
+  }
+  .ans-delivery-card:hover .ans-delivery-link { color: #C2410C; }
+  .ans-delivery-qno {
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 15px;
+    color: #111827;
+    margin-bottom: 6px;
+  }
+  .ans-delivery-meta { font-size: 12.5px; color: #4B5563; margin: 2px 0; }
+  .ans-delivery-link {
+    margin-top: 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #EA580C;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ── Receive Delivery Mode ── */
+  .ans-recv-hd {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .ans-recv-title { font-size: 18px; font-weight: 700; color: var(--ct1); }
+  .ans-recv-sub { font-size: 13px; color: var(--ct2); margin-top: 2px; }
+  .ans-recv-body { padding: 16px; overflow-x: auto; }
+  .ans-recv-tbl { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1100px; }
+  .ans-recv-tbl th {
+    text-align: left;
+    padding: 8px 6px;
+    background: #F9FAFB;
+    color: #4B5563;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    border-bottom: 2px solid #E5E7EB;
+    white-space: nowrap;
+  }
+  .ans-recv-tbl td { padding: 8px 6px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
+  .ans-recv-tbl .ans-recvin { 
+    width: 100%; min-width: 90px; box-sizing: border-box;
+    padding: 7px 9px; border: 1px solid #E5E7EB; border-radius: 7px;
+    font-size: 13px; font-family: inherit; color: #111827;
+  }
+  .ans-recv-tbl .ans-recvin:focus { outline: none; border-color: var(--cp); box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
+  .ans-recv-extra td { background: #F0FDF4; }
+  .ans-recv-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ans-recv-rm {
+    border: 1px solid #FCA5A5; background: #FEF2F2; color: #DC2626;
+    width: 30px; height: 30px; border-radius: 7px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .ans-recv-rm:disabled { opacity: .4; cursor: not-allowed; }
+  .ans-recv-add { margin-top: 12px; }
+  .ans-recv-totals {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    margin-top: 16px; padding: 14px 16px;
+    background: #F8FAFC; border: 1px solid #E5E7EB; border-radius: 10px;
+  }
+  .ans-recv-totals > div { font-size: 13.5px; color: var(--ct1); }
+  .ans-recv-totals b { font-size: 15px; }
+  .ans-recv-receipt { margin-top: 20px; }
+  .ans-recv-extraflag { font-size: 10.5px; font-weight: 700; color: #15803D; }
 `;
 
 /* ─── Constants ─────────────────────────────────────────────────── */
@@ -317,13 +427,130 @@ const EMPTY = {
   initialQty: '', minLevel: '', maxLevel: '', storageLocation: '',
 };
 
+const DEFAULT_VAT = 15;
+
+const toDateOnly = (value) => {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value).slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const StoreAddNewStock = () => {
   const [form, setForm]         = useState({ ...EMPTY });
   const [loading, setLoading]   = useState(false);
   const [confirmed, setConfirmed] = useState(null);
 
+  // ── Deliveries sent by Purchasing (pharmacy quotations) ──
+  const [shipments, setShipments] = useState([]);
+  const [openingId, setOpeningId] = useState(null);
+  const [receiveShipment, setReceiveShipment] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [receiving, setReceiving] = useState(false);
+  const [receipt, setReceipt] = useState(null);
+
   const set = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.value }));
   const resetForm = () => { setForm({ ...EMPTY }); setConfirmed(null); };
+
+  const loadShipments = useCallback(async () => {
+    try {
+      const res = await getPharmacyIncomingList();
+      const pending = (res.data || []).filter(sh => sh.status === 'pending' || sh.status === 'partial');
+      setShipments(pending);
+    } catch (e) {
+      setShipments([]);
+    }
+  }, []);
+
+  useEffect(() => { loadShipments(); }, [loadShipments]);
+
+  const rowFromItem = (it) => ({
+    itemId: it.id,
+    isExtra: false,
+    name: it.item_description || '',
+    strength: it.strength || '',
+    category: it.category || '',
+    batchNo: it.batch_no || '',
+    expiryDate: it.expiry_date ? toDateOnly(it.expiry_date) : '',
+    quantity: it.quantity ?? '',
+    unit: it.unit || 'Tablets',
+    unitPrice: it.unit_price ?? '',
+    vatRate: it.vat_rate ?? DEFAULT_VAT,
+  });
+
+  const openReceive = async (sh) => {
+    setOpeningId(sh.id);
+    try {
+      const detail = await getPharmacyIncoming(sh.id);
+      const items = (detail.data.items || []).filter(it => String(it.status) !== 'received');
+      setRows(items.map(rowFromItem));
+      setReceiveShipment(detail.data);
+    } catch (e) {
+      NotifStore.push(e.message || 'Failed to load delivery', 'error');
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
+  const cancelReceive = () => { setReceiveShipment(null); setRows([]); setReceipt(null); };
+
+  const updateRow = (i, field, val) => setRows(p => p.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
+  const addRow = () => setRows(p => [...p, {
+    itemId: null, isExtra: true, name: '', strength: '', category: '', batchNo: '',
+    expiryDate: '', quantity: '', unit: 'Tablets', unitPrice: '', vatRate: DEFAULT_VAT,
+  }]);
+  const removeRow = (i) => setRows(p => p.filter((_, idx) => idx !== i));
+
+  const rowSub = (r) => (parseFloat(r.quantity) || 0) * (parseFloat(r.unitPrice) || 0);
+  const rowVat = (r) => {
+    const v = r.vatRate === '' || r.vatRate === null || r.vatRate === undefined ? 0 : (parseFloat(r.vatRate) || 0);
+    return rowSub(r) * v / 100;
+  };
+  const totals = rows.reduce((acc, r) => ({ sub: acc.sub + rowSub(r), vat: acc.vat + rowVat(r) }), { sub: 0, vat: 0 });
+  const currency = (n) => `ETB ${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const validateReceive = () => {
+    if (!rows.length) { NotifStore.push('Add at least one item to receive', 'warning'); return false; }
+    for (let i = 0; i < rows.length; i += 1) {
+      const r = rows[i];
+      if (!r.name.trim()) { NotifStore.push(`Row ${i + 1}: Drug name is required`, 'warning'); return false; }
+      if (!r.batchNo.trim()) { NotifStore.push(`Row ${i + 1} (${r.name}): Batch No is required`, 'warning'); return false; }
+      if (!r.expiryDate) { NotifStore.push(`Row ${i + 1} (${r.name}): Expiry Date is required`, 'warning'); return false; }
+      if ((parseFloat(r.quantity) || 0) <= 0) { NotifStore.push(`Row ${i + 1} (${r.name}): Quantity must be greater than 0`, 'warning'); return false; }
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      if (new Date(r.expiryDate) <= today) { NotifStore.push(`Row ${i + 1} (${r.name}): Expiry date must be in the future`, 'warning'); return false; }
+    }
+    return true;
+  };
+
+  const handleReceiveAll = async () => {
+    if (!validateReceive()) return;
+    setReceiving(true);
+    try {
+      const entries = rows.map(r => ({
+        itemId: r.itemId,
+        name: r.name.trim(),
+        strength: r.strength || null,
+        category: r.category || null,
+        batch_no: r.batchNo.trim(),
+        expiry_date: r.expiryDate,
+        quantity: parseFloat(r.quantity),
+        unit: r.unit,
+        unit_price: parseFloat(r.unitPrice) || 0,
+        vat_rate: r.vatRate === '' ? 0 : (parseFloat(r.vatRate) || 0),
+      }));
+      const res = await receivePharmacyIncoming(receiveShipment.id, entries);
+      setReceipt({ data: res.data, message: res.message });
+      NotifStore.push(res.message || 'Delivery received into inventory', 'success');
+      setReceiveShipment(null);
+      setRows([]);
+      await loadShipments();
+    } catch (e) {
+      NotifStore.push(e.message || 'Failed to receive delivery', 'error');
+    } finally {
+      setReceiving(false);
+    }
+  };
 
   /* ── Validation ── */
   const validate = () => {
@@ -401,6 +628,149 @@ const StoreAddNewStock = () => {
           </p>
         </div>
       </div>
+
+      {/* ── RECEIVE DELIVERY MODE ── */}
+      {receiveShipment ? (
+        <div className="ans-recv">
+          <div className="ans-recv-hd">
+            <div>
+              <div className="ans-recv-title">Receive Delivery — {receiveShipment.quotation_no}</div>
+              <div className="ans-recv-sub">
+                {receiveShipment.supplier_name || 'Supplier'} · Delivery{' '}
+                {receiveShipment.delivery_note_no || '—'} · Shipment value{' '}
+                {currency(parseFloat(receiveShipment.total_amount || 0))}
+              </div>
+            </div>
+            <button type="button" className="ans-btn" onClick={cancelReceive} disabled={receiving}>
+              <ArrowLeft size={16} /> Back
+            </button>
+          </div>
+
+          <div className="ans-info-row">
+            <AlertTriangle size={16} color="var(--cwarn)" />
+            These items were sent by Purchasing. Every field is pre-filled and can be edited; you may also add extra
+            new catalog items. Submit once — everything is received into your inventory in a single action
+            (no per-item Accept clicks). VAT&nbsp;% is applied per item.
+          </div>
+
+          {receipt && (
+            <div className="ans-confirm ans-recv-receipt">
+              <div className="ans-confirm-hd">
+                <CheckCircle size={20} /> Delivery Received
+              </div>
+              <div className="ans-confirm-body">
+                <div className="ans-confirm-grid">
+                  <div className="ans-confirm-item"><div className="ans-confirm-label">Delivery Status</div><div className="ans-confirm-val">{receipt.data.incoming_status}</div></div>
+                  <div className="ans-confirm-item"><div className="ans-confirm-label">Shipment Lines Received</div><div className="ans-confirm-val">{receipt.data.received}</div></div>
+                  <div className="ans-confirm-item"><div className="ans-confirm-label">New Items Registered</div><div className="ans-confirm-val">{receipt.data.registered}</div></div>
+                  <div className="ans-confirm-item"><div className="ans-confirm-label">Finance Marked Paid</div><div className="ans-confirm-val">{receipt.data.finance_paid ? 'Yes' : 'No'}</div></div>
+                </div>
+                <div className="ans-confirm-actions">
+                  <button type="button" className="ans-btn ans-btn-success" onClick={() => setReceipt(null)}>
+                    <CheckCircle size={16} /> Ok
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="ans-card">
+            <div className="ans-sec-hd">
+              <h2 className="ans-sec-title">Items — {rows.length} row{rows.length !== 1 ? 's' : ''}</h2>
+              <span className="ans-sec-sub">Green rows are extra new catalog items added by you</span>
+            </div>
+            <div className="ans-sec-body ans-recv-body">
+              <table className="ans-recv-tbl">
+                <thead>
+                  <tr>
+                    <th>Drug Name</th><th>Strength</th><th>Category</th><th>Batch No</th><th>Expiry</th>
+                    <th>Qty</th><th>Unit</th><th>Cost (ETB)</th><th>VAT %</th><th>VAT Amt</th><th>Total</th><th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => {
+                    const sub = rowSub(r);
+                    const vat = rowVat(r);
+                    return (
+                      <tr key={i} className={r.isExtra ? 'ans-recv-extra' : ''}>
+                        <td>
+                          <input className="ans-recvin" value={r.name} onChange={e => updateRow(i, 'name', e.target.value)} placeholder="Drug name" />
+                          {r.isExtra && <div className="ans-recv-extraflag">NEW CATALOG ITEM</div>}
+                        </td>
+                        <td><input className="ans-recvin" value={r.strength} onChange={e => updateRow(i, 'strength', e.target.value)} placeholder="500mg" /></td>
+                        <td><input className="ans-recvin" value={r.category} onChange={e => updateRow(i, 'category', e.target.value)} placeholder="Antibiotics" /></td>
+                        <td><input className="ans-recvin" value={r.batchNo} onChange={e => updateRow(i, 'batchNo', e.target.value)} placeholder="BT-…" /></td>
+                        <td><input className="ans-recvin" type="date" value={r.expiryDate} onChange={e => updateRow(i, 'expiryDate', e.target.value)} /></td>
+                        <td><input className="ans-recvin" type="number" min="0" step="any" value={r.quantity} onChange={e => updateRow(i, 'quantity', e.target.value)} placeholder="0" /></td>
+                        <td>
+                          <select className="ans-recvin" value={r.unit} onChange={e => updateRow(i, 'unit', e.target.value)}>
+                            {['Tablets','Capsules','Bottles','Vials','Ampoules','Sachets','Pieces','Packs','Boxes','Syringes','Tubes'].map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </td>
+                        <td><input className="ans-recvin" type="number" min="0" step="0.01" value={r.unitPrice} onChange={e => updateRow(i, 'unitPrice', e.target.value)} placeholder="0.00" /></td>
+                        <td><input className="ans-recvin" type="number" min="0" step="0.01" value={r.vatRate} onChange={e => updateRow(i, 'vatRate', e.target.value)} placeholder="15" /></td>
+                        <td className="ans-recv-num">{currency(vat)}</td>
+                        <td className="ans-recv-num"><b>{currency(sub + vat)}</b></td>
+                        <td>
+                          <button type="button" className="ans-recv-rm" onClick={() => removeRow(i)} disabled={receiving} title="Remove row">
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              <button type="button" className="ans-btn ans-recv-add" onClick={addRow} disabled={receiving}>
+                <Plus size={16} /> Add Another Item (new catalog)
+              </button>
+
+              <div className="ans-recv-totals">
+                <div>Lines: <b>{rows.length}</b></div>
+                <div>Subtotal: <b>{currency(totals.sub)}</b></div>
+                <div>Total VAT: <b>{currency(totals.vat)}</b></div>
+                <div>Grand Total: <b>{currency(totals.sub + totals.vat)}</b></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="ans-actions">
+            <button type="button" className="ans-btn" onClick={cancelReceive} disabled={receiving}>Cancel</button>
+            <button type="button" className="ans-btn ans-btn-success" onClick={handleReceiveAll} disabled={receiving}>
+              {receiving ? (
+                <><span className="ans-spinner" /> Receiving…</>
+              ) : (
+                <><CheckCircle size={16} /> Receive All &amp; Add to Catalog</>
+              )}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* ── PENDING DELIVERIES FROM PURCHASING ── */}
+          {shipments.length > 0 && (
+            <div className="ans-delivery">
+              <div className="ans-delivery-hd">
+                <Truck size={18} /> Pending Deliveries from Purchasing ({shipments.length})
+              </div>
+              <div className="ans-delivery-cards">
+                {shipments.map(sh => (
+                  <button key={sh.id} type="button" className="ans-delivery-card" onClick={() => openReceive(sh)} disabled={openingId === sh.id}>
+                    <div className="ans-delivery-qno">{sh.quotation_no}</div>
+                    <div className="ans-delivery-meta">Supplier: {sh.supplier_name || '—'}</div>
+                    <div className="ans-delivery-meta">{sh.total_lines} line(s) · Value {currency(parseFloat(sh.total_amount || 0))}</div>
+                    <div className="ans-delivery-meta" style={{ color: sh.status === 'partial' ? '#B45309' : '#C2410C' }}>
+                      {sh.status === 'partial' ? 'Partially received — continue receiving' : 'Waiting to be received'}
+                    </div>
+                    <div className="ans-delivery-link">
+                      {openingId === sh.id ? <><span className="ans-spinner" style={{ borderColor: 'rgba(0,0,0,.2)', borderTopColor: '#333' }} /> Loading…</> : <><ArrowLeft size={14} style={{ transform: 'rotate(180deg)' }} /> Click to receive &amp; add to catalog</>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
       {/* ── SUCCESS CONFIRMATION PANEL ── */}
       {confirmed && (
@@ -662,6 +1032,8 @@ const StoreAddNewStock = () => {
         </div>
 
       </form>
+        </>
+      )}
     </div>
   );
 };
