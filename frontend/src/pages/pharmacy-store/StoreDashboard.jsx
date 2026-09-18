@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { NotifToastContainer } from './StoreHomeNew';
+import { getPharmacyIncomingList } from '../../utils/storeApi';
 
 // New Home
 import StoreHomeNew from './StoreHomeNew';
@@ -30,6 +31,28 @@ import PharmacyStoreAuditLog from './PharmacyStoreAuditLog';
 import styles from './StoreDashboard.module.css';
 
 const PharmacyStoreDashboard = () => {
+  const [pendingDeliveries, setPendingDeliveries] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    getPharmacyIncomingList()
+      .then(res => {
+        if (!active) return;
+        const count = (res.data || []).filter(sh => sh.status === 'pending' || sh.status === 'partial').length;
+        setPendingDeliveries(count);
+      })
+      .catch(() => active && setPendingDeliveries(0));
+    const iv = setInterval(() => {
+      getPharmacyIncomingList()
+        .then(res => {
+          if (!active) return;
+          setPendingDeliveries((res.data || []).filter(sh => sh.status === 'pending' || sh.status === 'partial').length);
+        })
+        .catch(() => {});
+    }, 60000);
+    return () => { active = false; clearInterval(iv); };
+  }, []);
+
   const menuItems = [
     { label: 'Dashboard', path: '/pharmacy-store/overview', icon: 'home' },
     { type: 'divider' },
@@ -37,7 +60,7 @@ const PharmacyStoreDashboard = () => {
       label: 'Stock Operations', icon: 'package',
       children: [
         { label: 'Stock Catalog',       path: '/pharmacy-store/stock-list',        icon: 'list',             color: '#228B22' },
-        { label: 'Add New Stock',       path: '/pharmacy-store/add-new-stock',     icon: 'plus',             color: '#228B22' },
+        { label: 'Add New Stock',       path: '/pharmacy-store/add-new-stock',     icon: 'plus',             color: '#228B22', badge: pendingDeliveries },
         { label: 'Goods Receiving',     path: '/pharmacy-store/goods-receiving',   icon: 'truck',            color: '#228B22' },
         { label: 'Goods Issue',         path: '/pharmacy-store/goods-issue',       icon: 'arrow-up-right',   color: '#228B22' },
         { label: 'Stock Adjustment',    path: '/pharmacy-store/stock-adjustment',  icon: 'sliders',          color: '#228B22' },
