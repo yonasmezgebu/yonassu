@@ -50,17 +50,6 @@ const RegisterPage = () => {
     <div className={styles.authContainer}>
       <div className={styles.formArea}>
 
-        {/* Logo/Brand at top of center form */}
-        <div className={styles.brandHeader}>
-          <div className={styles.logoMark}>
-            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 4 C10 4 6 8 6 14 C6 20 10 24 16 28 C22 24 26 20 26 14 C26 8 22 4 16 4 Z" fill="#228B22"/>
-              <path d="M16 10 C14 12 12 15 16 18 C20 15 18 12 16 10 Z" fill="#ffffff"/>
-              <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="800" fontFamily="system-ui,sans-serif">S</text>
-            </svg>
-          </div>
-          <div className={styles.brandTitle}>SUTANA</div>
-        </div>
 
         {/* Error Notification */}
         {error && (
@@ -83,7 +72,7 @@ const RegisterPage = () => {
           {/* Page title */}
           <div className={styles.formHeading}>
             <h2>Create Account</h2>
-            <p>Join SUTANA — manage your orders & track status.</p>
+            <p>Register to manage your orders &amp; track status.</p>
             <div className={styles.headingAccent} />
           </div>
 
