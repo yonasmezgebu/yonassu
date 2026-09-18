@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, ArrowLeft, Building2, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ArrowLeft, Building2, AlertTriangle, Pill, Store } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 
 const CEOQuotationApprovals = () => {
@@ -140,6 +140,16 @@ const CEOQuotationApprovals = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Clock size={16} color="#D97706" />
                     <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 14, color: '#2563EB' }}>{q.quotation_no}</span>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 6,
+                      fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+                      background: q.destination === 'pharmacy' ? '#F3E8FF' : '#E0F2FE',
+                      color: q.destination === 'pharmacy' ? '#7E22CE' : '#0369A1',
+                      border: q.destination === 'pharmacy' ? '1px solid #D8B4FE' : '1px solid #BAE6FD'
+                    }}>
+                      {q.destination === 'pharmacy' ? <Pill size={13} /> : <Store size={13} />}
+                      {q.destination === 'pharmacy' ? 'PHARMACY STORE' : 'GENERAL STORE'}
+                    </span>
                     <span style={{ fontSize: 13, color: '#6B7280' }}>•</span>
                     <span style={{ fontSize: 13, color: '#92400E', fontWeight: 600 }}>{q.status === 'Recorded' ? 'Awaiting CEO Approval' : 'Pending CEO Approval'}</span>
                   </div>
@@ -172,6 +182,14 @@ const CEOQuotationApprovals = () => {
                           <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
                             <th style={{ padding: '6px 0', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>#</th>
                             <th style={{ padding: '6px 0', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Item</th>
+                            {q.destination === 'pharmacy' && (
+                              <>
+                                <th style={{ padding: '6px 0', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Category</th>
+                                <th style={{ padding: '6px 0', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Batch No</th>
+                                <th style={{ padding: '6px 0', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Strength</th>
+                                <th style={{ padding: '6px 0', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Expiry</th>
+                              </>
+                            )}
                             <th style={{ padding: '6px 0', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Qty</th>
                             <th style={{ padding: '6px 0', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Cost Price</th>
                             <th style={{ padding: '6px 0', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Total</th>
@@ -182,6 +200,14 @@ const CEOQuotationApprovals = () => {
                             <tr key={item.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
                               <td style={{ padding: '8px 0', fontWeight: 600, color: '#2563EB' }}>{item.line_no}</td>
                               <td style={{ padding: '8px 0', fontWeight: 500 }}>{item.item_description}</td>
+                              {q.destination === 'pharmacy' && (
+                                <>
+                                  <td style={{ padding: '8px 0' }}>{item.category || '—'}</td>
+                                  <td style={{ padding: '8px 0' }}>{item.batch_no || '—'}</td>
+                                  <td style={{ padding: '8px 0' }}>{item.strength || '—'}</td>
+                                  <td style={{ padding: '8px 0', color: item.expiry_date && new Date(item.expiry_date) < new Date() ? '#B91C1C' : '#6B7280' }}>{item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '—'}</td>
+                                </>
+                              )}
                               <td style={{ padding: '8px 0', textAlign: 'right' }}>{item.quantity} {item.unit}</td>
                               <td style={{ padding: '8px 0', textAlign: 'right' }}>ETB {parseFloat(item.unit_price).toLocaleString()}</td>
                               <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600 }}>ETB {parseFloat(item.line_total).toLocaleString()}</td>
