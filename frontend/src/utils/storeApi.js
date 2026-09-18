@@ -248,6 +248,31 @@ export async function addNewStock(data) {
   return r.json();
 }
 
+// ── Pharmacy Store: deliveries sent by Purchasing (pharmacy quotations) ──
+const PURCHASE_API = '/api/v1/purchase';
+
+export async function getPharmacyIncomingList() {
+  const r = await fetch(PURCHASE_API + '/pharmacy-incoming', { headers: headers() });
+  if (!r.ok) throw new Error('Failed to load incoming deliveries');
+  return r.json();
+}
+
+export async function getPharmacyIncoming(id) {
+  const r = await fetch(PURCHASE_API + '/pharmacy-incoming/' + id, { headers: headers() });
+  if (!r.ok) throw new Error('Failed to load delivery details');
+  return r.json();
+}
+
+export async function receivePharmacyIncoming(id, entries) {
+  const r = await fetch(PURCHASE_API + '/pharmacy-incoming/' + id + '/receive', {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ entries }),
+  });
+  if (!r.ok) throw new Error((await r.json()).message || 'Failed to receive delivery');
+  return r.json();
+}
+
 // Stock Update Requests
 export async function getPendingUpdateRequests(status = 'Pending') {
   const r = await fetch(API + `/update-requests/pending?status=${status}`, { headers: headers() });
