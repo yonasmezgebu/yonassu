@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import authService from '../../services/authService';
 import styles from './LoginPage.module.css';
+import sutanaLogo from '../../assets/drop_down/sutana_logo.jpg';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -75,18 +76,6 @@ const LoginPage = () => {
   return (
     <div className={styles.authContainer}>
       <div className={styles.formArea}>
-        
-        {/* Logo/Brand at top of center form */}
-        <div className={styles.brandHeader}>
-          <div className={styles.logoMark}>
-            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 4 C10 4 6 8 6 14 C6 20 10 24 16 28 C22 24 26 20 26 14 C26 8 22 4 16 4 Z" fill="#228B22"/>
-              <path d="M16 10 C14 12 12 15 16 18 C20 15 18 12 16 10 Z" fill="#ffffff"/>
-              <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="800" fontFamily="Inter,sans-serif">S</text>
-            </svg>
-          </div>
-          <div className={styles.brandTitle}>SUTANA</div>
-        </div>
 
         {/* ── In-App Notification ── */}
         {error && (
@@ -98,6 +87,13 @@ const LoginPage = () => {
 
         {/* ── Form card ── */}
         <div className={styles.formCard}>
+
+          {/* Logo + Brand Name — side by side, inside the card */}
+          <div className={styles.brandHeader}>
+            <img src={sutanaLogo} alt="SUTANA Logo" className={styles.logoImg} />
+            <div className={styles.brandTitle}>SUTANA</div>
+          </div>
+
           <div className={styles.formHeading}>
             <h2>Sign In</h2>
             <p>Enter your credentials to access the system.</p>
