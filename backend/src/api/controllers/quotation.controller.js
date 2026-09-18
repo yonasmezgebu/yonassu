@@ -168,12 +168,30 @@ exports.getQuotations = catchAsync(async (req, res) => {
           db.raw('COUNT(*) as item_count'));
       itemAggs.forEach(a => { itemAggMap[a.quotation_id] = a; });
     }
+    const pharmRows = await db('pharmacy_store_incoming').whereIn('quotation_id', ids).orderBy('id');
+    const pharmMap = {};
+    pharmRows.forEach(p => {
+      pharmMap[p.quotation_id] = {
+        pharmacy_store_status: p.status,
+        pharmacy_delivery_no: p.delivery_note_no,
+        pharmacy_received_at: p.received_at
+      };
+    });
     quotations.forEach(q => {
-      const incoming = incomingMap[q.id];
-      if (incoming) {
-        Object.assign(q, incoming);
+      if (q.destination === 'pharmacy') {
+        const pharm = pharmMap[q.id];
+        if (pharm) {
+          Object.assign(q, pharm);
+        } else {
+          Object.assign(q, { pharmacy_store_status: q.status === 'Converted' ? 'not_received' : null });
+        }
       } else {
-        Object.assign(q, { store_status: q.status === 'Converted' ? 'not_sent' : null });
+        const incoming = incomingMap[q.id];
+        if (incoming) {
+          Object.assign(q, incoming);
+        } else {
+          Object.assign(q, { store_status: q.status === 'Converted' ? 'not_sent' : null });
+        }
       }
       const agg = itemAggMap[q.id];
       if (agg) {
@@ -219,6 +237,23 @@ exports.getFinanceExpenses = catchAsync(async (req, res) => {
     const countMap = {};
     counts.forEach(c => { countMap[c.quotation_id] = c.item_count; });
     quotations.forEach(q => { q.item_count = countMap[q.id] || 0; });
+
+    const pharmRows = await db('pharmacy_store_incoming')
+      .whereIn('quotation_id', ids)
+      .select('quotation_id', 'delivery_note_no', 'status', 'received_by', 'received_at');
+    const pharmMap = {};
+    pharmRows.forEach(p => {
+      pharmMap[p.quotation_id] = {
+        pharmacy_delivery_no: p.delivery_note_no,
+        pharmacy_store_status: p.status,
+        pharmacy_received_at: p.received_at
+      };
+    });
+    quotations.forEach(q => {
+      if (q.destination === 'pharmacy') {
+        Object.assign(q, pharmMap[q.id] || { pharmacy_store_status: q.status === 'Converted' ? 'not_received' : null });
+      }
+    });
   }
   res.json({ status: 'success', data: quotations });
 });
@@ -723,12 +758,12 @@ exports.convertQuotation = catchAsync(async (req, res) => {
       quotation_id: id,
       purchase_order_id: poId,
       quotation_no: quote.quotation_no,
-      shipment_no: shipmentNo,
+      delivery_note_no: shipmentNo,
       supplier_name: quote.supplier_name || null,
       status: 'pending',
       total_amount: quote.total_amount,
       vat_amount: quote.vat_amount || 0,
-      recorded_by: req.user.id,
+      created_by: req.user.id,
       created_at: db.fn.now(),
       updated_at: db.fn.now()
     });
@@ -786,6 +821,134 @@ exports.cancelQuotation = catchAsync(async (req, res) => {
   res.json({ status: 'success', message: 'Quotation cancelled' });
 });
 
+exports.updateQuotation = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { supplier_id, supplier_name, items, date_agreed, agreed_via, notes, vat_rate, destination } = req.body;
+
+  const quote = await db('purchase_quotations').where({ id }).first();
+  if (!quote) throw AppError.notFound('Quotation not found');
+  if (quote.status !== 'Pending CEO Approval') {
+    throw AppError.badRequest('Only pending quotations (before CEO approval) can be edited');
+  }
+
+  const dest = destination === 'pharmacy' ? 'pharmacy' : 'general';
+  if (!supplier_name) throw AppError.badRequest('Supplier name is required');
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw AppError.badRequest('At least one item is required');
+  }
+
+  const vatPct = parseFloat(vat_rate ?? 15);
+  let subtotal = 0;
+  const processedItems = items.map((item, idx) => {
+    const qty = parseFloat(item.quantity) || 1;
+    const price = parseFloat(item.unit_price) || 0;
+    const lineTotal = qty * price;
+    subtotal += lineTotal;
+    return {
+      line_no: idx + 1,
+      item_description: item.item_description || item.name || '',
+      quantity: qty,
+      unit: item.unit || '',
+      unit_price: price,
+      line_total: lineTotal,
+      category: item.category || null,
+      batch_no: item.batch_no || null,
+      strength: item.strength || null,
+      expiry_date: item.expiry_date || null
+    };
+  });
+
+  const vatAmt = subtotal * (vatPct / 100);
+  const total_amount = subtotal + vatAmt;
+  const firstItem = processedItems[0];
+  const itemSummary = processedItems.length === 1
+    ? firstItem.item_description
+    : `${processedItems.length} items: ${processedItems.map(i => i.item_description).join(', ')}`;
+
+  const trx = await db.transaction();
+  try {
+    await trx('purchase_quotation_items').where({ quotation_id: id }).del();
+    await trx('purchase_quotation_items').insert(processedItems.map(item => ({
+      quotation_id: id,
+      ...item
+    })));
+    await trx('purchase_quotations').where({ id }).update({
+      supplier_id: supplier_id || null,
+      supplier_name,
+      item_description: itemSummary,
+      unit: firstItem.unit || '',
+      quantity: processedItems.reduce((s, i) => s + i.quantity, 0),
+      unit_price: firstItem.unit_price,
+      vat_rate: vatPct,
+      vat_amount: vatAmt,
+      total_amount,
+      destination: dest,
+      date_agreed: date_agreed || trx.fn.now(),
+      agreed_via: agreed_via || 'Phone',
+      notes: notes || '',
+      updated_at: trx.fn.now()
+    });
+    await trx('quotation_finance')
+      .where({ quotation_id: id })
+      .andWhere('finance_requested', false)
+      .update({ amount: total_amount });
+    await trx.commit();
+  } catch (e) {
+    await trx.rollback();
+    throw e;
+  }
+
+  await audit('QUOTATION_UPDATED', req.user.id, {
+    resource: 'quotations',
+    resourceId: String(id),
+    action: 'UPDATE',
+    recordIdentifier: quote.quotation_no,
+    module: 'Procurement',
+    afterState: { quotation_no: quote.quotation_no, destination: dest, total_amount }
+  });
+
+  res.json({ status: 'success', message: 'Quotation updated' });
+});
+
+exports.deleteQuotation = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const quote = await db('purchase_quotations').where({ id }).first();
+  if (!quote) throw AppError.notFound('Quotation not found');
+  if (quote.status !== 'Cancelled') {
+    throw AppError.badRequest('Only cancelled quotations can be deleted');
+  }
+
+  const trx = await db.transaction();
+  try {
+    await trx('purchase_quotation_items').where({ quotation_id: id }).del();
+    await trx('quotation_finance').where({ quotation_id: id }).del();
+    await trx('pharmacy_store_incoming_items')
+      .whereIn('incoming_id', trx('pharmacy_store_incoming').select('id').where({ quotation_id: id }))
+      .del();
+    await trx('pharmacy_store_incoming').where({ quotation_id: id }).del();
+    await trx('general_store_incoming_items')
+      .whereIn('incoming_id', trx('general_store_incoming').select('id').where({ quotation_id: id }))
+      .del();
+    await trx('general_store_incoming').where({ quotation_id: id }).del();
+    await trx('purchase_quotations').where({ id }).del();
+    await trx.commit();
+  } catch (e) {
+    await trx.rollback();
+    throw e;
+  }
+
+  await audit('QUOTATION_DELETED', req.user.id, {
+    resource: 'quotations',
+    resourceId: String(id),
+    action: 'DELETE',
+    recordIdentifier: quote.quotation_no,
+    module: 'Procurement',
+    afterState: { quotation_no: quote.quotation_no, status: quote.status }
+  });
+
+  res.json({ status: 'success', message: 'Quotation deleted' });
+});
+
 // ─────────────────────────────────────────────────────────────────────
 //  PHARMACY STORE INCOMING FLOW (pharmacy-destination quotations)
 //  Route handlers wired in purchase.routes.js under /pharmacy-incoming
@@ -798,7 +961,7 @@ exports.listPharmacyIncoming = catchAsync(async (req, res) => {
     .groupBy('psi.id')
     .orderBy('psi.created_at', 'desc')
     .select(
-      'psi.id', 'psi.shipment_no', 'psi.quotation_no', 'psi.quotation_id',
+      'psi.id', 'psi.delivery_note_no', 'psi.quotation_no', 'psi.quotation_id',
       'psi.purchase_order_id', 'psi.supplier_name', 'psi.status', 'psi.total_amount',
       'psi.vat_amount', 'psi.created_at',
       db.raw('COUNT(psii.id) as total_lines'),
@@ -851,8 +1014,6 @@ exports.acceptPharmacyIncomingItem = catchAsync(async (req, res) => {
         strength,
         unit,
         unit_price: unitPrice,
-        selling_price: unitPrice,
-        reorder_level: 0,
         created_at: trx.fn.now(),
         updated_at: trx.fn.now()
       });
@@ -887,6 +1048,36 @@ exports.acceptPharmacyIncomingItem = catchAsync(async (req, res) => {
       });
     }
 
+    // Also record into the pharmacy store catalog (store_inventory)
+    const storeRow = await trx('store_inventory')
+      .where({ drug_id: drugId, batch_no: batchNo })
+      .first();
+    if (storeRow) {
+      await trx('store_inventory').where('id', storeRow.id).update({
+        quantity: trx.raw('quantity + ?', [qty]),
+        unit_cost: unitPrice,
+        expiry_date: expiry,
+        stock_status: 'In Stock',
+        last_received_at: trx.fn.now(),
+        updated_at: trx.fn.now()
+      });
+    } else {
+      await trx('store_inventory').insert({
+        drug_id: drugId,
+        quantity: qty,
+        batch_no: batchNo,
+        expiry_date: expiry,
+        near_expiry_days: 90,
+        unit_cost: unitPrice,
+        min_level: 0,
+        max_level: 0,
+        stock_status: 'In Stock',
+        last_received_at: trx.fn.now(),
+        created_at: trx.fn.now(),
+        updated_at: trx.fn.now()
+      });
+    }
+
     await trx('pharmacy_store_incoming_items').where({ id: itemId }).update({
       status: 'received',
       received_by: req.user.id,
@@ -896,10 +1087,27 @@ exports.acceptPharmacyIncomingItem = catchAsync(async (req, res) => {
 
     const pending = await trx('pharmacy_store_incoming_items')
       .where({ incoming_id: id }).whereNot('status', 'received').first();
-    await trx('pharmacy_store_incoming').where({ id }).update({
-      status: pending ? 'partial' : 'received',
-      updated_at: trx.fn.now()
-    });
+    if (pending) {
+      await trx('pharmacy_store_incoming').where({ id }).update({
+        status: 'partial',
+        updated_at: trx.fn.now()
+      });
+    } else {
+      await trx('pharmacy_store_incoming').where({ id }).update({
+        status: 'received',
+        received_by: req.user.id,
+        received_at: trx.fn.now(),
+        updated_at: trx.fn.now()
+      });
+      const incoming = await trx('pharmacy_store_incoming').where({ id }).first();
+      if (incoming && incoming.quotation_id) {
+        await trx('quotation_finance').where({ quotation_id: incoming.quotation_id }).update({
+          status: 'paid',
+          paid_at: trx.fn.now(),
+          updated_at: trx.fn.now()
+        });
+      }
+    }
 
     await trx.commit();
     await audit('PHARMACY_INCOMING_ITEM_RECEIVED', req.user.id, {
@@ -910,6 +1118,252 @@ exports.acceptPharmacyIncomingItem = catchAsync(async (req, res) => {
       resourceId: String(id)
     });
     res.json({ status: 'success', message: 'Item received into pharmacy inventory', data: { drug_id: drugId } });
+  } catch (e) {
+    await trx.rollback();
+    throw e;
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────
+//  RECEIVE ENTIRE SHIPMENT AT ONCE (Add New Catalog → receive-all)
+//  Registers every entry (existing shipment lines + extra new items) into
+//  the drug catalogue & pharmacy inventory in ONE submit, marks the
+//  incoming shipment received/partial, and pays the quotation finance
+//  when the shipment is fully received. No per-item Accept clicks.
+// ─────────────────────────────────────────────────────────────────────
+exports.receivePharmacyIncoming = catchAsync(async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const { id } = req.params;
+    const entries = Array.isArray(req.body.entries) ? req.body.entries : [];
+    if (!entries.length) throw AppError.badRequest('No entries provided');
+
+    const incoming = await trx('pharmacy_store_incoming').where({ id }).first();
+    if (!incoming) throw AppError.notFound('Pharmacy incoming shipment not found');
+
+    const originalItems = await trx('pharmacy_store_incoming_items').where({ incoming_id: id });
+
+    let received = 0;
+    let registered = 0;
+    const receiptItems = [];
+
+    for (const ent of entries) {
+      const name = String(ent.name || '').trim();
+      if (!name) continue;
+      const strength = ent.strength || null;
+      const category = ent.category || null;
+      const batchNo = ent.batch_no || null;
+      let expiry = ent.expiry_date || null;
+      if (expiry) {
+        // Normalize to date-only string (column is DATE; avoid timestamp refusals)
+        const parsed = new Date(expiry);
+        if (!isNaN(parsed.getTime())) {
+          expiry = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+        } else {
+          expiry = String(expiry).slice(0, 10);
+        }
+      }
+      const qty = parseFloat(ent.quantity) || 0;
+      const unit = ent.unit || 'unit';
+      const unitPrice = parseFloat(ent.unit_price) || 0;
+      const vatRate = ent.vat_rate === undefined || ent.vat_rate === null || ent.vat_rate === '' ? 15 : parseFloat(ent.vat_rate);
+
+      // Upsert drug by name + strength
+      let drug = await trx('drugs')
+        .where({ name })
+        .andWhere(function () {
+          this.where('strength', strength).orWhere(function () { this.whereNull('strength'); });
+        })
+        .first();
+      let drugId;
+      if (drug) {
+        drugId = drug.id;
+      } else {
+        [drugId] = await trx('drugs').insert({
+          name,
+          strength,
+          unit,
+          unit_price: unitPrice,
+          created_at: trx.fn.now(),
+          updated_at: trx.fn.now()
+        });
+      }
+
+      // One pharmacy_inventory row per batch + strength + expiry
+      const existing = await trx('pharmacy_inventory')
+        .where({ drug_id: drugId, batch_no: batchNo })
+        .andWhere(function () {
+          this.where('strength', strength).orWhere(function () { this.whereNull('strength'); });
+        })
+        .andWhere(function () {
+          this.where('expiry_date', expiry).orWhere(function () { this.whereNull('expiry_date'); });
+        })
+        .first();
+      if (existing) {
+        await trx('pharmacy_inventory').where('id', existing.id).update({
+          quantity: trx.raw('quantity + ?', [qty]),
+          unit_cost: unitPrice,
+          updated_at: trx.fn.now()
+        });
+      } else {
+        await trx('pharmacy_inventory').insert({
+          drug_id: drugId,
+          quantity: qty,
+          batch_no: batchNo,
+          strength,
+          expiry_date: expiry,
+          unit_cost: unitPrice,
+          reorder_level: 0,
+          created_at: trx.fn.now(),
+          updated_at: trx.fn.now()
+        });
+      }
+
+      // Store catalog (the Stock Catalog page reads store_inventory) — upsert
+      // so received stock always appears in the pharmacy store catalog
+      const storeRow = await trx('store_inventory')
+        .where({ drug_id: drugId, batch_no: batchNo })
+        .first();
+      if (storeRow) {
+        await trx('store_inventory').where('id', storeRow.id).update({
+          quantity: trx.raw('quantity + ?', [qty]),
+          unit_cost: unitPrice,
+          expiry_date: expiry,
+          stock_status: 'In Stock',
+          last_received_at: trx.fn.now(),
+          updated_at: trx.fn.now()
+        });
+      } else {
+        await trx('store_inventory').insert({
+          drug_id: drugId,
+          quantity: qty,
+          batch_no: batchNo,
+          expiry_date: expiry,
+          near_expiry_days: 90,
+          unit_cost: unitPrice,
+          min_level: 0,
+          max_level: 0,
+          stock_status: 'In Stock',
+          last_received_at: trx.fn.now(),
+          created_at: trx.fn.now(),
+          updated_at: trx.fn.now()
+        });
+      }
+
+      receiptItems.push({
+        drug_id: drugId,
+        name,
+        qty,
+        unit,
+        unitPrice,
+        batchNo,
+        expiry
+      });
+
+      // Original shipment line → mark received and persist keeper edits
+      const orig = ent.itemId ? originalItems.find(o => o.id === Number(ent.itemId)) : null;
+      if (orig) {
+        await trx('pharmacy_store_incoming_items').where({ id: orig.id }).update({
+          category,
+          batch_no: batchNo,
+          strength,
+          expiry_date: expiry,
+          quantity: qty,
+          unit,
+          unit_price: unitPrice,
+          vat_rate: vatRate,
+          status: 'received',
+          received_by: req.user.id,
+          received_at: trx.fn.now(),
+          updated_at: trx.fn.now()
+        });
+        received += 1;
+        await audit('PHARMACY_INCOMING_ITEM_RECEIVED', req.user.id, {
+          module: 'Pharmacy Store',
+          recordIdentifier: `${name} (${batchNo || 'no batch'})`,
+          afterState: { incoming_id: id, item_id: orig.id, drug_id: drugId, quantity: qty, batch_no: batchNo, strength, expiry_date: expiry, vat_rate: vatRate },
+          resource: 'pharmacy_store_incoming',
+          resourceId: String(id)
+        });
+      } else {
+        // Extra new catalog item (not part of the shipment)
+        registered += 1;
+        await audit('PHARMACY_STOCK_REGISTERED', req.user.id, {
+          module: 'Pharmacy Store',
+          recordIdentifier: `${name} (${batchNo || 'no batch'})`,
+          afterState: { drug_id: drugId, quantity: qty, batch_no: batchNo, strength, expiry_date: expiry, unit_price: unitPrice, vat_rate: vatRate },
+          resource: 'pharmacy_inventory',
+          resourceId: String(drugId)
+        });
+      }
+    }
+
+    // One receipt for the full delivery (visible in Goods Receiving / ledger)
+    if (receiptItems.length) {
+      const receipt_no = `DEL-${id}-${Date.now()}`;
+      const [receipt_id] = await trx('stock_receipts').insert({
+        receipt_no,
+        supplier_name: incoming.supplier_name || null,
+        receipt_date: trx.fn.now(),
+        remarks: `Pharmacy delivery ${incoming.delivery_note_no || ''} (${incoming.quotation_no || ''}) received into catalog — ${receiptItems.length} line(s)`,
+        received_by: req.user.id || null,
+      });
+      await trx('stock_receipt_items').insert(
+        receiptItems.map(r => ({
+          receipt_id,
+          drug_id: r.drug_id,
+          batch_no: r.batchNo,
+          expiry_date: r.expiry,
+          near_expiry_days: 90,
+          quantity: r.qty,
+          unit_cost: r.unitPrice,
+          subtotal: Math.round(r.qty * r.unitPrice * 100) / 100,
+        }))
+      );
+    }
+
+    const remaining = await trx('pharmacy_store_incoming_items')
+      .where({ incoming_id: id }).whereNot('status', 'received').first();
+    const anyReceived = await trx('pharmacy_store_incoming_items')
+      .where({ incoming_id: id }).where('status', 'received').first();
+
+    let newStatus = 'pending';
+    if (remaining) newStatus = anyReceived ? 'partial' : 'pending';
+    else newStatus = 'received';
+
+    const incomingUpdate = { updated_at: trx.fn.now() };
+    if (newStatus === 'received') {
+      incomingUpdate.status = 'received';
+      incomingUpdate.received_by = req.user.id;
+      incomingUpdate.received_at = trx.fn.now();
+    } else {
+      incomingUpdate.status = newStatus === 'partial' ? 'partial' : 'pending';
+    }
+    await trx('pharmacy_store_incoming').where({ id }).update(incomingUpdate);
+
+    if (newStatus === 'received' && incoming.quotation_id) {
+      await trx('quotation_finance').where({ quotation_id: incoming.quotation_id }).update({
+        status: 'paid',
+        paid_at: trx.fn.now(),
+        updated_at: trx.fn.now()
+      });
+    }
+
+    await trx.commit();
+
+    res.json({
+      status: 'success',
+      message: newStatus === 'received'
+        ? 'Shipment fully received into pharmacy inventory'
+        : 'Shipment partially received into pharmacy inventory',
+      data: {
+        incoming_id: id,
+        incoming_status: newStatus,
+        received,
+        registered,
+        finance_paid: newStatus === 'received' && !!incoming.quotation_id
+      }
+    });
   } catch (e) {
     await trx.rollback();
     throw e;
