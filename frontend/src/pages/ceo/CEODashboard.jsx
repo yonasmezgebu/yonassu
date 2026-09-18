@@ -88,7 +88,7 @@ const CEODashboard = () => {
     { label: 'Administration', icon: 'shield',
       children: [
         { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
-        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981', altActiveOn: ['/ceo/finance-approvals', '/ceo/salary-approval', '/ceo/store-approvals', '/ceo/approvals/tenders', '/ceo/approvals/printing', '/ceo/approvals/agri-and-car-rental', '/ceo/approvals/approved', '/ceo/approvals/rejected', '/ceo/employee-approvals', '/ceo/payment-approvals', '/ceo/procurement-decisions', '/ceo/danger-zone', '/ceo/quotation-approvals'] },
+        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981', altActiveOn: ['/ceo/finance-approvals', '/ceo/salary-approval', '/ceo/store-approvals', '/ceo/approvals/tenders', '/ceo/approvals/printing', '/ceo/approvals/agri-and-car-rental', '/ceo/approvals/approved', '/ceo/approvals/rejected', '/ceo/employee-approvals', '/ceo/payment-approvals', '/ceo/procurement-decisions', '/ceo/danger-zone', '/ceo/quotation-approvals', '/ceo/pharmacy-hub'] },
         { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
         { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
       ]
