@@ -190,7 +190,7 @@ const hrService = {
     completeRegistration: (id) => apiClient.patch(`/hr/etp/employees/${id}/complete-registration`),
 
     // Attendance
-    getDailyAttendance: (date) => apiClient.get('/hr/etp/attendance/daily', { params: { date } }),
+    getDailyAttendance: (params) => apiClient.get('/hr/etp/attendance/daily', { params }),
     getMonthlyAttendance: (params) => apiClient.get('/hr/etp/attendance/monthly', { params }),
     calculateDailyAttendance: () => apiClient.post('/hr/etp/attendance/calculate-daily'),
     getWeeklySummary: () => apiClient.get('/hr/etp/attendance/weekly'),
@@ -211,7 +211,7 @@ const hrService = {
 
     // Employee Self-Service
     getMyProfile: () => apiClient.get('/hr/etp/my-profile'),
-    getMyAttendancePortal: () => apiClient.get('/hr/etp/my-attendance'),
+    getMyAttendancePortal: (params) => apiClient.get('/hr/etp/my-attendance', { params }),
     getMyLeaves: () => apiClient.get('/hr/etp/my-leaves'),
     getMyDocuments: () => apiClient.get('/hr/etp/my-documents'),
 
