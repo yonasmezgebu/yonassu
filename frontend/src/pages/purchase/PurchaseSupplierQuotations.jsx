@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Clock, Building2, MinusCircle, ChevronDown, Wallet, RefreshCw } from 'lucide-react';
+import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Clock, Building2, MinusCircle, ChevronDown, Wallet, RefreshCw, Store, Pill } from 'lucide-react';
 import api from '../../services/apiClient';
 
 const C = {
@@ -52,7 +52,7 @@ const PQ_STYLES = `
   .pq-badge-pending { background: #FEF3C7; color: #92400E; }
   .pq-badge-default { background: #F1F5F9; color: #475569; }
   .pq-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-  .pq-modal { background: #fff; border-radius: 16px; width: 720px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .pq-modal { background: #fff; border-radius: 16px; width: 98vw; max-width: 98vw; max-height: 96vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
   .pq-modal-sm { width: 560px; }
   .pq-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #E5E7EB; }
   .pq-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; display: flex; align-items: center; }
@@ -89,7 +89,7 @@ const PQ_STYLES = `
   .pq-stat-val { font-size: 20px; font-weight: 800; color: #111827; line-height: 1.1; }
   .pq-stat-label { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
   .pq-summary-row td { background: #F9FAFB !important; border-top: 2px solid #D1D5DB !important; font-weight: 700; padding: 12px 14px !important; font-size: 13px; color: #374151; }
-  .pq-modal-lg { width: 900px; }
+  .pq-modal-lg { width: 98vw; max-width: 98vw; }
   .pq-detail-strip { border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
   .pq-detail-strip-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #F8FAFC; border-bottom: 1px solid #E5E7EB; flex-wrap: wrap; gap: 8px; }
   .pq-detail-qno { font-size: 15px; font-weight: 700; color: #2563EB; font-family: monospace; }
@@ -119,6 +119,9 @@ const PurchaseSupplierQuotations = () => {
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [converting, setConverting] = useState(false);
   const [askingFinance, setAskingFinance] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingQuote, setDeletingQuote] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
     supplier_id: '',
@@ -237,12 +240,21 @@ const PurchaseSupplierQuotations = () => {
       return;
     }
     try {
-      await api.post('/purchase/quotations', {
-        ...formData,
-        items: validItems
-      });
-      showToast('Quotation recorded successfully');
+      if (editingId) {
+        await api.put(`/purchase/quotations/${editingId}`, {
+          ...formData,
+          items: validItems
+        });
+        showToast('Quotation updated successfully');
+      } else {
+        await api.post('/purchase/quotations', {
+          ...formData,
+          items: validItems
+        });
+        showToast('Quotation recorded successfully');
+      }
       setShowAddModal(false);
+      setEditingId(null);
       setFormData({ supplier_id: '', supplier_name: '', date_agreed: new Date().toISOString().split('T')[0], agreed_via: 'Phone', notes: '', vat_rate: '15', destination: 'general' });
       setManualSupplier(false);
       setLineItems([emptyItem()]);
@@ -250,6 +262,41 @@ const PurchaseSupplierQuotations = () => {
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to save quotation', 'error');
     }
+  };
+
+  const handleEditQuote = async (q) => {
+    setShowViewModal(false);
+    setEditingId(q.id);
+    setFormData({
+      supplier_id: q.supplier_id || '',
+      supplier_name: q.supplier_name || '',
+      date_agreed: q.date_agreed ? new Date(q.date_agreed).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      agreed_via: q.agreed_via || 'Phone',
+      notes: q.notes || '',
+      vat_rate: String(q.vat_rate ?? '15'),
+      destination: q.destination === 'pharmacy' ? 'pharmacy' : 'general'
+    });
+    setManualSupplier(!q.supplier_id);
+    try {
+      const itemsRes = await api.get(`/purchase/quotations/${q.id}/items`);
+      if (itemsRes && Array.isArray(itemsRes.data) && itemsRes.data.length) {
+        setLineItems(itemsRes.data.map(it => ({
+          item_description: it.item_description || '',
+          quantity: it.quantity != null ? String(it.quantity) : '1',
+          unit: it.unit || '',
+          unit_price: it.unit_price != null ? String(it.unit_price) : '',
+          category: it.category || '',
+          batch_no: it.batch_no || '',
+          strength: it.strength || '',
+          expiry_date: it.expiry_date ? new Date(it.expiry_date).toISOString().split('T')[0] : ''
+        })));
+      } else {
+        setLineItems([emptyItem()]);
+      }
+    } catch {
+      setLineItems([emptyItem()]);
+    }
+    setShowAddModal(true);
   };
 
   const handleViewQuote = async (q) => {
@@ -322,6 +369,21 @@ const PurchaseSupplierQuotations = () => {
 
   const isCeoApproved = (q) => q.status === 'Recorded' && !!q.finance_ceo_approved;
 
+  const handleDeleteQuote = async () => {
+    if (!deleteTarget) return;
+    setDeletingQuote(true);
+    try {
+      const res = await api.delete(`/purchase/quotations/${deleteTarget.id}`);
+      setQuotations(prev => prev.filter(q => q.id !== deleteTarget.id));
+      showToast(res?.data?.message || 'Quotation deleted successfully');
+      setDeleteTarget(null);
+    } catch (err) {
+      showToast(err?.response?.data?.message || 'Failed to delete quotation', 'error');
+    } finally {
+      setDeletingQuote(false);
+    }
+  };
+
   const statusLabel = (s, ceoApproved = false) => (s === 'Recorded' ? (ceoApproved ? 'Approved' : 'Recorded') : s);
 
   const Badge = ({ status, ceoApproved }) => {
@@ -347,17 +409,37 @@ const PurchaseSupplierQuotations = () => {
     return <span style={{ display: 'inline-block', marginLeft: 6, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: map.bg, color: map.c }}>{map.t}</span>;
   };
 
-  const StoreChip = ({ s, showNotSent = false }) => {
-    const st = s || (showNotSent ? 'not_sent' : null);
+  const StoreChip = ({ s, showNotSent = false, destination }) => {
+    const isPharm = destination === 'pharmacy';
+    const storeName = isPharm ? 'Pharmacy Store' : 'General Store';
+    const st = s || (showNotSent ? (isPharm ? 'not_received' : 'not_sent') : null);
     if (!st) return null;
     const map = st === 'received'
-      ? { t: 'General Store: Received', bg: '#DCFCE7', c: '#15803D' }
+      ? { t: `${storeName}: Received`, bg: '#DCFCE7', c: '#15803D' }
       : st === 'pending'
-        ? { t: 'General Store: Waiting', bg: '#FEF9C3', c: '#854D0E' }
-        : st === 'not_sent'
-          ? { t: 'General Store: Not sent', bg: '#F3F4F6', c: '#6B7280' }
-          : { t: `General Store: ${st}`, bg: '#F3F4F6', c: '#4B5563' };
+        ? { t: `${storeName}: Waiting`, bg: '#FEF9C3', c: '#854D0E' }
+        : st === 'partial'
+          ? { t: `${storeName}: Partially Received`, bg: '#FEF3C7', c: '#B45309' }
+          : st === 'not_sent' || st === 'not_received'
+            ? { t: `${storeName}: Not sent`, bg: '#F3F4F6', c: '#6B7280' }
+            : { t: `${storeName}: ${st}`, bg: '#F3F4F6', c: '#4B5563' };
     return <span style={{ display: 'inline-block', marginLeft: 6, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: map.bg, color: map.c }}>{map.t}</span>;
+  };
+
+  const DestBadge = ({ d }) => {
+    const isPharmacy = d === 'pharmacy';
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        marginLeft: 6, padding: '2px 9px', borderRadius: 6, fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+        background: isPharmacy ? '#F3E8FF' : '#E0F2FE',
+        color: isPharmacy ? '#7E22CE' : '#0369A1',
+        border: isPharmacy ? '1px solid #D8B4FE' : '1px solid #BAE6FD'
+      }}>
+        {isPharmacy ? <Pill size={13} /> : <Store size={13} />}
+        {isPharmacy ? 'PHARMACY STORE' : 'GENERAL STORE'}
+      </span>
+    );
   };
 
   return (
@@ -374,7 +456,7 @@ const PurchaseSupplierQuotations = () => {
           <button className="pq-btn" style={{ background: '#F3F4F6', color: '#374151' }} onClick={fetchData}>
             <RefreshCw size={16} /> Refresh
           </button>
-          <button className="pq-btn pq-btn-primary" onClick={() => { setShowAddModal(true); setManualSupplier(false); setLineItems([emptyItem()]); }}>
+          <button className="pq-btn pq-btn-primary" onClick={() => { setEditingId(null); setShowAddModal(true); setManualSupplier(false); setLineItems([emptyItem()]); }}>
             <Plus size={16} /> Record New Quotation
           </button>
         </div>
@@ -386,8 +468,8 @@ const PurchaseSupplierQuotations = () => {
         const pendingQ = quotations.filter(q => q.status === 'Pending CEO Approval' || (q.status === 'Recorded' && !q.finance_ceo_approved && q.finance_status === 'awaiting ceo approval')).length;
         const recordedQ = quotations.filter(q => q.status === 'Recorded' && q.finance_ceo_approved).length;
         const convertedQ = quotations.filter(q => q.status === 'Converted').length;
-        const storeWaiting = quotations.filter(q => q.status === 'Converted' && q.store_status === 'pending').length;
-        const storeReceived = quotations.filter(q => q.status === 'Converted' && q.store_status === 'received').length;
+        const storeWaiting = quotations.filter(q => q.status === 'Converted' && (q.destination === 'pharmacy' ? (q.pharmacy_store_status === 'pending' || q.pharmacy_store_status === 'partial') : q.store_status === 'pending')).length;
+        const storeReceived = quotations.filter(q => q.status === 'Converted' && (q.destination === 'pharmacy' ? q.pharmacy_store_status === 'received' : q.store_status === 'received')).length;
         const cancelledQ = quotations.filter(q => q.status === 'Cancelled').length;
         const totalValue = quotations.reduce((s, q) => s + parseFloat(q.total_amount || 0), 0);
         const cards = [
@@ -452,18 +534,29 @@ const PurchaseSupplierQuotations = () => {
                   const status = q.status || 'Recorded';
                   const badgeCls = status === 'Converted' ? 'pq-badge-converted' : status === 'Cancelled' ? 'pq-badge-cancelled' : status === 'Recorded' ? 'pq-badge-recorded' : status === 'Pending CEO Approval' ? 'pq-badge-pending' : 'pq-badge-default';
                   const ceoApproved = isCeoApproved(q);
-                  return (
+
+  return (
                     <tr key={q.id}>
-                      <td style={{ fontWeight: 600, color: '#2563EB', fontFamily: 'monospace', fontSize: 13 }}>{q.quotation_no}</td>
+                      <td style={{ fontWeight: 600, color: '#2563EB', fontFamily: 'monospace', fontSize: 13 }}>{q.quotation_no}<DestBadge d={q.destination} /></td>
                       <td>{q.supplier_name}</td>
                       <td><span style={{ background: '#E0F2FE', color: '#0369A1', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{q.item_count || 1} item{(q.item_count || 1) !== 1 ? 's' : ''}</span></td>
                       <td className="right pq-amount" style={{ color: '#6B7280' }}>ETB {parseFloat(q.total_amount - (q.vat_amount || 0)).toLocaleString()}</td>
                       <td className="right pq-amount" style={{ color: '#6B7280' }}>{parseFloat(q.vat_rate) > 0 ? `ETB ${parseFloat(q.vat_amount || 0).toLocaleString()}` : '—'}</td>
                       <td className="right pq-amount" style={{ fontWeight: 600 }}>ETB {parseFloat(q.total_amount).toLocaleString()}</td>
                       <td style={{ color: '#6B7280' }}>{q.date_agreed ? new Date(q.date_agreed).toLocaleDateString() : '—'}</td>
-                      <td><span className={`pq-badge ${badgeCls}`}>{statusLabel(status, ceoApproved)}</span><FinanceChip f={q.finance_status} ceoApproved={ceoApproved} /><StoreChip s={q.store_status} showNotSent={status === 'Converted'} /></td>
+                      <td><span className={`pq-badge ${badgeCls}`}>{statusLabel(status, ceoApproved)}</span><FinanceChip f={q.finance_status} ceoApproved={ceoApproved} /><StoreChip s={q.destination === 'pharmacy' ? q.pharmacy_store_status : q.store_status} showNotSent={status === 'Converted'} destination={q.destination} /></td>
                       <td className="right">
                         <button className="pq-btn pq-btn-sm" style={{ background: '#F3F4F6', color: '#374151' }} onClick={() => handleViewQuote(q)}>View</button>
+                        {status === 'Cancelled' && (
+                          <button
+                            className="pq-btn pq-btn-sm"
+                            style={{ background: '#FEE2E2', color: '#B91C1C', marginLeft: 8 }}
+                            title="Delete cancelled quotation"
+                            onClick={() => setDeleteTarget(q)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -497,16 +590,16 @@ const PurchaseSupplierQuotations = () => {
         <div className="pq-modal-overlay">
           <div className="pq-modal">
             <div className="pq-modal-header">
-              <h2><Plus size={18} color="#2563EB" style={{ verticalAlign: 'middle', marginRight: 8 }} />Record Quotation</h2>
-              <button className="pq-close-btn" onClick={() => setShowAddModal(false)}><X size={20} /></button>
+              <h2><Plus size={18} color="#2563EB" style={{ verticalAlign: 'middle', marginRight: 8 }} />{editingId ? 'Edit Quotation' : 'Record Quotation'}</h2>
+              <button className="pq-close-btn" onClick={() => { setShowAddModal(false); setEditingId(null); }}><X size={20} /></button>
             </div>
             <form onSubmit={handleAddSubmit}>
               <div className="pq-modal-body">
                 {/* Destination toggle: General store vs Pharmacy store */}
                 <div style={{ display: 'flex', gap: 10, marginBottom: 20, background: '#F3F4F6', borderRadius: 10, padding: 6 }}>
                   {[
-                    { key: 'general', label: '🏪 General Store', hint: 'Items listed by description only' },
-                    { key: 'pharmacy', label: '💊 Pharmacy', hint: 'Drugs with batch, strength, expiry + money' }
+                    { key: 'general', label: 'General Store', icon: Store, hint: 'Items listed by description only' },
+                    { key: 'pharmacy', label: 'Pharmacy', icon: Pill, hint: 'Drugs with batch, strength, expiry + money' }
                   ].map(opt => (
                     <button
                       key={opt.key}
@@ -518,7 +611,10 @@ const PurchaseSupplierQuotations = () => {
                         color: formData.destination === opt.key ? '#fff' : '#374151', fontSize: 13, fontWeight: 600
                       }}
                     >
-                      <div>{opt.label}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        <opt.icon size={16} />
+                        {opt.label}
+                      </div>
                       <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.85, marginTop: 2 }}>{opt.hint}</div>
                     </button>
                   ))}
@@ -737,8 +833,8 @@ const PurchaseSupplierQuotations = () => {
                 </div>
               </div>
               <div className="pq-modal-footer">
-                <button type="button" className="pq-btn pq-btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="pq-btn pq-btn-primary">Save Quotation</button>
+                <button type="button" className="pq-btn pq-btn-ghost" onClick={() => { setShowAddModal(false); setEditingId(null); }}>Cancel</button>
+                <button type="submit" className="pq-btn pq-btn-primary">{editingId ? 'Save Changes' : 'Save Quotation'}</button>
               </div>
             </form>
           </div>
@@ -757,7 +853,14 @@ const PurchaseSupplierQuotations = () => {
             <div className="pq-modal pq-modal-lg">
               <div className="pq-modal-header">
                 <h2 style={{ fontFamily: 'monospace', color: '#2563EB' }}>{selectedQuote.quotation_no}</h2>
-                <button className="pq-close-btn" onClick={() => setShowViewModal(false)}><X size={20} /></button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {selectedQuote.status === 'Pending CEO Approval' && (
+                    <button className="pq-btn pq-btn-sm" style={{ background: '#2563EB', color: '#fff' }} onClick={() => handleEditQuote(selectedQuote)}>
+                      <Plus size={14} /> Edit
+                    </button>
+                  )}
+                  <button className="pq-close-btn" onClick={() => setShowViewModal(false)}><X size={20} /></button>
+                </div>
               </div>
               <div className="pq-modal-body">
                 {/* Horizontal Detail Strip */}
@@ -765,8 +868,9 @@ const PurchaseSupplierQuotations = () => {
                   <div className="pq-detail-strip-head">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span className={`pq-badge ${badgeCls}`}>{statusLabel(status, viewCeoApproved)}</span>
+                      <DestBadge d={selectedQuote.destination} />
                       <FinanceChip f={selectedQuote.finance_status} ceoApproved={viewCeoApproved} />
-                      <StoreChip s={selectedQuote.store_status} />
+                      <StoreChip s={selectedQuote.destination === 'pharmacy' ? selectedQuote.pharmacy_store_status : selectedQuote.store_status} destination={selectedQuote.destination} />
                       <span className="pq-detail-qno">{selectedQuote.quotation_no}</span>
                     </div>
                     <span className="pq-detail-agreed">Agreed {selectedQuote.date_agreed ? new Date(selectedQuote.date_agreed).toLocaleDateString() : '—'} via {selectedQuote.agreed_via || '—'}</span>
@@ -804,6 +908,7 @@ const PurchaseSupplierQuotations = () => {
                         <colgroup>
                           <col style={{ width: 40 }} />
                           <col />
+                          {selectedQuote.destination === 'pharmacy' && <><col style={{ width: 100 }} /><col style={{ width: 100 }} /><col style={{ width: 90 }} /><col style={{ width: 110 }} /></>}
                           <col style={{ width: 90 }} />
                           <col style={{ width: 90 }} />
                           <col style={{ width: 120 }} />
@@ -813,6 +918,7 @@ const PurchaseSupplierQuotations = () => {
                           <tr>
                             <th>#</th>
                             <th>Item</th>
+                            {selectedQuote.destination === 'pharmacy' && <><th>Category</th><th>Batch No</th><th>Strength</th><th>Expiry</th></>}
                             <th className="right">Qty</th>
                             <th className="right">Unit</th>
                             <th className="right">Cost Price</th>
@@ -824,6 +930,14 @@ const PurchaseSupplierQuotations = () => {
                             <tr key={item.id}>
                               <td style={{ fontWeight: 600, color: '#2563EB' }}>{item.line_no}</td>
                               <td>{item.item_description || '—'}</td>
+                              {selectedQuote.destination === 'pharmacy' && (
+                                <>
+                                  <td>{item.category || '—'}</td>
+                                  <td>{item.batch_no || '—'}</td>
+                                  <td>{item.strength || '—'}</td>
+                                  <td style={{ color: item.expiry_date && new Date(item.expiry_date) < new Date() ? '#B91C1C' : '#6B7280' }}>{item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '—'}</td>
+                                </>
+                              )}
                               <td className="right">{item.quantity}</td>
                               <td className="right">{item.unit || '—'}</td>
                               <td className="right">ETB {parseFloat(item.unit_price || 0).toLocaleString()}</td>
@@ -933,19 +1047,35 @@ const PurchaseSupplierQuotations = () => {
                     <div style={{ textAlign: 'center', padding: 14, background: '#DCFCE7', color: '#16A34A', fontWeight: 600, borderRadius: 8, marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
                       <CheckCircle size={16} /> Converted to Purchase Order.
                     </div>
-                    {selectedQuote.store_status === 'received' ? (
-                      <div style={{ textAlign: 'center', padding: 14, background: '#DCFCE7', color: '#15803D', fontWeight: 600, borderRadius: 8, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
-                        <CheckCircle size={16} /> General Store accepted — {selectedQuote.store_delivery_no || 'goods delivered'} received{selectedQuote.store_received_by_name ? ` by ${selectedQuote.store_received_by_name}` : ''}{selectedQuote.store_received_at ? ` on ${new Date(selectedQuote.store_received_at).toLocaleDateString()}` : ''}. Expense marked paid.
-                      </div>
-                    ) : selectedQuote.store_status === 'pending' ? (
-                      <div style={{ textAlign: 'center', padding: 14, background: '#FEF3C7', color: '#854D0E', fontWeight: 600, borderRadius: 8, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
-                        <Clock size={16} /> Sent to General Store ({selectedQuote.store_delivery_no || 'delivery note'}) — awaiting acceptance. Expense stays Ready until received.
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: 14, background: '#F3F4F6', color: '#6B7280', fontWeight: 500, borderRadius: 8, marginTop: 12, fontSize: 13 }}>
-                        Converted to purchase — shipment not forwarded to the General Store.
-                      </div>
-                    )}
+                    {(() => {
+                      const isPharm = selectedQuote.destination === 'pharmacy';
+                      const storeName = isPharm ? 'Pharmacy Store' : 'General Store';
+                      const st = isPharm
+                        ? selectedQuote.pharmacy_store_status
+                        : selectedQuote.store_status;
+                      const deliveryNo = isPharm
+                        ? selectedQuote.pharmacy_delivery_no
+                        : selectedQuote.store_delivery_no;
+                      if (st === 'received') {
+                        return (
+                          <div style={{ textAlign: 'center', padding: 14, background: '#DCFCE7', color: '#15803D', fontWeight: 600, borderRadius: 8, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
+                            <CheckCircle size={16} /> {storeName} accepted — {deliveryNo || 'goods delivered'} received{isPharm ? '' : selectedQuote.store_received_by_name ? ` by ${selectedQuote.store_received_by_name}` : ''}{isPharm && selectedQuote.pharmacy_received_at ? ` on ${new Date(selectedQuote.pharmacy_received_at).toLocaleDateString()}` : selectedQuote.store_received_at ? ` on ${new Date(selectedQuote.store_received_at).toLocaleDateString()}` : ''}. Expense marked paid.
+                          </div>
+                        );
+                      }
+                      if (st === 'pending' || st === 'partial') {
+                        return (
+                          <div style={{ textAlign: 'center', padding: 14, background: '#FEF3C7', color: '#854D0E', fontWeight: 600, borderRadius: 8, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
+                            <Clock size={16} /> {st === 'partial' ? 'Partially received at' : `Sent to ${storeName}`} ({deliveryNo || 'delivery note'}){st === 'partial' ? ' — awaiting remaining items' : ' — awaiting acceptance'}. Expense stays Ready until fully received.
+                          </div>
+                        );
+                      }
+                      return (
+                        <div style={{ textAlign: 'center', padding: 14, background: '#F3F4F6', color: '#6B7280', fontWeight: 500, borderRadius: 8, marginTop: 12, fontSize: 13 }}>
+                          Converted to purchase — shipment not forwarded to the {storeName}.
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -953,6 +1083,30 @@ const PurchaseSupplierQuotations = () => {
           </div>
         );
       })()}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="pq-modal-overlay">
+          <div className="pq-modal pq-modal-sm">
+            <div className="pq-modal-header">
+              <h2><Trash2 size={18} color="#DC2626" style={{ verticalAlign: 'middle', marginRight: 8 }} />Delete Quotation</h2>
+              <button className="pq-close-btn" onClick={() => setDeleteTarget(null)}><X size={20} /></button>
+            </div>
+            <div className="pq-modal-body">
+              <p style={{ color: '#6B7280', fontSize: 14, margin: '0 0 16px 0', lineHeight: 1.6 }}>
+                Are you sure you want to delete <strong style={{ fontFamily: 'monospace' }}>{deleteTarget.quotation_no}</strong> from <strong>{deleteTarget.supplier_name}</strong>?<br />
+                This permanently removes the quotation and its items. This action <strong>cannot be undone</strong>.
+              </p>
+              <div className="pq-modal-footer" style={{ padding: '16px 0 0 0' }}>
+                <button className="pq-btn pq-btn-ghost" disabled={deletingQuote} onClick={() => setDeleteTarget(null)}>Cancel</button>
+                <button className="pq-btn" style={{ background: '#DC2626', color: '#fff' }} disabled={deletingQuote} onClick={handleDeleteQuote}>
+                  {deletingQuote ? <span>Deleting…</span> : <><Trash2 size={16} /> Delete</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Convert Choice Modal */}
       {showConvertModal && selectedQuote && (
