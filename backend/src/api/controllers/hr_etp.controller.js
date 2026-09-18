@@ -5,6 +5,37 @@ const { sendNotification } = require('../../services/notification.service');
 
 const bcrypt = require('bcryptjs');
 
+// ── Attendance helpers ────────────────────────────────────────────────
+// A record counts as PRESENT when there is evidence of work: a clock-in/out,
+// computed net hours, or an explicit Present/Late status.
+function attendanceIsPresent(rec) {
+  if (!rec) return false;
+  const s = (rec.attendance_status || '').toLowerCase();
+  if (['present', 'late', 'on leave'].includes(s)) return true;
+  if (rec.actual_start_time || rec.actual_end_time) return true;
+  return Number(rec.net_work_hours) > 0;
+}
+
+function authLabel(method) {
+  const m = (method || 'ashara').toLowerCase();
+  if (m === 'card') return 'RFID Card';
+  if (m === 'face') return 'Face Rec';
+  return 'Ashara';
+}
+
+function timeHMM(timeVal) {
+  if (!timeVal) return '';
+  const t = String(timeVal);
+  return t.slice(0, 5);
+}
+
+function toDateOnly(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value).slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // Ensure a user linked to an employee carries the standard "Employee" role
 // (Employee Dashboard access) and is flagged as an employee in the system.
 const ensureEmployeeRole = async (userId, assignedBy = null) => {
@@ -572,6 +603,11 @@ exports.getDailyAttendance = catchAsync(async (req, res) => {
       overtime_hours: att?.overtime_hours || 0,
       clock_in: att?.actual_start_time || null,
       clock_out: att?.actual_end_time || null,
+      time_in: timeHMM(att?.actual_start_time),
+      auth_method: att?.auth_method || null,
+      auth_label: att ? authLabel(att.auth_method) : '—',
+      terminal_ip: att?.terminal_ip || null,
+      status: att ? (attendanceIsPresent(att) ? 'P' : 'A') : 'A',
       is_manual_override: att?.is_manual_override || 'No',
     };
   });
@@ -583,27 +619,134 @@ exports.getDailyAttendance = catchAsync(async (req, res) => {
     offline: result.filter(r => r.online_status === 'Offline').length,
     present: result.filter(r => r.attendance_status === 'Present').length,
     absent: result.filter(r => r.attendance_status === 'Absent').length,
+    present_pa: result.filter(r => r.status === 'P').length,
+    absent_pa: result.filter(r => r.status === 'A').length,
+    ashara_scans: result.filter(r => (r.auth_method || 'ashara') === 'ashara' && r.status === 'P').length,
+    card_scans: result.filter(r => r.auth_method === 'card' && r.status === 'P').length,
+    face_scans: result.filter(r => r.auth_method === 'face' && r.status === 'P').length,
+    card_face_scans: result.filter(r => (r.auth_method === 'card' || r.auth_method === 'face') && r.status === 'P').length,
   };
 
-  res.json({ status: 'success', data: { employees: result, summary, date } });
+  // Pin the currently logged-in user's own attendance record first
+  const meEmp = await db('hr_employees').where('user_id', req.user?.id).first();
+  let ordered = result.map(r => ({ ...r, is_me: false }));
+  if (meEmp) {
+    const idx = ordered.findIndex(r => r.employee_id === meEmp.employee_id);
+    if (idx !== -1) {
+      ordered[idx].is_me = true;
+      const [me] = ordered.splice(idx, 1);
+      ordered = [me, ...ordered];
+    }
+  }
+
+  res.json({ status: 'success', data: { employees: ordered, summary, date } });
 });
 
 exports.getMonthlyAttendance = catchAsync(async (req, res) => {
-  const { month, year, dept_id } = req.query;
+  const { month, year, dept_id, search } = req.query;
   const m = parseInt(month) || new Date().getMonth() + 1;
   const y = parseInt(year) || new Date().getFullYear();
 
-  let q = db('etp_monthly_summary as ms')
-    .join('hr_employees as e', 'ms.employee_id', 'e.employee_id')
-    .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
-    .where('ms.month_number', m)
-    .where('ms.year_number', y)
-    .select('ms.*', 'e.full_name', 'e.dept_id', 'd.dept_name', 'e.position_id');
+  // All active employees (so the whole workforce is visible even with no records)
+  let empQuery = db('hr_employees as e')
+    .join('departments as d', 'e.dept_id', 'd.id')
+    .select('e.employee_id', 'e.full_name', 'e.dept_id', 'd.name as dept_name', 'e.position_id')
+    .where('e.employment_status', 'Active');
+  if (dept_id) empQuery = empQuery.where('e.dept_id', dept_id);
+  if (search) empQuery = empQuery.where('e.full_name', 'like', `%${search.trim()}%`);
+  const employees = await empQuery;
 
-  if (dept_id) q = q.where('e.dept_id', dept_id);
+  // Live aggregation from the daily log for the selected month
+  const rows = await db('etp_daily_attendance as da')
+    .where('da.month_number', m)
+    .where('da.year_number', y)
+    .select(
+      'da.employee_id',
+      db.raw('COUNT(*) as work_days'),
+      db.raw('COALESCE(SUM(da.net_work_hours),0) as total_worked_hours'),
+      db.raw('COALESCE(SUM(da.late_minutes),0) as total_late_minutes'),
+      db.raw('COALESCE(SUM(da.overtime_hours),0) as total_overtime_hours')
+    )
+    .groupBy('da.employee_id');
 
-  const records = await q.orderBy('e.full_name');
-  res.json({ status: 'success', data: records });
+  const rowMap = {};
+  for (const r of rows) rowMap[r.employee_id] = r;
+
+  // Per-employee present/absent counts (needs the row-level presence test)
+  const dailyRows = await db('etp_daily_attendance as da')
+    .where('da.month_number', m)
+    .where('da.year_number', y)
+    .select('da.employee_id', 'da.attendance_status', 'da.actual_start_time', 'da.actual_end_time', 'da.net_work_hours');
+  const presentMap = {};
+  for (const r of dailyRows) {
+    if (!presentMap[r.employee_id]) presentMap[r.employee_id] = { present: 0, total: 0 };
+    presentMap[r.employee_id].total += 1;
+    if (attendanceIsPresent(r)) presentMap[r.employee_id].present += 1;
+  }
+
+  const records = employees.map(emp => {
+    const agg = rowMap[emp.employee_id] || {};
+    const pa = presentMap[emp.employee_id] || { present: 0, total: 0 };
+    const work_days = pa.total;
+    const days_present = pa.present;
+    const days_absent = work_days - days_present;
+    const attendance_rate = work_days > 0 ? Math.round((days_present / work_days) * 1000) / 10 : 0;
+    const attendance_percent = work_days > 0 ? Math.round((days_present / work_days) * 100) : 0;
+    return {
+      summary_id: null,
+      employee_id: emp.employee_id,
+      full_name: emp.full_name,
+      dept_id: emp.dept_id,
+      dept_name: emp.dept_name,
+      position_id: emp.position_id,
+      month_number: m,
+      year_number: y,
+      total_working_days: work_days,
+      days_present,
+      days_absent,
+      attendance_rate,
+      attendance_percent,
+      total_worked_hours: Number(agg.total_worked_hours || 0),
+      total_late_minutes: Number(agg.total_late_minutes || 0),
+      total_absent_days: days_absent,
+      total_overtime_hours: Number(agg.total_overtime_hours || 0),
+      punctuality_rate: work_days > 0 ? Math.round((1 - (Number(agg.total_late_minutes || 0) / (work_days * 480))) * 1000) / 10 : 0,
+      calculated_date: new Date(),
+      status: work_days === 0 ? 'No Records' : (days_absent === 0 ? 'Perfect' : days_present >= work_days / 2 ? 'Good' : 'Poor'),
+    };
+  }).sort((a, b) => a.full_name.localeCompare(b.full_name));
+
+  const withRecords = records.filter(r => r.total_working_days > 0);
+  const workingDates = await db('etp_daily_attendance')
+    .where('month_number', m)
+    .where('year_number', y)
+    .distinct('attendance_date');
+  const overview = {
+    month: m,
+    year: y,
+    month_label: new Date(y, m - 1, 1).toLocaleString('en-GB', { month: 'long', year: 'numeric' }),
+    total_working_days: workingDates.length,
+    total_employees: employees.length,
+    avg_present_rate: withRecords.length > 0
+      ? Math.round((withRecords.reduce((s, r) => s + r.attendance_rate, 0) / withRecords.length) * 10) / 10
+      : 0,
+    total_absences: withRecords.reduce((s, r) => s + r.days_absent, 0),
+    tracked_employees: withRecords.length,
+  };
+
+  // Pin the currently logged-in user's own monthly record first
+  const meEmp = await db('hr_employees').where('user_id', req.user?.id).first();
+  let ordered = records.map(r => ({ ...r, is_me: false }));
+  if (meEmp) {
+    const idx = ordered.findIndex(r => r.employee_id === meEmp.employee_id);
+    if (idx !== -1) {
+      ordered[idx].is_me = true;
+      const [me] = ordered.splice(idx, 1);
+      ordered = [me, ...ordered];
+    }
+  }
+
+  res.json({ status: 'success', data: ordered, overview, query: { month: m, year: y } });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1701,17 +1844,134 @@ exports.getMyProfile = catchAsync(async (req, res) => {
 });
 
 exports.getMyAttendancePortal = catchAsync(async (req, res) => {
-  const emp = await db('employees').where('user_id', req.user?.id).first();
-  if (!emp) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
-  const today = new Date().toISOString().split('T')[0];
-  const att = await db('attendance')
-    .where({ employee_id: emp.user_id, date: today }).first();
-  res.json({ status: 'success', data: att ? {
-    employee_id: emp.employee_id,
-    attendance_date: att.date,
-    attendance_status: att.status === 'present' ? 'Present' : (att.status === 'late' ? 'Late' : 'Absent'),
-    net_work_hours: 8
-  } : { employee_id: emp.employee_id, attendance_date: today, attendance_status: 'Not Recorded', net_work_hours: 0 } });
+  const { month } = req.query;
+  const now = new Date();
+  const m = parseInt(month) || now.getMonth() + 1;
+  const y = now.getFullYear();
+  const today = toDateOnly(now);
+
+  let emp = await db('hr_employees as e')
+    .leftJoin('departments as d', 'e.dept_id', 'd.id')
+    .select('e.employee_id', 'e.full_name', 'e.hire_date', 'd.name as dept_name', 'e.position_id')
+    .where('e.user_id', req.user?.id)
+    .first();
+
+  // Fallback: link by email if the user has no user_id on their HR profile
+  let user = null;
+  if (!emp && req.user?.id) {
+    user = await db('users').where('id', req.user.id).select('id', 'email', 'full_name').first();
+    if (user?.email) {
+      emp = await db('hr_employees as e')
+        .leftJoin('departments as d', 'e.dept_id', 'd.id')
+        .select('e.employee_id', 'e.full_name', 'e.hire_date', 'd.name as dept_name', 'e.position_id')
+        .where(function () { this.where('e.personal_email', user.email).orWhere('e.email', user.email); })
+        .first();
+    }
+  }
+
+  // No HR attendance profile linked — render a graceful empty state (no 404)
+  if (!emp) {
+    return res.json({
+      status: 'success',
+      data: {
+        linked: false,
+        full_name: user?.full_name || req.user?.full_name || req.user?.name || `User #${req.user?.id || ''}`,
+        employee_id: null,
+        dept_name: null,
+        hire_date: null,
+        today: { attendance_date: today, status: 'A', attendance_status: 'Not Recorded', time_in: '', time_out: '', net_work_hours: '0.00', auth_label: '—', auth_method: null, terminal_ip: null },
+        log: [],
+        monthly: {
+          month: m,
+          year: y,
+          month_label: new Date(y, m - 1, 1).toLocaleString('en-GB', { month: 'long', year: 'numeric' }),
+          work_days: 0, days_present: 0, days_absent: 0, attendance_rate: 0,
+          total_hours: 0, late_minutes: 0, method_counts: {},
+        },
+      },
+    });
+  }
+
+  // Daily log: most recent 40 records
+  const log = await db('etp_daily_attendance')
+    .where('employee_id', emp.employee_id)
+    .orderBy('attendance_date', 'desc')
+    .limit(40)
+    .select('record_id', 'employee_id', 'attendance_date', 'actual_start_time', 'actual_end_time',
+      'net_work_hours', 'late_minutes', 'overtime_hours', 'attendance_status',
+      'auth_method', 'terminal_ip', 'is_manual_override', 'override_reason', 'month_number', 'year_number');
+
+  // Today's status
+  const todayRec = log.find(r => toDateOnly(r.attendance_date) === today)
+    || await db('etp_daily_attendance')
+      .where({ employee_id: emp.employee_id, year_number: now.getFullYear(), month_number: now.getMonth() + 1 })
+      .orderBy('attendance_date', 'desc').first();
+
+  // Monthly summary (live)
+  const monthRows = await db('etp_daily_attendance')
+    .where({ employee_id: emp.employee_id, month_number: m, year_number: y });
+  const work_days = monthRows.length;
+  const days_present = monthRows.filter(attendanceIsPresent).length;
+  const days_absent = work_days - days_present;
+  const attendance_rate = work_days > 0 ? Math.round((days_present / work_days) * 1000) / 10 : 0;
+  const total_hours = monthRows.reduce((s, r) => s + Number(r.net_work_hours || 0), 0);
+  const late_minutes = monthRows.reduce((s, r) => s + Number(r.late_minutes || 0), 0);
+  const methodCounts = monthRows.reduce((acc, r) => {
+    const k = authLabel(r.auth_method);
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+
+  res.json({
+    status: 'success',
+    data: {
+      linked: true,
+      employee_id: emp.employee_id,
+      full_name: emp.full_name,
+      dept_name: emp.dept_name,
+      hire_date: emp.hire_date,
+      today: todayRec ? {
+        attendance_date: toDateOnly(todayRec.attendance_date),
+        status: attendanceIsPresent(todayRec) ? 'P' : 'A',
+        attendance_status: todayRec.attendance_status || 'Not Recorded',
+        time_in: timeHMM(todayRec.actual_start_time),
+        time_out: timeHMM(todayRec.actual_end_time),
+        net_work_hours: Number(todayRec.net_work_hours || 0).toFixed(2),
+        auth_method: todayRec.auth_method || null,
+        auth_label: authLabel(todayRec.auth_method),
+        terminal_ip: todayRec.terminal_ip || null,
+        is_manual_override: todayRec.is_manual_override || 'No',
+      } : { attendance_date: today, status: 'A', attendance_status: 'Not Recorded', time_in: '', auth_label: '—' },
+      log: log.map(r => ({
+        record_id: r.record_id,
+        attendance_date: toDateOnly(r.attendance_date),
+        time_in: timeHMM(r.actual_start_time),
+        time_out: timeHMM(r.actual_end_time),
+        net_work_hours: Number(r.net_work_hours || 0).toFixed(2),
+        late_minutes: r.late_minutes || 0,
+        overtime_hours: Number(r.overtime_hours || 0).toFixed(2),
+        status: attendanceIsPresent(r) ? 'P' : 'A',
+        attendance_status: r.attendance_status || 'Not Recorded',
+        auth_label: authLabel(r.auth_method),
+        auth_method: r.auth_method || null,
+        terminal_ip: r.terminal_ip || null,
+        month_number: r.month_number,
+        year_number: r.year_number,
+      })),
+      monthly: {
+        month: m,
+        year: y,
+        month_label: new Date(y, m - 1, 1).toLocaleString('en-GB', { month: 'long', year: 'numeric' }),
+        work_days,
+        days_present,
+        days_absent,
+        attendance_rate,
+        total_hours: Math.round(total_hours * 100) / 100,
+        late_minutes,
+        method_counts: methodCounts,
+      },
+    }
+  });
 });
 
 exports.getMyDocuments = catchAsync(async (req, res) => {
