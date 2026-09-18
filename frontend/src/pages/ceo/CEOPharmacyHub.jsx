@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Clipboard, Truck, CheckSquare, Package, Sliders, ClipboardCheck,
   CheckCircle, XCircle, RefreshCw, ChevronDown, ChevronUp,
-  X, Send, FileText, ArrowLeft
+  X, Send, FileText, ArrowLeft, AlertTriangle
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import { getPendingUpdateRequests, approveUpdateRequest, rejectUpdateRequest } from '../../utils/storeApi';
@@ -604,13 +604,34 @@ const TabStockUpdates = ({ toast }) => {
             return (
               <div key={r.id || idx} className="ph-card" style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)', marginBottom: 3 }}>{medicineName} (Request #{r.id})</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                      Before: <strong>{currentQty} units</strong> → After: <strong>{requestedQty} units</strong>
+                  <div style={{ flex: 1, minWidth: '300px' }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)', marginBottom: 8 }}>{medicineName} (Request #{r.id})</div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '8px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '2px' }}>Update Details</div>
+                      {Object.keys(newData).map(key => {
+                        if (key === 'reason') return null;
+                        const oldVal = oldData[key] !== undefined ? String(oldData[key]) : '—';
+                        const newVal = newData[key] !== undefined ? String(newData[key]) : '—';
+                        if (oldVal === newVal && key !== 'quantity') return null; // hide unchanged fields except quantity which might be the only thing explicitly requested sometimes
+                        
+                        return (
+                          <div key={key} style={{ fontSize: 12, display: 'flex', alignItems: 'center' }}>
+                            <span style={{ width: '120px', fontWeight: 600, color: '#334155', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span>
+                            <span style={{ color: '#64748b' }}><span style={{ textDecoration: 'line-through' }}>{oldVal}</span> <strong style={{ color: '#0f172a', marginLeft: '4px' }}>→ {newVal}</strong></span>
+                          </div>
+                        );
+                      })}
+                      {(!newData || Object.keys(newData).length === 0) && r.new_quantity && (
+                         <div style={{ fontSize: 12, display: 'flex', alignItems: 'center' }}>
+                            <span style={{ width: '120px', fontWeight: 600, color: '#334155' }}>Quantity:</span>
+                            <span style={{ color: '#64748b' }}><span style={{ textDecoration: 'line-through' }}>{currentQty}</span> <strong style={{ color: '#0f172a', marginLeft: '4px' }}>→ {requestedQty}</strong></span>
+                         </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Requested by: {r.requested_by_name || '—'} &nbsp;|&nbsp; {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Reason: {reasonText}</div>
+                    
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 8 }}><strong>Requested by:</strong> {r.requested_by_name || '—'} &nbsp;|&nbsp; {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}><strong>Reason:</strong> {reasonText}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <Badge status={r.status || 'PENDING'} />
@@ -884,12 +905,112 @@ const TabPhysicalCount = ({ toast }) => {
   );
 };
 
+const TabExpiredDrugs = ({ toast }) => {
+  const [drugs, setDrugs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(null);
+  const [rejectReason, setRejectReason] = useState({});
+  const [showRejectFor, setShowRejectFor] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.get('/pharmacy/expired-drugs');
+      setDrugs(res.data?.data?.filter(d => d.status === 'PENDING') || []);
+    } catch (e) {
+      toast('Failed to load expired drugs.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleDecision = async (id, decision) => {
+    if (decision === 'REJECTED' && !rejectReason[id]?.trim()) {
+      return toast('Please enter a rejection reason.', 'error');
+    }
+    setActing(id);
+    try {
+      await apiClient.patch(`/pharmacy/expired-drugs/${id}/ceo-decision`, {
+        decision,
+        ceo_notes: decision === 'REJECTED' ? rejectReason[id] : ''
+      });
+      toast(`Drug successfully ${decision.toLowerCase()}.`, 'success');
+      setShowRejectFor(null);
+      setRejectReason(prev => ({ ...prev, [id]: '' }));
+      load();
+    } catch (e) {
+      toast(`Failed to process decision.`, 'error');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  return (
+    <div style={{ padding: '24px 30px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>
+          Pending Expired Drugs ({drugs.length})
+        </h3>
+        <Btn onClick={load} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '7px 14px', fontSize: 12 }}>
+          <RefreshCw size={13} /> Refresh
+        </Btn>
+      </div>
+
+      {loading ? <Spinner /> : drugs.length === 0 ? <Empty icon={CheckCircle} message="No pending expired drugs to review!" /> : (
+        <div style={{ display: 'grid', gap: 14 }}>
+          {drugs.map(d => (
+            <div key={d.id} className="ph-card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)', marginBottom: 3 }}>{d.drug_name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Quantity: <strong>{d.quantity}</strong> | Expired: <strong>{new Date(d.expiry_date).toLocaleDateString()}</strong></div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Requested Action: {d.action_required || 'DISPOSE'}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Reported on: {new Date(d.created_at).toLocaleString()}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Btn onClick={() => handleDecision(d.id, 'APPROVED')} disabled={acting === d.id} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '6px 12px', fontSize: 11 }}>
+                    <CheckCircle size={12} /> Approve
+                  </Btn>
+                  <Btn onClick={() => setShowRejectFor(showRejectFor === d.id ? null : d.id)} disabled={acting === d.id} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '6px 12px', fontSize: 11 }}>
+                    <XCircle size={12} /> Reject
+                  </Btn>
+                </div>
+              </div>
+
+              {showRejectFor === d.id && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px dashed var(--color-border)` }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 6 }}>REJECTION REASON *</div>
+                  <textarea
+                    value={rejectReason[d.id] || ''}
+                    onChange={e => setRejectReason(prev => ({ ...prev, [d.id]: e.target.value }))}
+                    placeholder="Enter reason for rejection..."
+                    rows={2}
+                    style={{ width: '100%', boxSizing: 'border-box', padding: 10, fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 6, outline: 'none' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                    <Btn onClick={() => handleDecision(d.id, 'REJECTED')} disabled={acting === d.id || !(rejectReason[d.id]||'').trim()} color={'white'} border={'var(--color-danger)'} style={{ background: 'var(--color-danger)', padding: '6px 16px', fontSize: 12 }}>
+                      {acting === d.id ? 'Processing...' : 'Confirm Reject'}
+                    </Btn>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const TABS = [
   { id: 'procurement',  label: 'Procurement',    icon: Clipboard,      component: TabProcurement },
   { id: 'delivery',     label: 'Direct Delivery', icon: Truck,          component: TabDelivery },
   { id: 'updates',      label: 'Stock Updates',  icon: CheckSquare,    component: TabStockUpdates },
   { id: 'adjustments',  label: 'Adjustments',    icon: Sliders,        component: TabAdjustments },
   { id: 'counts',       label: 'Physical Count', icon: ClipboardCheck, component: TabPhysicalCount },
+  { id: 'expired',      label: 'Expired Drugs',  icon: AlertTriangle,  component: TabExpiredDrugs },
 ];
 
 const CEOPharmacyHub = () => {
