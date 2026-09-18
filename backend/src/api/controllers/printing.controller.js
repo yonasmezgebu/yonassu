@@ -1616,25 +1616,25 @@ exports.getOrderStatuses = catchAsync(async (req, res) => {
   });
 });
 exports.getPaperTypes = catchAsync(async (req, res) => {
-  const paperTypes = [
-    { code: 'A3', name: 'A3', description: '297mm x 420mm' },
-    { code: 'A4', name: 'A4', description: '210mm x 297mm' },
-    { code: 'A5', name: 'A5', description: '148mm x 210mm' }
-  ];
+  const paperTypes = await db('printing_paper_types').where({ is_active: true });
   res.json({
     status: 'success',
-    data: { paperTypes }
+    data: { paperTypes: paperTypes.length ? paperTypes : [
+      { code: 'A3', name: 'A3 (297x420mm)', base_price: 1.00, color_multiplier: 2.0 },
+      { code: 'A4', name: 'A4 (210x297mm)', base_price: 0.50, color_multiplier: 2.0 },
+      { code: 'A5', name: 'A5 (148x210mm)', base_price: 0.75, color_multiplier: 2.0 }
+    ] }
   });
 });
 exports.getBindingTypes = catchAsync(async (req, res) => {
-  const bindingTypes = [
-    { code: 'None', name: 'No Binding', price: 0 },
-    { code: 'Spiral', name: 'Spiral Binding', price: 500 },
-    { code: 'Thermal', name: 'Thermal Binding', price: 300 }
-  ];
+  const bindingTypes = await db('printing_binding_types').where({ is_active: true });
   res.json({
     status: 'success',
-    data: { bindingTypes }
+    data: { bindingTypes: bindingTypes.length ? bindingTypes : [
+      { code: 'None', name: 'No Binding', price: 0 },
+      { code: 'Spiral', name: 'Spiral Binding', price: 500 },
+      { code: 'Thermal', name: 'Thermal Binding', price: 300 }
+    ] }
   });
 });
 exports.getProductTypes = catchAsync(async (req, res) => {
