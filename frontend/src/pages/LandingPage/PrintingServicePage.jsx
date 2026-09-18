@@ -31,9 +31,9 @@ const STYLES = `
 :root {
   --psp-bg: 0 0% 100%;
   --psp-fg: 222.2 84% 4.9%;
-  --psp-primary: 221.2 83.2% 53.3%;
-  --psp-primary-fg: 210 40% 98%;
-  --psp-primary-dark: 220 80% 40%;
+  --psp-primary: 142 70% 28%;
+  --psp-primary-fg: 0 0% 100%;
+  --psp-primary-dark: 142 75% 18%;
   --psp-accent: 50 100% 50%;
   --psp-muted: 210 40% 96.1%;
   --psp-muted-fg: 215.4 16.3% 46.9%;
@@ -746,12 +746,12 @@ select.psp-form-input {
 /* ═══════════════════════════════════════════════════════
    DATA
 ════════════════════════════════════════════════════════ */
-const PAPER_TYPES = [
-  { code: 'A4', name: 'A4 (210×297mm)', price: 0.50 },
-  { code: 'A5', name: 'A5 (148×210mm)', price: 0.75 },
-  { code: 'A3', name: 'A3 (297×420mm)', price: 1.00 },
+const DEFAULT_PAPER_TYPES = [
+  { code: 'A4', name: 'A4 (210×297mm)', base_price: 0.50, color_multiplier: 2.0 },
+  { code: 'A5', name: 'A5 (148×210mm)', base_price: 0.75, color_multiplier: 2.0 },
+  { code: 'A3', name: 'A3 (297×420mm)', base_price: 1.00, color_multiplier: 2.0 },
 ];
-const BINDING_TYPES = [
+const DEFAULT_BINDING_TYPES = [
   { code: 'None',    name: 'No Binding',      price: 0 },
   { code: 'Spiral',  name: 'Spiral Binding',  price: 500 },
   { code: 'Thermal', name: 'Thermal Binding', price: 300 },
@@ -764,11 +764,6 @@ const PRODUCT_TYPES = [
   { code: 'TaxReceipt',name: 'Tax Receipts',      img: null,       desc: 'Official tax receipts, VAT books, vouchers' },
 ];
 
-const PRICING_ROWS = [
-  { name: 'Per Page Rate', a4: '0.50 ETB', a5: '0.75 ETB', a3: '1.00 ETB', color: '×2 price' },
-  { name: 'Spiral Binding', a4: '500 ETB', a5: '500 ETB', a3: '500 ETB', color: 'Per copy' },
-  { name: 'Thermal Binding', a4: '300 ETB', a5: '300 ETB', a3: '300 ETB', color: 'Per copy' },
-];
 
 const FAQS = [
   { q: 'What file formats do you accept?', a: 'We accept PDF, DOCX, JPG, and PNG. PDF is strongly recommended to ensure formatting is preserved across devices and printers.' },
@@ -781,12 +776,16 @@ const FAQS = [
 /* ═══════════════════════════════════════════════════════
    PRICE CALCULATOR
 ════════════════════════════════════════════════════════ */
-const calcPrice = ({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType, vatCtx }) => {
-  const basePrice = PAPER_TYPES.find(p => p.code === paperType)?.price ?? 0.50;
-  const multiplier = colorPrinting ? 2.0 : 1.0;
-  const pricePerUnit = pagesPerCopy * basePrice * multiplier;
-  const bindingCost = (BINDING_TYPES.find(b => b.code === bindingType)?.price ?? 0) * quantity;
-  const subtotal = pricePerUnit * quantity;
+const calcPrice = ({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType, vatCtx, paperTypes, bindingTypes }) => {
+  const _paperTypes   = paperTypes || DEFAULT_PAPER_TYPES;
+  const _bindingTypes = bindingTypes || DEFAULT_BINDING_TYPES;
+  const pData         = _paperTypes.find(p => p.code === paperType);
+  const basePrice     = parseFloat(pData?.base_price ?? pData?.price ?? 0.50);
+  const colorMult     = parseFloat(pData?.color_multiplier ?? 2.0);
+  const multiplier    = colorPrinting ? colorMult : 1.0;
+  const pricePerUnit  = pagesPerCopy * basePrice * multiplier;
+  const bindingCost   = (parseFloat(_bindingTypes.find(b => b.code === bindingType)?.price ?? 0)) * quantity;
+  const subtotal      = pricePerUnit * quantity;
   const r = getVatForItem(vatCtx, 'printing', null, subtotal + bindingCost);
   return {
     pricePerUnit: parseFloat(pricePerUnit.toFixed(2)),
@@ -801,16 +800,18 @@ const calcPrice = ({ paperType, pagesPerCopy, quantity, colorPrinting, bindingTy
 /* ═══════════════════════════════════════════════════════
    LIVE CALCULATOR COMPONENT
 ════════════════════════════════════════════════════════ */
-const LiveCalculator = ({ onClose }) => {
-  const [paperType, setPaperType] = useState('A4');
+const LiveCalculator = ({ onClose, paperTypes, bindingTypes }) => {
+  const _paperTypes   = paperTypes  || DEFAULT_PAPER_TYPES;
+  const _bindingTypes = bindingTypes || DEFAULT_BINDING_TYPES;
+  const [paperType, setPaperType] = useState(_paperTypes[0]?.code || 'A4');
   const [pagesPerCopy, setPagesPerCopy] = useState(100);
   const [quantity, setQuantity] = useState(1);
   const [colorPrinting, setColorPrinting] = useState(false);
-  const [bindingType, setBindingType] = useState('None');
+  const [bindingType, setBindingType] = useState(_bindingTypes[0]?.code || 'None');
   const [vatCtx, setVatCtx] = useState(null);
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
-  const pricing = calcPrice({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType, vatCtx });
+  const pricing = calcPrice({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType, vatCtx, paperTypes: _paperTypes, bindingTypes: _bindingTypes });
 
   return (
     <div className="calc-overlay" onClick={onClose}>
@@ -828,7 +829,7 @@ const LiveCalculator = ({ onClose }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Paper Size</label>
             <select style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff', fontSize: 13, minWidth: 160 }} value={paperType} onChange={e => setPaperType(e.target.value)}>
-              {PAPER_TYPES.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+              {_paperTypes.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
             </select>
           </div>
           
@@ -853,7 +854,7 @@ const LiveCalculator = ({ onClose }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Binding Type</label>
             <select style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff', fontSize: 13, minWidth: 160 }} value={bindingType} onChange={e => setBindingType(e.target.value)}>
-              {BINDING_TYPES.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+              {_bindingTypes.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
             </select>
           </div>
         </div>
@@ -892,6 +893,62 @@ export default function PrintingServicePage() {
   const [catFilter, setCatFilter] = useState('all');
   const [openFaq, setOpenFaq] = useState(null);
   const [isCalcOpen, setIsCalcOpen] = useState(false);
+
+  // Live posts from API (replaces hardcoded PRODUCT_TYPES)
+  const [liveProducts, setLiveProducts] = useState(PRODUCT_TYPES); // fallback to hardcoded while loading
+  const [paperTypes, setPaperTypes]     = useState(DEFAULT_PAPER_TYPES);
+  const [bindingTypes, setBindingTypes] = useState(DEFAULT_BINDING_TYPES);
+
+  // Pricing rows derived from live data — keeps pricing table always in sync
+  const pricingRows = [
+    {
+      name: 'Per Page Rate (B/W)',
+      base: paperTypes.map(p => `${p.code}: ${parseFloat(p.base_price || p.price || 0).toFixed(2)} ETB`).join(' | '),
+      color: paperTypes.map(p => `${p.code}: ${(parseFloat(p.base_price || p.price || 0) * parseFloat(p.color_multiplier || 2)).toFixed(2)} ETB`).join(' | '),
+      bind: '—',
+    },
+    ...bindingTypes.filter(b => b.code !== 'None').map(b => ({
+      name: b.name,
+      base: '—',
+      color: '—',
+      bind: `${parseFloat(b.price).toFixed(0)} ETB / copy`,
+    })),
+  ];
+
+  useEffect(() => {
+    // Posts
+    axios.get('/printing/posts')
+      .then(res => {
+        const raw = res?.data?.data || res?.data || [];
+        if (Array.isArray(raw) && raw.length > 0) {
+          setLiveProducts(raw.map(p => ({
+            code: p.code,
+            name: p.name,
+            img: p.image_url ? `http://localhost:5000/${p.image_url}` : null,
+            desc: p.description || '',
+            badge: p.badge_label || p.code,
+            base_price: p.base_price_per_page,
+          })));
+        }
+      })
+      .catch(() => {});
+
+    // Paper types
+    axios.get('/printing/public/paper-types')
+      .then(res => {
+        const pts = res?.data?.data?.paperTypes;
+        if (Array.isArray(pts) && pts.length > 0) setPaperTypes(pts);
+      })
+      .catch(() => {});
+
+    // Binding types
+    axios.get('/printing/public/binding-types')
+      .then(res => {
+        const bts = res?.data?.data?.bindingTypes;
+        if (Array.isArray(bts) && bts.length > 0) setBindingTypes(bts);
+      })
+      .catch(() => {});
+  }, []);
 
   // Modal state
   const [isModalOpen, setIsModalOpen]         = useState(false);
@@ -975,7 +1032,7 @@ export default function PrintingServicePage() {
   }, [location]);
 
   // Derived price
-  const pricing = calcPrice({ paperType, pagesPerCopy: parseInt(pagesPerCopy) || 1, quantity: parseInt(quantity) || 1, colorPrinting, bindingType, vatCtx });
+  const pricing = calcPrice({ paperType, pagesPerCopy: parseInt(pagesPerCopy) || 1, quantity: parseInt(quantity) || 1, colorPrinting, bindingType, vatCtx, paperTypes, bindingTypes });
 
   // Today + 1 for min due date
   const tomorrow = new Date();
@@ -983,8 +1040,8 @@ export default function PrintingServicePage() {
   const minDate = tomorrow.toISOString().split('T')[0];
 
   const filtered = catFilter === 'all'
-    ? PRODUCT_TYPES
-    : PRODUCT_TYPES.filter(p => p.code === catFilter);
+    ? liveProducts
+    : liveProducts.filter(p => p.code === catFilter);
 
   const openOrder = (svc) => {
     setSelectedService(svc);
@@ -1088,9 +1145,9 @@ export default function PrintingServicePage() {
   const handlePrint = () => {
     if (!orderResult) return;
     const win = window.open('', '_blank', 'width=800,height=900');
-    const svcName = PRODUCT_TYPES.find(p => p.code === orderResult.productType)?.name ?? orderResult.productType;
-    const paperName = PAPER_TYPES.find(p => p.code === orderResult.paperType)?.name ?? orderResult.paperType;
-    const bindingName = BINDING_TYPES.find(b => b.code === orderResult.bindingType)?.name ?? orderResult.bindingType;
+    const svcName = liveProducts.find(p => p.code === orderResult.productType)?.name ?? orderResult.productType;
+    const paperName = paperTypes.find(p => p.code === orderResult.paperType)?.name ?? orderResult.paperType;
+    const bindingName = bindingTypes.find(b => b.code === orderResult.bindingType)?.name ?? orderResult.bindingType;
     win.document.write(`<!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
 <title>Printing Order Receipt – ${orderResult.orderNumber}</title>
@@ -1153,8 +1210,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f5f5f5;padding:20
 <table class="price-table">
 <thead><tr><th>Description</th><th>Rate</th><th>Qty</th><th>Amount (ETB)</th></tr></thead>
 <tbody>
-<tr><td>Printing (${orderResult.pagesPerCopy} pages × ${PAPER_TYPES.find(p=>p.code===orderResult.paperType)?.price||0.50} ETB${orderResult.colorPrinting?' × 2 (color)':''})</td><td>${(PAPER_TYPES.find(p=>p.code===orderResult.paperType)?.price||0.50) * (orderResult.colorPrinting?2:1)} ETB/page</td><td>${orderResult.quantity}</td><td>${pricing.subtotal.toFixed(2)}</td></tr>
-${orderResult.bindingType !== 'None' ? `<tr><td>${bindingName}</td><td>${BINDING_TYPES.find(b=>b.code===orderResult.bindingType)?.price||0} ETB/copy</td><td>${orderResult.quantity}</td><td>${pricing.bindingCost.toFixed(2)}</td></tr>` : ''}
+<tr><td>Printing (${orderResult.pagesPerCopy} pages × ${(paperTypes.find(p=>p.code===orderResult.paperType)?.base_price||paperTypes.find(p=>p.code===orderResult.paperType)?.price||0.50)} ETB${orderResult.colorPrinting?' × 2 (color)':''})</td><td>${((paperTypes.find(p=>p.code===orderResult.paperType)?.base_price||paperTypes.find(p=>p.code===orderResult.paperType)?.price||0.50) * (orderResult.colorPrinting?2:1))} ETB/page</td><td>${orderResult.quantity}</td><td>${pricing.subtotal.toFixed(2)}</td></tr>
+${orderResult.bindingType !== 'None' ? `<tr><td>${bindingName}</td><td>${bindingTypes.find(b=>b.code===orderResult.bindingType)?.price||0} ETB/copy</td><td>${orderResult.quantity}</td><td>${pricing.bindingCost.toFixed(2)}</td></tr>` : ''}
 <tr class="total-row"><td colspan="3">TOTAL AMOUNT DUE</td><td>${orderResult.totalPrice?.toFixed(2) ?? pricing.totalPrice.toFixed(2)} ETB</td></tr>
 </tbody></table>
 
@@ -1211,7 +1268,7 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
           <div className="psp-section-header" style={{ textAlign: 'center' }}>
             <div className="psp-section-label">Our Catalog</div>
             <h2 className="psp-section-title">
-              {catFilter === 'all' ? 'All Printing Services' : PRODUCT_TYPES.find(p => p.code === catFilter)?.name}
+              {catFilter === 'all' ? 'All Printing Services' : liveProducts.find(p => p.code === catFilter)?.name}
             </h2>
           </div>
 
@@ -1226,14 +1283,14 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                       <FileText size={60} color="rgba(255,255,255,0.4)" />
                     </div>
                   )}
-                  <div className="psp-card-badge">{svc.code}</div>
+                  <div className="psp-card-badge">{svc.badge || svc.code}</div>
                 </div>
                 <div className="psp-card-body">
                   <h3 className="psp-card-name">{svc.name}</h3>
                   <p className="psp-card-desc">{svc.desc}</p>
                   <div className="psp-card-footer">
                     <div>
-                      <div className="psp-price">From 0.50 ETB</div>
+                      <div className="psp-price">From {parseFloat(svc.base_price || 0.50).toFixed(2)} ETB</div>
                       <div className="psp-price-sub">per page</div>
                     </div>
                     <button className="psp-btn-primary" onClick={() => handleOpenOrder(svc)}>
@@ -1291,7 +1348,7 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                 </tr>
               </thead>
               <tbody>
-                {PRICING_ROWS.map((r, i) => (
+                {pricingRows.map((r, i) => (
                   <tr key={i}>
                     <td style={{ fontWeight: 600, color: 'hsl(var(--psp-primary))' }}>{r.name}</td>
                     <td>{r.base}</td>
@@ -1438,7 +1495,7 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                       onChange={e => setProductType(e.target.value)}
                       required
                     >
-                      {PRODUCT_TYPES.map(p => (
+                      {liveProducts.map(p => (
                         <option key={p.code} value={p.code}>{p.name}</option>
                       ))}
                     </select>
@@ -1454,7 +1511,7 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                         onChange={e => setPaperType(e.target.value)}
                         required
                       >
-                        {PAPER_TYPES.map(p => (
+                        {paperTypes.map(p => (
                           <option key={p.code} value={p.code}>{p.name}</option>
                         ))}
                       </select>
@@ -1467,7 +1524,7 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                         value={bindingType}
                         onChange={e => setBindingType(e.target.value)}
                       >
-                        {BINDING_TYPES.map(b => (
+                        {bindingTypes.map(b => (
                           <option key={b.code} value={b.code}>{b.name}{b.price > 0 ? ` (+${b.price} ETB/copy)` : ''}</option>
                         ))}
                       </select>
@@ -1684,12 +1741,12 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                       <Calculator size={14} /> Price Summary
                     </div>
                     <div className="psp-price-row">
-                      <span>Printing ({pagesPerCopy} pages × {PAPER_TYPES.find(p => p.code === paperType)?.price} ETB{colorPrinting ? ' × 2' : ''})</span>
+                      <span>Printing ({pagesPerCopy} pages × {parseFloat(paperTypes.find(p => p.code === paperType)?.base_price ?? paperTypes.find(p => p.code === paperType)?.price ?? 0.50).toFixed(2)} ETB{colorPrinting ? ' × 2' : ''})</span>
                       <span style={{ fontWeight: 700 }}>{pricing.subtotal.toFixed(2)} ETB</span>
                     </div>
                     {bindingType !== 'None' && (
                       <div className="psp-price-row">
-                        <span>{BINDING_TYPES.find(b => b.code === bindingType)?.name} ({quantity} copies)</span>
+                        <span>{bindingTypes.find(b => b.code === bindingType)?.name} ({quantity} copies)</span>
                         <span style={{ fontWeight: 700 }}>{pricing.bindingCost.toFixed(2)} ETB</span>
                       </div>
                     )}
@@ -1726,7 +1783,7 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
         </div>
       )}
 
-      {isCalcOpen && <LiveCalculator onClose={() => setIsCalcOpen(false)} />}
+      {isCalcOpen && <LiveCalculator onClose={() => setIsCalcOpen(false)} paperTypes={paperTypes} bindingTypes={bindingTypes} />}
     </div>
   );
 }
