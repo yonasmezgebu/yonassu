@@ -885,7 +885,7 @@ const salesController = {
       await notificationRepository.create({
         roleTarget: 'CEO', title: 'Expired Drug Reported',
         message: `Expired drug reported: ${drug_name} x${quantity}`,
-        type: 'expired_drug', link: `/ceo/expired-drugs`
+        type: 'expired_drug', link: `/ceo/pharmacy-hub?tab=expired`
       });
       await notificationRepository.create({
         roleTarget: 'Pharmacy Store Keeper', title: 'Expired Drug Reported',
