@@ -339,10 +339,13 @@ router.post('/quotations/:id/finance-approve', authenticate, authorizeRoles(['Fi
 router.post('/quotations/:id/convert', authenticate, authorize(['purchase_orders:create']), QuotationController.convertQuotation);
 router.post('/quotations/:id/ceo-approve', authenticate, authorizeRoles(['CEO', 'Admin']), QuotationController.approveQuotation);
 router.put('/quotations/:id/cancel', authenticate, authorize(['purchase_orders:update']), QuotationController.cancelQuotation);
+router.put('/quotations/:id', authenticate, authorize(['purchase_orders:update']), QuotationController.updateQuotation);
+router.delete('/quotations/:id', authenticate, authorize(['purchase_orders:update']), QuotationController.deleteQuotation);
 
 // ── Pharmacy Store: pending incoming shipments from pharmacy quotations ──
 router.get('/pharmacy-incoming', authenticate, authorize(['inventory:read']), QuotationController.listPharmacyIncoming);
 router.get('/pharmacy-incoming/:id', authenticate, authorize(['inventory:read']), QuotationController.getPharmacyIncoming);
-router.post('/pharmacy-incoming/:id/accept-item', authenticate, authorize(['inventory:update']), QuotationController.acceptPharmacyIncomingItem);
+router.post('/pharmacy-incoming/:id/accept-item/:itemId', authenticate, authorize(['inventory:update']), QuotationController.acceptPharmacyIncomingItem);
+router.post('/pharmacy-incoming/:id/receive', authenticate, authorize(['inventory:update']), QuotationController.receivePharmacyIncoming);
 
 module.exports = router;
