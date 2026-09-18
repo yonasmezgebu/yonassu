@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FileText, ExternalLink, CheckCircle, Loader, Search, Wallet, Clock, DollarSign, XCircle, Lock } from 'lucide-react';
+import { FileText, ExternalLink, CheckCircle, Loader, Search, Wallet, Clock, DollarSign, XCircle, Lock, Pill, Store } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import authService from '../../services/authService';
 
@@ -148,6 +148,7 @@ const QuotationExpenses = () => {
                     <th>Quote Status</th>
                     <th>Expense Status</th>
                     <th>CEO Approved</th>
+                    <th>Pharmacy Store</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -159,7 +160,19 @@ const QuotationExpenses = () => {
                     const ceoApproved = q.status === 'Recorded' && !!q.finance_ceo_approved;
                     return (
                       <tr key={q.id}>
-                        <td className="qe-qno">{q.quotation_no}</td>
+                        <td className="qe-qno">
+                          {q.quotation_no}
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 8, padding: '1px 8px', borderRadius: 6,
+                            fontSize: 11, fontWeight: 700, letterSpacing: '0.02em', verticalAlign: 'middle',
+                            background: q.destination === 'pharmacy' ? '#F3E8FF' : '#E0F2FE',
+                            color: q.destination === 'pharmacy' ? '#7E22CE' : '#0369A1',
+                            border: q.destination === 'pharmacy' ? '1px solid #D8B4FE' : '1px solid #BAE6FD'
+                          }}>
+                            {q.destination === 'pharmacy' ? <Pill size={12} /> : <Store size={12} />}
+                            {q.destination === 'pharmacy' ? 'Pharmacy' : 'General'}
+                          </span>
+                        </td>
                         <td>{q.supplier_name}</td>
                         <td style={{ fontWeight: 700 }}>ETB {Number(q.finance_amount ?? q.total_amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td><span className="qe-badge" style={{ background: qb.bg, color: qb.c }}>{qb.t}</span></td>
@@ -173,6 +186,25 @@ const QuotationExpenses = () => {
                             <Clock size={14} /> Pending
                           </span>
                         )}</td>
+                        <td>
+                          {q.destination === 'pharmacy' && q.pharmacy_store_status === 'received' ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#15803D', fontWeight: 600, fontSize: 13 }}>
+                              <CheckCircle size={14} /> Accepted{q.pharmacy_received_at ? ` · ${new Date(q.pharmacy_received_at).toLocaleDateString()}` : ''}
+                            </span>
+                          ) : q.destination === 'pharmacy' && (q.pharmacy_store_status === 'partial') ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#D97706', fontWeight: 600, fontSize: 13 }}>
+                              <Clock size={14} /> Partially Received
+                            </span>
+                          ) : q.destination === 'pharmacy' && (q.pharmacy_store_status === 'pending' || q.pharmacy_store_status === 'not_received') ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#D97706', fontWeight: 600, fontSize: 13 }}>
+                              <Clock size={14} /> Delivery Pending
+                            </span>
+                          ) : q.destination === 'pharmacy' ? (
+                            <span style={{ color: '#9CA3AF', fontWeight: 600, fontSize: 13 }}>Not Converted</span>
+                          ) : (
+                            <span style={{ color: '#9CA3AF', fontSize: 13 }}>—</span>
+                          )}
+                        </td>
                         <td>
                           {canMarkReady ? (
                             ceoApproved ? (
