@@ -65,19 +65,28 @@ export default function ExpiredDrugReport({ hideHeader = false }) {
   const [notifiedIds, setNotifiedIds] = useState(new Set());
 
   const handleNotifyManager = async (item) => {
+    const qty = item.qty || item.stock_quantity || item.quantity || 1;
+    const rawDate = item.expiry_date;
+    const safeDate = rawDate ? String(rawDate).split('T')[0] : null;
+
+    if (!safeDate) {
+      showToast('Cannot notify: expiry date is missing for this item.', 'error');
+      return;
+    }
+
     try {
       await apiClient.post('/pharmacy/expired-drugs', {
-        drug_id: item.id,
-        drug_name: item.name || item.generic_name || 'Unknown',
-        quantity: item.quantity,
-        expiry_date: item.expiry_date,
+        drug_name: item.name || item.drug_name || item.generic_name || 'Unknown Drug',
+        quantity: parseInt(qty) || 1,
+        expiry_date: safeDate,
         location: 'Pharmacy Store',
         action_required: 'DISPOSE'
       });
-      showToast(`Expired item notification sent to CEO.`, 'success');
+      showToast(`CEO has been notified about expired: ${item.name || 'this drug'}.`, 'success');
       setNotifiedIds(prev => new Set(prev).add(item.id));
     } catch (err) {
-      showToast(err.response?.data?.message || 'Error notifying CEO', 'error');
+      const msg = err.response?.data?.message || err.response?.data?.error || 'Error notifying CEO';
+      showToast(msg, 'error');
     }
   };
 
