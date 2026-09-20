@@ -910,13 +910,17 @@ const TabExpiredDrugs = ({ toast }) => {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
   const [rejectReason, setRejectReason] = useState({});
+  const [approveNote, setApproveNote] = useState({});
   const [showRejectFor, setShowRejectFor] = useState(null);
+  const [showApproveFor, setShowApproveFor] = useState(null);
+  const [filter, setFilter] = useState('PENDING');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await apiClient.get('/pharmacy/expired-drugs');
-      setDrugs(res.data?.data?.filter(d => d.status === 'PENDING') || []);
+      const rows = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.data?.data) ? res.data.data : []);
+      setDrugs(rows);
     } catch (e) {
       toast('Failed to load expired drugs.', 'error');
     } finally {
@@ -930,15 +934,18 @@ const TabExpiredDrugs = ({ toast }) => {
     if (decision === 'REJECTED' && !rejectReason[id]?.trim()) {
       return toast('Please enter a rejection reason.', 'error');
     }
+    const note = decision === 'APPROVED' ? approveNote[id] : rejectReason[id];
     setActing(id);
     try {
       await apiClient.patch(`/pharmacy/expired-drugs/${id}/ceo-decision`, {
         decision,
-        ceo_notes: decision === 'REJECTED' ? rejectReason[id] : ''
+        ceo_notes: (note || '').trim() || null
       });
       toast(`Drug successfully ${decision.toLowerCase()}.`, 'success');
       setShowRejectFor(null);
+      setShowApproveFor(null);
       setRejectReason(prev => ({ ...prev, [id]: '' }));
+      setApproveNote(prev => ({ ...prev, [id]: '' }));
       load();
     } catch (e) {
       toast(`Failed to process decision.`, 'error');
@@ -947,58 +954,124 @@ const TabExpiredDrugs = ({ toast }) => {
     }
   };
 
+  const filtered = filter === 'ALL' ? drugs : drugs.filter(d => d.status === filter);
+  const counts = {
+    PENDING: drugs.filter(d => d.status === 'PENDING').length,
+    APPROVED: drugs.filter(d => d.status === 'APPROVED').length,
+    REJECTED: drugs.filter(d => d.status === 'REJECTED').length,
+  };
+  const Filters = [
+    { key: 'PENDING', label: `Pending (${counts.PENDING})` },
+    { key: 'APPROVED', label: `Approved (${counts.APPROVED})` },
+    { key: 'REJECTED', label: `Rejected (${counts.REJECTED})` },
+    { key: 'ALL', label: `All (${drugs.length})` },
+  ];
+
   return (
     <div style={{ padding: '24px 30px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>
-          Pending Expired Drugs ({drugs.length})
+          Expired Drugs — Full Report ({filtered.length})
         </h3>
         <Btn onClick={load} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '7px 14px', fontSize: 12 }}>
           <RefreshCw size={13} /> Refresh
         </Btn>
       </div>
 
-      {loading ? <Spinner /> : drugs.length === 0 ? <Empty icon={CheckCircle} message="No pending expired drugs to review!" /> : (
-        <div style={{ display: 'grid', gap: 14 }}>
-          {drugs.map(d => (
-            <div key={d.id} className="ph-card" style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)', marginBottom: 3 }}>{d.drug_name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Quantity: <strong>{d.quantity}</strong> | Expired: <strong>{new Date(d.expiry_date).toLocaleDateString()}</strong></div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Requested Action: {d.action_required || 'DISPOSE'}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Reported on: {new Date(d.created_at).toLocaleString()}</div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Btn onClick={() => handleDecision(d.id, 'APPROVED')} disabled={acting === d.id} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '6px 12px', fontSize: 11 }}>
-                    <CheckCircle size={12} /> Approve
-                  </Btn>
-                  <Btn onClick={() => setShowRejectFor(showRejectFor === d.id ? null : d.id)} disabled={acting === d.id} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '6px 12px', fontSize: 11 }}>
-                    <XCircle size={12} /> Reject
-                  </Btn>
-                </div>
-              </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {Filters.map(f => (
+          <FilterBtn key={f.key} active={filter === f.key} onClick={() => setFilter(f.key)}>{f.label}</FilterBtn>
+        ))}
+      </div>
 
-              {showRejectFor === d.id && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px dashed var(--color-border)` }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 6 }}>REJECTION REASON *</div>
-                  <textarea
-                    value={rejectReason[d.id] || ''}
-                    onChange={e => setRejectReason(prev => ({ ...prev, [d.id]: e.target.value }))}
-                    placeholder="Enter reason for rejection..."
-                    rows={2}
-                    style={{ width: '100%', boxSizing: 'border-box', padding: 10, fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 6, outline: 'none' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                    <Btn onClick={() => handleDecision(d.id, 'REJECTED')} disabled={acting === d.id || !(rejectReason[d.id]||'').trim()} color={'white'} border={'var(--color-danger)'} style={{ background: 'var(--color-danger)', padding: '6px 16px', fontSize: 12 }}>
-                      {acting === d.id ? 'Processing...' : 'Confirm Reject'}
-                    </Btn>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+      {loading ? <Spinner /> : filtered.length === 0 ? <Empty icon={CheckCircle} message="No expired drug reports in this status." /> : (
+        <div style={{ overflowX: 'auto' }}>
+          <div className="ph-table-wrap"><table className="ph-table">
+            <thead>
+              <tr>
+                {['Ref', 'Drug Name', 'Qty', 'Location', 'Expiry Date', 'Days Past', 'Action Required', 'Status', 'Reported By', 'Reported On', 'CEO Notes', 'Actions'].map(h => (
+                  <th key={h} style={{ padding: '12px 12px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.6, whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(d => (
+                <React.Fragment key={d.id}>
+                  <tr>
+                    <td style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-primary)' }}>#{d.id}</td>
+                    <td style={{ padding: '10px 12px', fontWeight: 700 }}>{d.drug_name}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 800 }}>{d.quantity}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)' }}>{d.location || '—'}</td>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '—'}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span className={`ph-badge ${d.days_past >= 90 ? 'ph-badge-danger' : d.days_past >= 30 ? 'ph-badge-warning' : 'ph-badge-default'}`}>
+                        {d.days_past ?? '—'} days
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)' }}>{d.action_required || 'DISPOSE'}</td>
+                    <td style={{ padding: '10px 12px' }}><Badge status={d.status} /></td>
+                    <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)' }}>{d.requested_by_name || '—'}</td>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)' }}>{d.created_at ? new Date(d.created_at).toLocaleString() : '—'}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)', fontSize: 12 }}>{d.ceo_notes || '—'}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      {d.status === 'PENDING' ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <Btn onClick={() => setShowApproveFor(showApproveFor === d.id ? null : d.id)} disabled={acting === d.id} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '6px 11px', fontSize: 11 }}>
+                            <CheckCircle size={12} /> Approve
+                          </Btn>
+                          <Btn onClick={() => setShowRejectFor(showRejectFor === d.id ? null : d.id)} disabled={acting === d.id} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '6px 11px', fontSize: 11 }}>
+                            <XCircle size={12} /> Reject
+                          </Btn>
+                        </div>
+                      ) : <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>—</span>}
+                    </td>
+                  </tr>
+                  {showApproveFor === d.id && (
+                    <tr style={{ background: '#f0f9ff', borderBottom: `2px solid ${'var(--color-primary)'}` }}>
+                      <td colSpan={12} style={{ padding: '12px 14px' }}>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)' }}>Comment (optional):</span>
+                          <input
+                            value={approveNote[d.id] || ''}
+                            onChange={e => setApproveNote(prev => ({ ...prev, [d.id]: e.target.value }))}
+                            placeholder="Add a comment for the pharmacy team..."
+                            style={{ flex: 1, minWidth: 220, padding: '7px 10px', border: `2px solid ${'var(--color-primary)'}`, outline: 'none', fontSize: 12, borderRadius: 0 }}
+                          />
+                          <Btn onClick={() => handleDecision(d.id, 'APPROVED')} disabled={acting === d.id} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '7px 14px', fontSize: 12 }}>
+                            {acting === d.id ? 'Processing...' : 'Confirm Approve'}
+                          </Btn>
+                          <Btn onClick={() => setShowApproveFor(null)} color={'var(--color-text-secondary)'} border={'var(--color-border)'} style={{ padding: '7px 14px', fontSize: 12 }}>
+                            Cancel
+                          </Btn>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {showRejectFor === d.id && (
+                    <tr style={{ background: '#fff8f8', borderBottom: `2px solid ${'var(--color-danger)'}` }}>
+                      <td colSpan={12} style={{ padding: '12px 14px' }}>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-danger)' }}>Rejection reason *:</span>
+                          <input
+                            value={rejectReason[d.id] || ''}
+                            onChange={e => setRejectReason(prev => ({ ...prev, [d.id]: e.target.value }))}
+                            placeholder="Enter reason for rejection..."
+                            style={{ flex: 1, minWidth: 220, padding: '7px 10px', border: `2px solid ${'var(--color-danger)'}`, outline: 'none', fontSize: 12, borderRadius: 0 }}
+                          />
+                          <Btn onClick={() => handleDecision(d.id, 'REJECTED')} disabled={acting === d.id || !(rejectReason[d.id]||'').trim()} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '7px 14px', fontSize: 12 }}>
+                            {acting === d.id ? 'Processing...' : 'Confirm Reject'}
+                          </Btn>
+                          <Btn onClick={() => setShowRejectFor(null)} color={'var(--color-text-secondary)'} border={'var(--color-border)'} style={{ padding: '7px 14px', fontSize: 12 }}>
+                            Cancel
+                          </Btn>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table></div></div>
       )}
     </div>
   );
