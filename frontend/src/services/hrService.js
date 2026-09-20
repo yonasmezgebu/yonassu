@@ -192,8 +192,22 @@ const hrService = {
     // Attendance
     getDailyAttendance: (params) => apiClient.get('/hr/etp/attendance/daily', { params }),
     getMonthlyAttendance: (params) => apiClient.get('/hr/etp/attendance/monthly', { params }),
+    getWeeklySummary: (params) => apiClient.get('/hr/etp/attendance/weekly', { params }),
+    getYearlyAttendance: (params) => apiClient.get('/hr/etp/attendance/yearly', { params }),
     calculateDailyAttendance: () => apiClient.post('/hr/etp/attendance/calculate-daily'),
-    getWeeklySummary: () => apiClient.get('/hr/etp/attendance/weekly'),
+
+    // SRS 5 — self-service clock-in scan
+    registerAttendanceScan: (data) => apiClient.post('/hr/etp/attendance/scan', data),
+
+    // SRS Step 1 — one-time employee registration for ETP attendance (setup phase)
+    getAttendanceRegistrationCandidates: () => apiClient.get('/hr/etp/attendance/registration'),
+    registerAttendanceEmployee: (data) => apiClient.post('/hr/etp/attendance/registration', data),
+    enrollFingerprint: (data) => apiClient.patch('/hr/etp/attendance/enroll-fingerprint', data),
+
+    // SRS 5.1 / 6.1 — allowed computers (IP management)
+    getAllowedComputers: () => apiClient.get('/hr/etp/computers'),
+    registerAllowedComputer: (data) => apiClient.post('/hr/etp/computers', data),
+    toggleAllowedComputer: (id) => apiClient.patch(`/hr/etp/computers/${id}/toggle`),
 
     // Manual entry
     submitManualEntry: (data) => apiClient.post('/hr/etp/manual-entry', data),
