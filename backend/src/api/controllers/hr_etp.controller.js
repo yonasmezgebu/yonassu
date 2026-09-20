@@ -31,9 +31,45 @@ function timeHMM(timeVal) {
 
 function toDateOnly(value) {
   if (!value) return null;
+  // Keep pure date strings verbatim — new Date('YYYY-MM-DD') parses as UTC and
+  // shifts a day in negative-offset timezones.
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const d = new Date(value);
   if (isNaN(d.getTime())) return String(value).slice(0, 10);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// ── ISO week helpers (SRS 1.3 Weekly period: Monday–Sunday) ────────────
+function localDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Monday of the current ISO week
+function currentWeekMonday() {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayNr = (d.getDay() + 6) % 7; // Mon=0 … Sun=6
+  d.setDate(d.getDate() - dayNr);
+  return d;
+}
+
+// ISO week number + year for a date
+function isoWeekOf(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayNr = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - dayNr + 3); // Thursday
+  const year = d.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  const week = Math.floor((d - jan1) / 86400000 / 7) + 1;
+  return { week, year };
+}
+
+// Monday of the given ISO week number + year
+function isoWeekMonday(week, year) {
+  const jan4 = new Date(year, 0, 4);
+  const dayNr = (jan4.getDay() + 6) % 7; // Mon=0
+  const week1Monday = new Date(jan4.getFullYear(), jan4.getMonth(), jan4.getDate() - dayNr);
+  return new Date(week1Monday.getFullYear(), week1Monday.getMonth(), week1Monday.getDate() + (week - 1) * 7);
 }
 
 // Ensure a user linked to an employee carries the standard "Employee" role
@@ -164,6 +200,130 @@ exports.getPositions = catchAsync(async (req, res) => {
 
 exports.createPosition = catchAsync(async (req, res) => {
   res.status(201).json({ status: 'success', data: { position_id: req.body.position_title } });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SRS STEP 1 — ONE-TIME EMPLOYEE REGISTRATION (SETUP PHASE)
+// HR registers an existing system user once for the ETP attendance module.
+// Data is taken from the users/attendance side and the rest is filled manually.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getAttendanceRegistrationCandidates = catchAsync(async (req, res) => {
+  // System users with a login account who are NOT yet registered for attendance,
+  // i.e. they have no hr_employees profile (no user_id link and no personal_email link).
+  const registeredIds = db('hr_employees').whereNot('user_id', null).select('user_id');
+  const linkedEmails = db('hr_employees').whereNot('personal_email', null).select(db.raw('LOWER(personal_email)'));
+
+  const candidates = await db('users as u')
+    .leftJoin('user_roles as ur', 'ur.user_id', 'u.id')
+    .leftJoin('roles as r', 'r.id', 'ur.role_id')
+    .where('u.deleted_at', null)
+    .whereNotIn('u.id', registeredIds)
+    .whereNotIn(db.raw('LOWER(u.email)'), linkedEmails)
+    .select(
+      'u.id', 'u.full_name', 'u.email', 'u.phone',
+      db.raw('DATE(u.created_at) as created_at'),
+      db.raw('GROUP_CONCAT(DISTINCT r.name ORDER BY r.name SEPARATOR ", ") as roles')
+    )
+    .groupBy('u.id')
+    .orderBy('u.created_at', 'desc');
+
+  res.json({ status: 'success', data: candidates });
+});
+
+exports.enrollFingerprint = catchAsync(async (req, res) => {
+  const { employee_id, fingerprint_id } = req.body;
+  if (!employee_id || !fingerprint_id) throw new AppError('employee_id and fingerprint_id are required', 400);
+
+  const emp = await db('hr_employees').where('employee_id', employee_id).first();
+  if (!emp) throw new AppError('Employee not found', 404);
+
+  // Check if fingerprint ID is already taken by someone else
+  const existing = await db('hr_employees').where('fingerprint_id', fingerprint_id).first();
+  if (existing && existing.employee_id !== employee_id) {
+    throw new AppError(`Fingerprint ID ${fingerprint_id} is already assigned to ${existing.full_name}`, 400);
+  }
+
+  await db('hr_employees').where('employee_id', employee_id).update({
+    fingerprint_id,
+    fingerprint_enrolled_at: new Date().toISOString(),
+    fingerprint_enrolled_by: req.user?.full_name || 'HR Admin'
+  });
+
+  res.json({
+    status: 'success',
+    message: `Fingerprint ID ${fingerprint_id} successfully enrolled for ${emp.full_name}`
+  });
+});
+
+exports.registerAttendanceEmployee = catchAsync(async (req, res) => {
+  const user_id = req.body.user_id;
+  if (!user_id) throw new AppError('user_id is required', 400);
+
+  const user = await db('users').where('id', user_id).whereNull('deleted_at').first();
+  if (!user) throw new AppError('User account not found', 404);
+
+  // Guard: already registered for attendance
+  const existing = await db('hr_employees')
+    .where(function () {
+      this.where('user_id', user_id)
+        .orWhere('personal_email', user.email);
+    })
+    .first();
+  if (existing) throw new AppError(`User is already registered as ${existing.employee_id}`, 409);
+
+  const full_name = (req.body.full_name || user.full_name || '').trim();
+  const personal_phone = (req.body.personal_phone || user.phone || '').trim() || null;
+  const dept_id = req.body.dept_id ? parseInt(req.body.dept_id, 10) : null;
+  const position_id = req.body.position_id ? parseInt(req.body.position_id, 10) : null;
+
+  // Next sequential employee ID (safest: max numeric suffix + 1)
+  const idRows = await db('hr_employees').select('employee_id');
+  const nums = idRows
+    .map(r => parseInt(String(r.employee_id).replace(/\D/g, ''), 10))
+    .filter(n => !isNaN(n));
+  const nextNum = (nums.length ? Math.max(...nums) : 0) + 1;
+  const employee_id = `EMP-2026-${String(nextNum).padStart(3, '0')}`;
+
+  // Sync the user account (department, name, phone, is_employee, Employee role)
+  const syncedUserId = await syncEmployeeToUser({
+    user_id,
+    personal_email: user.email,
+    full_name,
+    personal_phone,
+    dept_id,
+    position_id
+  }, req.user?.id);
+
+  await db('hr_employees').insert({
+    employee_id,
+    full_name,
+    personal_phone,
+    personal_email: user.email.toLowerCase(),
+    user_id: syncedUserId || user.id,
+    dept_id,
+    position_id,
+    base_salary: req.body.base_salary ? parseFloat(req.body.base_salary) : 0,
+    housing_allowance: req.body.housing_allowance ? parseFloat(req.body.housing_allowance) : 0,
+    transport_allowance: req.body.transport_allowance ? parseFloat(req.body.transport_allowance) : 0,
+    has_pc_access: req.body.has_pc_access || 'Yes',
+    shift_start_time: req.body.shift_start_time || '09:00',
+    shift_end_time: req.body.shift_end_time || '18:00',
+    weekly_off_days: 'Friday,Saturday',
+    employment_status: 'Active',
+    registration_status: 'active',
+    employment_type: req.body.employment_type || 'Permanent',
+    hire_date: req.body.hire_date || new Date(),
+    gender: req.body.gender || null,
+    marital_status: req.body.marital_status || 'Single',
+    national_id: (req.body.national_id || '').trim() || null,
+    overtime_rate: 1.5
+  });
+
+  res.status(201).json({
+    status: 'success',
+    message: `${full_name} registered once for attendance (${employee_id}).`,
+    data: { employee_id, user_id: syncedUserId || user.id }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1430,19 +1590,306 @@ exports.calculateWeeklySummary = catchAsync(async (req, res) => {
 });
 
 exports.getWeeklySummary = catchAsync(async (req, res) => {
-  const { week_number, month_number, year_number, dept_id } = req.query;
-  let q = db('etp_weekly_summary as ws')
-    .join('hr_employees as e', 'ws.employee_id', 'e.employee_id')
-    .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
-    .select('ws.*', 'e.full_name', 'e.dept_id', 'd.dept_name', 'e.position_id');
+  const { week, year, dept_id } = req.query;
+  const current = currentWeekMonday();
+  const cur = isoWeekOf(current);
+  const w = parseInt(week) || cur.week;
+  const y = parseInt(year) || cur.year;
 
-  if (week_number) q = q.where('ws.week_number', parseInt(week_number));
-  if (month_number) q = q.where('ws.month_number', parseInt(month_number));
-  if (year_number) q = q.where('ws.year_number', parseInt(year_number));
-  if (dept_id) q = q.where('e.dept_id', dept_id);
+  let monday;
+  if (week || year) monday = isoWeekMonday(w, y);
+  else monday = current;
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  const mondayStr = localDateStr(monday);
+  const sundayStr = localDateStr(sunday);
 
-  const records = await q.orderBy('e.full_name');
-  res.json({ status: 'success', data: records });
+  // All active employees
+  let empQuery = db('hr_employees as e')
+    .join('departments as d', 'e.dept_id', 'd.id')
+    .select('e.employee_id', 'e.full_name', 'e.dept_id', 'd.name as dept_name', 'e.position_id')
+    .where('e.employment_status', 'Active');
+  if (dept_id) empQuery = empQuery.where('e.dept_id', dept_id);
+  const employees = await empQuery;
+
+  // Weekly rows (Mon–Sun) from the live daily log
+  const rows = await db('etp_daily_attendance as da')
+    .where('da.attendance_date', '>=', mondayStr)
+    .where('da.attendance_date', '<=', sundayStr)
+    .select('da.employee_id', 'da.attendance_status', 'da.actual_start_time', 'da.actual_end_time', 'da.net_work_hours', 'da.auth_method', 'da.terminal_ip');
+
+  const weekMap = {};
+  for (const r of rows) {
+    if (!weekMap[r.employee_id]) weekMap[r.employee_id] = { work_days: 0, present: 0, absent: 0, auth: {} };
+    const m = weekMap[r.employee_id];
+    m.work_days += 1;
+    if (attendanceIsPresent(r)) m.present += 1; else m.absent += 1;
+    const label = authLabel(r.auth_method);
+    m.auth[label] = (m.auth[label] || 0) + 1;
+  }
+
+  const records = employees.map(emp => {
+    const m = weekMap[emp.employee_id] || { work_days: 0, present: 0, absent: 0, auth: {} };
+    const attendance_rate = m.work_days > 0 ? Math.round((m.present / m.work_days) * 1000) / 10 : 0;
+    return {
+      employee_id: emp.employee_id,
+      full_name: emp.full_name,
+      dept_id: emp.dept_id,
+      dept_name: emp.dept_name,
+      position_id: emp.position_id,
+      week_number: w,
+      year_number: y,
+      week_start: mondayStr,
+      week_end: sundayStr,
+      total_working_days: m.work_days,
+      total_p: m.present,
+      total_a: m.absent,
+      attendance_rate,
+      auth_breakdown: m.auth,
+    };
+  }).sort((a, b) => a.full_name.localeCompare(b.full_name));
+
+  const withRecords = records.filter(r => r.total_working_days > 0);
+  const overview = {
+    week: w,
+    year: y,
+    week_label: `Week ${w} · ${mondayStr} to ${sundayStr}`,
+    total_employees: employees.length,
+    tracked_employees: withRecords.length,
+    total_records: rows.length,
+    avg_present_rate: withRecords.length > 0
+      ? Math.round((withRecords.reduce((s, r) => s + r.attendance_rate, 0) / withRecords.length) * 10) / 10
+      : 0,
+    total_absences: withRecords.reduce((s, r) => s + r.total_a, 0),
+  };
+
+  // Pin the currently logged-in user's own record first
+  const meEmp = await db('hr_employees').where('user_id', req.user?.id).first();
+  let ordered = records.map(r => ({ ...r, is_me: false }));
+  if (meEmp) {
+    const idx = ordered.findIndex(r => r.employee_id === meEmp.employee_id);
+    if (idx !== -1) {
+      ordered[idx].is_me = true;
+      const [me] = ordered.splice(idx, 1);
+      ordered = [me, ...ordered];
+    }
+  }
+
+  res.json({ status: 'success', data: ordered, overview, query: { week: w, year: y, from: mondayStr, to: sundayStr } });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// YEARLY SUMMARY (SRS 1.3 / 3 — Jan–Dec aggregation, sum of 12 monthly totals)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getYearlyAttendance = catchAsync(async (req, res) => {
+  const { year, dept_id, search } = req.query;
+  const y = parseInt(year) || new Date().getFullYear();
+
+  let empQuery = db('hr_employees as e')
+    .join('departments as d', 'e.dept_id', 'd.id')
+    .select('e.employee_id', 'e.full_name', 'e.dept_id', 'd.name as dept_name', 'e.position_id')
+    .where('e.employment_status', 'Active');
+  if (dept_id) empQuery = empQuery.where('e.dept_id', dept_id);
+  if (search) empQuery = empQuery.where('e.full_name', 'like', `%${search.trim()}%`);
+  const employees = await empQuery;
+
+  const dailyRows = await db('etp_daily_attendance as da')
+    .where('da.year_number', y)
+    .select('da.employee_id', 'da.month_number', 'da.attendance_status', 'da.actual_start_time', 'da.actual_end_time', 'da.net_work_hours');
+
+  // Per employee: 12 monthly buckets of P/A rows (SRS 2.5 year rollup)
+  const yMap = {};
+  for (const r of dailyRows) {
+    if (!yMap[r.employee_id]) {
+      yMap[r.employee_id] = { totals: { present: 0, absent: 0, work: 0 }, months: Array.from({ length: 12 }, (_, i) => ({ month: i + 1, present: 0, absent: 0, work: 0 })) };
+    }
+    const row = yMap[r.employee_id];
+    const m = row.months[r.month_number - 1] || row.months[0];
+    m.work += 1;
+    if (attendanceIsPresent(r)) { m.present += 1; row.totals.present += 1; }
+    else { m.absent += 1; row.totals.absent += 1; }
+    row.totals.work += 1;
+  }
+
+  const records = employees.map(emp => {
+    const a = yMap[emp.employee_id];
+    const total_work = a ? a.totals.work : 0;
+    const total_present = a ? a.totals.present : 0;
+    const total_absent = a ? a.totals.absent : 0;
+    const annual_rate = total_work > 0 ? Math.round((total_present / total_work) * 1000) / 10 : 0;
+    return {
+      summary_id: null,
+      employee_id: emp.employee_id,
+      full_name: emp.full_name,
+      dept_id: emp.dept_id,
+      dept_name: emp.dept_name,
+      position_id: emp.position_id,
+      year: y,
+      total_days_present: total_present,
+      total_days_absent: total_absent,
+      total_working_days: total_work,
+      annual_attendance_rate: annual_rate,
+      months: a ? a.months : Array.from({ length: 12 }, (_, i) => ({ month: i + 1, present: 0, absent: 0, work: 0 })),
+      status: total_work === 0 ? 'No Records' : (total_absent === 0 ? 'Perfect' : total_present >= total_work / 2 ? 'Good' : 'Poor'),
+    };
+  }).sort((a, b) => a.full_name.localeCompare(b.full_name));
+
+  const withRecords = records.filter(r => r.total_working_days > 0);
+  const overview = {
+    year: y,
+    total_employees: employees.length,
+    tracked_employees: withRecords.length,
+    avg_annual_rate: withRecords.length > 0
+      ? Math.round((withRecords.reduce((s, r) => s + r.annual_attendance_rate, 0) / withRecords.length) * 10) / 10
+      : 0,
+    total_absences: withRecords.reduce((s, r) => s + r.total_days_absent, 0),
+    months_label: Array.from({ length: 12 }, (_, i) => new Date(0, i, 1).toLocaleString('en', { month: 'short' })),
+  };
+
+  // Pin the currently logged-in user's own record first
+  const meEmp = await db('hr_employees').where('user_id', req.user?.id).first();
+  let ordered = records.map(r => ({ ...r, is_me: false }));
+  if (meEmp) {
+    const idx = ordered.findIndex(r => r.employee_id === meEmp.employee_id);
+    if (idx !== -1) {
+      ordered[idx].is_me = true;
+      const [me] = ordered.splice(idx, 1);
+      ordered = [me, ...ordered];
+    }
+  }
+
+  res.json({ status: 'success', data: ordered, overview, query: { year: y } });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SELF-SERVICE CLOCK-IN SCAN (SRS 5 — Steps 3 & 4: terminal IP verification)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.registerAttendanceScan = catchAsync(async (req, res) => {
+  const { auth_method, ip_address } = req.body;
+  const method = ['ashara', 'card', 'face'].includes(auth_method) ? auth_method : 'ashara';
+
+  // Resolve the employee for the logged-in user (user_id first, email fallback)
+  let emp = await db('hr_employees').where('user_id', req.user?.id).first();
+  if (!emp && req.user?.id) {
+    const user = await db('users').where('id', req.user.id).select('id', 'email', 'full_name').first();
+    if (user?.email) {
+      emp = await db('hr_employees')
+        .where('personal_email', user.email)
+        .first();
+    }
+  }
+  if (!emp) return res.status(404).json({ status: 'fail', message: 'No employee profile linked to this account.' });
+
+  // Resolve the source terminal IP (SRS 5 — Step 3 IP verification)
+  const rawIp = ip_address
+    || req.headers['x-forwarded-for']?.split(',')[0]
+    || req.ip
+    || req.socket?.remoteAddress
+    || '';
+  const terminalIp = (String(rawIp).replace(/^::ffff:/, '').replace(/^::1$/, '127.0.0.1') || '').trim();
+
+  const terminal = await db('registered_computers')
+    .where('status', 'Active')
+    .where(function () { this.where('ip_address', terminalIp).orWhere('ip_range', terminalIp); })
+    .first();
+  if (!terminal) {
+    return res.status(403).json({
+      status: 'fail',
+      message: `Unauthorized terminal. IP ${terminalIp || 'unknown'} is not an allowed attendance computer.`,
+    });
+  }
+
+  const now = new Date();
+  const today = localDateStr(now);
+  const hhmmss = now.toTimeString().slice(0, 8);
+  const curWeek = isoWeekOf(now);
+
+  const existing = await db('etp_daily_attendance')
+    .where({ employee_id: emp.employee_id, attendance_date: today })
+    .first();
+
+  if (existing) {
+    await db('etp_daily_attendance')
+      .where('record_id', existing.record_id)
+      .update({
+        attendance_status: 'Present',
+        auth_method: method,
+        terminal_ip: terminalIp,
+        actual_start_time: existing.actual_start_time || hhmmss,
+        year_number: now.getFullYear(),
+        month_number: now.getMonth() + 1,
+        week_number: curWeek.week,
+        calculated_date: now,
+      });
+  } else {
+    await db('etp_daily_attendance').insert({
+      employee_id: emp.employee_id,
+      attendance_date: today,
+      week_number: curWeek.week,
+      month_number: now.getMonth() + 1,
+      year_number: now.getFullYear(),
+      actual_start_time: hhmmss,
+      net_work_hours: 0,
+      scheduled_hours: 8,
+      late_minutes: 0,
+      early_leave_minutes: 0,
+      overtime_hours: 0,
+      attendance_status: 'Present',
+      is_manual_override: 'No',
+      auth_method: method,
+      terminal_ip: terminalIp,
+    });
+  }
+
+  res.json({
+    status: 'success',
+    data: {
+      message: `Scan accepted at ${terminal.computer_name} (${terminalIp})`,
+      employee_id: emp.employee_id,
+      full_name: emp.full_name,
+      time_in: hhmmss,
+      auth_method: method,
+      auth_label: authLabel(method),
+      terminal_ip: terminalIp,
+      computer_name: terminal.computer_name,
+      status: 'P',
+    },
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ALLOWED COMPUTERS / IP MANAGEMENT PANEL (SRS 5.1 & 6.1 — HR exclusive)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getAllowedComputers = catchAsync(async (req, res) => {
+  const rows = await db('registered_computers').orderBy('computer_name');
+  res.json({ status: 'success', data: rows });
+});
+
+exports.registerAllowedComputer = catchAsync(async (req, res) => {
+  const { computer_name, ip_address, location, department, mac_address } = req.body;
+  if (!computer_name || !ip_address) {
+    throw new AppError('computer_name and ip_address are required', 400);
+  }
+  const addedBy = await db('hr_employees').where('user_id', req.user?.id).first();
+  const computer_id = 'COM-' + String(Date.now()).slice(-6);
+  await db('registered_computers').insert({
+    computer_id,
+    computer_name,
+    ip_address,
+    location: location || null,
+    department: department || null,
+    mac_address: mac_address || null,
+    status: 'Active',
+    added_by_hr_id: addedBy ? addedBy.employee_id : null,
+  });
+  res.status(201).json({ status: 'success', data: { computer_id, ip_address, status: 'Active' } });
+});
+
+exports.toggleAllowedComputer = catchAsync(async (req, res) => {
+  const comp = await db('registered_computers').where('computer_id', req.params.id).first();
+  if (!comp) return res.status(404).json({ status: 'fail', message: 'Computer not found' });
+  const next = comp.status === 'Active' ? 'Inactive' : 'Active';
+  await db('registered_computers').where('computer_id', comp.computer_id).update({ status: next });
+  res.json({ status: 'success', data: { computer_id: comp.computer_id, ip_address: comp.ip_address, status: next } });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1864,7 +2311,7 @@ exports.getMyAttendancePortal = catchAsync(async (req, res) => {
       emp = await db('hr_employees as e')
         .leftJoin('departments as d', 'e.dept_id', 'd.id')
         .select('e.employee_id', 'e.full_name', 'e.hire_date', 'd.name as dept_name', 'e.position_id')
-        .where(function () { this.where('e.personal_email', user.email).orWhere('e.email', user.email); })
+        .where('e.personal_email', user.email)
         .first();
     }
   }
@@ -1897,7 +2344,7 @@ exports.getMyAttendancePortal = catchAsync(async (req, res) => {
     .where('employee_id', emp.employee_id)
     .orderBy('attendance_date', 'desc')
     .limit(40)
-    .select('record_id', 'employee_id', 'attendance_date', 'actual_start_time', 'actual_end_time',
+    .select('record_id', 'employee_id', db.raw('DATE_FORMAT(attendance_date, "%Y-%m-%d") as attendance_date'), 'actual_start_time', 'actual_end_time',
       'net_work_hours', 'late_minutes', 'overtime_hours', 'attendance_status',
       'auth_method', 'terminal_ip', 'is_manual_override', 'override_reason', 'month_number', 'year_number');
 
@@ -1905,6 +2352,8 @@ exports.getMyAttendancePortal = catchAsync(async (req, res) => {
   const todayRec = log.find(r => toDateOnly(r.attendance_date) === today)
     || await db('etp_daily_attendance')
       .where({ employee_id: emp.employee_id, year_number: now.getFullYear(), month_number: now.getMonth() + 1 })
+      .select('record_id', db.raw('DATE_FORMAT(attendance_date, "%Y-%m-%d") as attendance_date'), 'actual_start_time', 'actual_end_time', 'net_work_hours',
+        'attendance_status', 'auth_method', 'terminal_ip', 'is_manual_override')
       .orderBy('attendance_date', 'desc').first();
 
   // Monthly summary (live)
