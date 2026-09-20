@@ -5,7 +5,56 @@ import {
   Package, FileText, ShoppingCart, Menu, X, ChevronDown, LogIn, Home, Truck, Building2, Award, ArrowRight
 } from 'lucide-react';
 import SearchDropdown from '../../components/SearchDropdown';
+import { useAuth } from '../../hooks/useAuth';
 import './PublicLayout.css';
+
+/* ─── Role → home dashboard map (mirrors PublicRoute) ───────────── */
+const ROLE_HOME = {
+  'Admin': '/admin',
+  'CEO': '/ceo',
+  'Board Member': '/board',
+  'Finance Manager': '/finance',
+  'Finance': '/finance',
+  'Purchase': '/purchase',
+  'Market Team': '/purchase',
+  'Pharmacy Store Keeper': '/pharmacy-store',
+  'General Store Keeper': '/general-store',
+  'Printing Supervisor': '/printing-manager',
+  'Printing Manager': '/printing-manager',
+  'Pharmacy Manager': '/pharmacy',
+  'Pharmacy Worker': '/pharmacy-worker',
+  'Sales/Cashier': '/pharmacy-worker',
+  'Car Renting Manager': '/car-renting',
+  'Sales Manager': '/sales/overview',
+  'HR Manager': '/hr',
+  'Employee': '/employee',
+  'Customer': '/customer'
+};
+const ROLE_PRIORITY = [
+  'Admin', 'CEO', 'Board Member', 'Finance', 'Finance Manager', 'Purchase', 'Pharmacy Store Keeper',
+  'General Store Keeper', 'Printing Supervisor', 'Printing Manager', 'Market Team', 'Pharmacy Manager', 'Pharmacy Worker',
+  'Sales/Cashier', 'Car Renting Manager', 'Sales Manager', 'HR Manager', 'Employee', 'Customer'
+];
+
+const homeFor = (u) => {
+  const roles = (u?.roles || []).map(r => String(r).toLowerCase());
+  for (const r of ROLE_PRIORITY) {
+    if (roles.includes(r.toLowerCase()) && ROLE_HOME[r]) return ROLE_HOME[r];
+  }
+  return '/';
+};
+
+const tokenIsValid = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return false;
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64));
+    return !payload.exp || payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+};
 
 import imgPrinting   from '../../assets/drop_down/printing_dropdown.jpg';
 import imgPharmacy   from '../../assets/drop_down/pharmacy_dropdown.jpg';
@@ -222,12 +271,27 @@ const NavDropdown = ({ label, isOpen, onOpen, onClose, children, isActive }) => 
 export const PublicNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [servicesOpen, setServicesOpen]     = useState(false);
   const [marketOpen, setMarketOpen]         = useState(false);
   const [galleryOpen, setGalleryOpen]       = useState(false);
   const [newsOpen, setNewsOpen]             = useState(false);
   const [mobileOpen, setMobileOpen]         = useState(false);
+  const [tokenValid, setTokenValid]         = useState(() => tokenIsValid());
   const headerRef = useRef(null);
+
+  // Clear stale/expired auth so the "Dashboard" button never shows at login
+  useEffect(() => {
+    if (tokenIsValid()) return;
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('sessionId');
+    localStorage.removeItem('user');
+    setTokenValid(false);
+  }, []);
+
+  const loggedIn = tokenValid && !!user;
+  const homePath = homeFor(user);
 
   const isActive    = (path)   => location.pathname === path;
   const isActiveAt  = (prefix) => location.pathname.startsWith(prefix);
@@ -321,8 +385,8 @@ export const PublicNav = () => {
 
         {/* ── Right: Auth / User ── */}
         <div className="pub-nav-right-modern">
-          {localStorage.getItem('token') ? (
-            <button className="pub-btn-solid-modern" onClick={() => navigate('/dashboard')}>
+          {loggedIn ? (
+            <button className="pub-btn-solid-modern" onClick={() => navigate(homePath)}>
               <User size={15} style={{ marginRight: 6 }} />
               <span>Dashboard</span>
             </button>
