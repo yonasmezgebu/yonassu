@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import hrService from '../../../services/hrService.js';
 import {
   Clock, Fingerprint, CreditCard, ScanFace, CheckCircle2, XCircle,
-  CalendarDays, TrendingUp, Timer, ShieldCheck
+  CalendarDays, TrendingUp, Timer, ShieldCheck, ScanLine, Monitor,
+  UserCheck, Zap, BadgeCheck
 } from 'lucide-react';
 
 const to12 = (t) => {
@@ -36,7 +37,39 @@ const style = `
   table.att-t td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
   .att-err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; }
   .att-note { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; }
-  .att-mth-chip { display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #334155; }
+  .att-mth-chip { display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #334155; cursor: pointer; }
+  .att-scan { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  .att-scan-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .att-scan-btn { border: none; border-radius: 12px; padding: 14px 22px; font-weight: 800; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; color: #fff; background: linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 2px 8px rgba(2,132,199,.3); transition: opacity .15s; }
+  .att-scan-btn:disabled { opacity: .55; cursor: not-allowed; }
+  .att-scan-m { border: 1px solid #cbd5e1; background: #fff; border-radius: 10px; padding: 9px 12px; font-size: 13px; font-weight: 600; }
+  .att-scan-ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 10px; padding: 10px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 220px; font-weight: 600; }
+  .att-scan-bad { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 220px; font-weight: 600; }
+
+  /* Ashara How-It-Works Steps */
+  .att-how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 700px) { .att-how { grid-template-columns: 1fr; } .att-grid2 { grid-template-columns: 1fr; } }
+  .att-step-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 18px; display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
+  .att-step-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .att-step-card.step1::before { background: linear-gradient(90deg, #6366f1, #818cf8); }
+  .att-step-card.step2::before { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+  .att-step-card.step3::before { background: linear-gradient(90deg, #059669, #34d399); }
+  .att-step-num { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15px; flex-shrink: 0; }
+  .step1 .att-step-num { background: #eef2ff; color: #4f46e5; }
+  .step2 .att-step-num { background: #e0f2fe; color: #0284c7; }
+  .step3 .att-step-num { background: #d1fae5; color: #059669; }
+  .att-step-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+  .step1 .att-step-icon { background: #eef2ff; }
+  .step2 .att-step-icon { background: #e0f2fe; }
+  .step3 .att-step-icon { background: #d1fae5; }
+  .att-step-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; }
+  .att-step-title { font-size: 15px; font-weight: 800; color: #0f172a; margin: 0; }
+  .att-step-desc { font-size: 13px; color: #475569; line-height: 1.55; margin: 0; }
+  .att-step-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .step1 .att-step-tag { background: #eef2ff; color: #4f46e5; }
+  .step2 .att-step-tag { background: #e0f2fe; color: #0284c7; }
+  .step3 .att-step-tag { background: #d1fae5; color: #059669; }
+  .att-step-header { display: flex; align-items: center; gap: 12px; }
 `;
 
 export const AttendancePage = () => {
@@ -45,6 +78,9 @@ export const AttendancePage = () => {
   const [now, setNow] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [scanBusy, setScanBusy] = useState(false);
+  const [scanMethod, setScanMethod] = useState('ashara');
+  const [scanMsg, setScanMsg] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -68,13 +104,33 @@ export const AttendancePage = () => {
     setMonth(m);
   };
 
-  if (loading) return <div className="att-wrap">Loading attendance…</div>;
+  const doScan = async () => {
+    setScanBusy(true); setScanMsg(null); setError('');
+    try {
+      const res = await hrService.etp.registerAttendanceScan({ auth_method: scanMethod });
+      const sc = res.data?.data || {};
+      setScanMsg({ ok: true, text: `${sc.message || 'Attendance recorded'} — Time in ${sc.time_in || '--:--'} · ${sc.auth_label || scanMethod} · Status P (Present)` });
+      await load();
+    } catch (e) {
+      setScanMsg({ ok: false, text: e.response?.data?.message || e.message || 'Scan failed' });
+    } finally {
+      setScanBusy(false);
+    }
+  };
+
+  if (loading) return <div className="att-wrap" style={{ paddingTop: 60, textAlign: 'center', color: '#64748b' }}>Loading attendance…</div>;
 
   const d = data || {};
   const monthly = d.monthly || {};
   const methods = monthly.method_counts || {};
   const monthLabel = monthly.month_label || `${monthLabelFor(month)} ${new Date().getFullYear()}`;
   function monthLabelFor(m) { return new Date(2000, m - 1, 1).toLocaleString('en-GB', { month: 'long' }); }
+
+  const scanMethodIcon = () => {
+    if (scanMethod === 'card') return <CreditCard size={16} />;
+    if (scanMethod === 'face') return <ScanFace size={16} />;
+    return <Fingerprint size={16} />;
+  };
 
   return (
     <div className="att-wrap">
@@ -96,15 +152,66 @@ export const AttendancePage = () => {
 
       {d.linked === false && (
         <div className="att-note">
-          No HR attendance profile is linked to this account yet. Contact HR to link your employee record — your log will appear here automatically.
+          <b>No HR attendance profile linked.</b> Contact HR to register your employee record — your attendance log will appear here automatically once linked.
         </div>
       )}
 
-      {/* Today */}
+      {/* ── How the Ashara Attendance Process Works ─────────────── */}
+      <div className="att-how">
+        {/* Step 1 */}
+        <div className="att-step-card step1">
+          <div className="att-step-header">
+            <div className="att-step-icon"><UserCheck size={22} color="#4f46e5" /></div>
+            <div>
+              <div className="att-step-label">Step 1 · One-Time</div>
+              <p className="att-step-title">Registration &amp; Enrollment</p>
+            </div>
+            <div className="att-step-num" style={{ marginLeft: 'auto' }}>1</div>
+          </div>
+          <p className="att-step-desc">
+            Your fingerprint is <b>registered once</b> by HR. It links your biometric print to your name, employee ID and department in the system. This happens only once during setup.
+          </p>
+          <span className="att-step-tag"><ShieldCheck size={11} /> Prerequisite · Done by HR</span>
+        </div>
+
+        {/* Step 2 */}
+        <div className="att-step-card step2">
+          <div className="att-step-header">
+            <div className="att-step-icon"><Fingerprint size={22} color="#0284c7" /></div>
+            <div>
+              <div className="att-step-label">Step 2 · Every Working Day</div>
+              <p className="att-step-title">Daily Scan — Check-In &amp; Out</p>
+            </div>
+            <div className="att-step-num" style={{ marginLeft: 'auto' }}>2</div>
+          </div>
+          <p className="att-step-desc">
+            Press your <b>registered finger</b> on the optical sensor at an authorized IP terminal. The system matches your print against the database and <b>records your exact time</b> automatically.
+          </p>
+          <span className="att-step-tag"><Monitor size={11} /> Authorized Terminal Required</span>
+        </div>
+
+        {/* Step 3 */}
+        <div className="att-step-card step3">
+          <div className="att-step-header">
+            <div className="att-step-icon"><Zap size={22} color="#059669" /></div>
+            <div>
+              <div className="att-step-label">Step 3 · Instant</div>
+              <p className="att-step-title">Verification &amp; Confirmation</p>
+            </div>
+            <div className="att-step-num" style={{ marginLeft: 'auto' }}>3</div>
+          </div>
+          <p className="att-step-desc">
+            A <b>green confirmation</b> appears on screen immediately. Your name, time-in, and attendance status (P — Present) are displayed. Your log updates automatically below.
+          </p>
+          <span className="att-step-tag"><BadgeCheck size={11} /> Instant Feedback · Auto-Logged</span>
+        </div>
+      </div>
+
+      {/* Today + Monthly */}
       <div className="att-grid2">
         <div className="att-card">
           <h3 className="att-card-h"><Clock size={16} color="#0284c7" /> Today's Attendance</h3>
-          {d.today && (
+          {d.today ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                 <span className={`att-pill ${d.today.status === 'P' ? 'P' : 'A'}`}>
@@ -120,6 +227,8 @@ export const AttendancePage = () => {
                 <div className="att-stat"><b>{d.today.terminal_ip || '—'}</b><span>Terminal IP</span></div>
               </div>
             </>
+          ) : (
+            <div style={{ color: '#94a3b8', fontSize: 13, padding: '12px 0' }}>No attendance record for today yet.</div>
           )}
         </div>
 
@@ -128,9 +237,9 @@ export const AttendancePage = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <h3 className="att-card-h" style={{ marginBottom: 0 }}><CalendarDays size={16} color="#0284c7" /> Monthly Summary</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={() => shiftMonth(-1)} className="att-mth-chip" style={{ cursor: 'pointer' }}>‹</button>
-              <span className="att-mth-chip">{monthLabel}</span>
-              <button onClick={() => shiftMonth(1)} className="att-mth-chip" style={{ cursor: 'pointer' }}>›</button>
+              <button onClick={() => shiftMonth(-1)} className="att-mth-chip">‹</button>
+              <span className="att-mth-chip" style={{ cursor: 'default' }}>{monthLabel}</span>
+              <button onClick={() => shiftMonth(1)} className="att-mth-chip">›</button>
             </div>
           </div>
           <div className="att-stat-row" style={{ marginTop: 10 }}>
@@ -147,6 +256,37 @@ export const AttendancePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Self-Service Clock-In (SRS 5 — Step 2/3 above) */}
+      {d.linked !== false && (
+        <div className="att-scan">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <ScanLine size={16} color="#0284c7" />
+            <h3 className="att-card-h" style={{ marginBottom: 0 }}>Self-Service Clock-In</h3>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 5, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '3px 10px', borderRadius: 8 }}>
+              <Monitor size={12} /> Terminal IP verified against HR-authorized computers
+            </span>
+          </div>
+          <p style={{ margin: '0 0 4px', fontSize: 13, color: '#64748b' }}>
+            Following <b>Step 2</b> of the Ashara process — select your biometric method and press <b>Scan &amp; Clock In</b>. The system records your time instantly.
+          </p>
+          <div className="att-scan-row">
+            <select className="att-scan-m" value={scanMethod} onChange={e => setScanMethod(e.target.value)} disabled={scanBusy}>
+              <option value="ashara">Ashara — Fingerprint</option>
+              <option value="card">RFID Card</option>
+              <option value="face">Facial Recognition</option>
+            </select>
+            <button className="att-scan-btn" onClick={doScan} disabled={scanBusy}>
+              {scanMethodIcon()} {scanBusy ? 'Scanning…' : 'Scan & Clock In'}
+            </button>
+            {scanMsg && (
+              <div className={scanMsg.ok ? 'att-scan-ok' : 'att-scan-bad'}>
+                {scanMsg.ok ? <CheckCircle2 size={15} /> : <XCircle size={15} />} {scanMsg.text}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Daily log */}
       <div className="att-card">
