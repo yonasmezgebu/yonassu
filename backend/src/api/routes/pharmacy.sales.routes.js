@@ -66,7 +66,7 @@ router.post('/expired-drugs', [
   body('drug_name').notEmpty().withMessage('drug_name required'),
   body('quantity').isInt({ min: 1 }).withMessage('quantity required'),
   body('expiry_date').notEmpty().withMessage('expiry_date required')
-], validate, authorizeRoles(['Pharmacy Manager', 'Admin']), ctrl.createExpiredDrug);
+], validate, authorizeRoles(['Pharmacy Manager', 'Pharmacist', 'Pharmacy Worker', 'Pharmacy Store Keeper', 'Admin']), ctrl.createExpiredDrug);
 router.get('/expired-drugs', ctrl.listExpiredDrugs);
 router.patch('/expired-drugs/:id/ceo-decision', authorizeRoles(['CEO', 'Admin']), [
   body('decision').isIn(['APPROVED', 'REJECTED']).withMessage('decision must be APPROVED or REJECTED')
