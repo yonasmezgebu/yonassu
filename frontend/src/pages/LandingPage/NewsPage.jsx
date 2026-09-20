@@ -296,7 +296,7 @@ export default () => {
               src={`https://www.youtube.com/embed/${playingVideo}?autoplay=1&rel=0&modestbranding=1&showinfo=0`}
               title="Video Player"
               style={{ width: '100%', height: '100%', border: 'none' }}
-              allow="autoplay; fullscreen"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
           </div>
