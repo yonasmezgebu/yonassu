@@ -78,6 +78,11 @@ router.post('/etp/units', authenticate, authorizeRoles(hrCeo),                  
 router.get('/etp/positions',  authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getPositions);
 router.post('/etp/positions', authenticate, authorizeRoles(hrCeo),                       C.createPosition);
 
+// SRS Step 1 — one-time employee registration for attendance (setup phase)
+router.get('/etp/attendance/registration',  authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getAttendanceRegistrationCandidates);
+router.post('/etp/attendance/registration', authenticate, authorizeRoles(hrCeo), C.registerAttendanceEmployee);
+router.patch('/etp/attendance/enroll-fingerprint', authenticate, authorizeRoles(hrCeo), C.enrollFingerprint);
+
 router.get('/etp/employees',       authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getETPEmployees);
 router.get('/etp/employees/:id',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getETPEmployee);
 router.post('/etp/employees',      authenticate, authorizeRoles(hrCeo), hrPhotoUpload, C.createETPEmployee);
@@ -92,6 +97,15 @@ router.post('/etp/attendance/calculate-daily',   authenticate, authorizeRoles(hr
 router.post('/etp/attendance/calculate-weekly',  authenticate, authorizeRoles(hrCeo), C.calculateWeeklySummary);
 router.post('/etp/attendance/calculate-monthly', authenticate, authorizeRoles(hrCeo), C.calculateMonthlySummary);
 router.get('/etp/attendance/weekly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getWeeklySummary);
+router.get('/etp/attendance/yearly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getYearlyAttendance);
+
+// SRS 5 — self-service clock-in scan (employee) with terminal IP verification
+router.post('/etp/attendance/scan', authenticate, C.registerAttendanceScan);
+
+// SRS 5.1 / 6.1 — allowed computers (IP management panel, HR exclusive)
+router.get('/etp/computers', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getAllowedComputers);
+router.post('/etp/computers', authenticate, authorizeRoles(hrCeo), C.registerAllowedComputer);
+router.patch('/etp/computers/:id/toggle', authenticate, authorizeRoles(hrCeo), C.toggleAllowedComputer);
 
 router.post('/etp/manual-entry', authenticate, authorizeRoles([...hrCeo, 'HR Manager']), C.submitManualEntry);
 
