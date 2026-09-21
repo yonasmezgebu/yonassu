@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, TrendingDown, Clock, Inbox, Truck, ArrowUpRight, ClipboardCheck, AlertTriangle, Sprout } from 'lucide-react';
-import { Package, TrendingDown, Clock, Inbox, Truck, ArrowUpRight, ClipboardCheck, AlertTriangle, Sprout } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 const StoreHomeNew = () => {
   const navigate = useNavigate();
