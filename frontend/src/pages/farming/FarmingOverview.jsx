@@ -186,7 +186,7 @@ const FarmingOverview = () => {
 
         {/* Hero Card */}
         <div className="d-card" onClick={() => nav('/farming/products')}
-          style={{ background: \`linear-gradient(135deg,\${G.forest} 0%,\${G.dark} 100%)\`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
+          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
           <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
           <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
             <span style={{ fontSize: 24 }}>🌾</span>
@@ -252,7 +252,7 @@ const FarmingOverview = () => {
               { label: 'Low Stock',   val: lowStockCount,    icon: '📉', c: G.red    },
               { label: 'Reorders',    val: pendingReorders,  icon: '⏳', c: G.purple },
             ].map(k => (
-              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: \`1.5px solid \${k.c}22\` }}>
+              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
                 <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
@@ -303,7 +303,7 @@ const FarmingOverview = () => {
               if (l.type === 'shift') { c = G.sky; icon = '🕒'; }
               return (
                 <div key={l.id} className="top-row">
-                  <div style={{ width: 32, height: 32, borderRadius: 0, background: \`\${c}22\`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <span style={{ fontSize: 14 }}>{icon}</span>
                   </div>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -328,8 +328,8 @@ const FarmingOverview = () => {
         <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
           {[
-            { label: \`\${lowStockCount} Low Stock\`, sub: \`Items needing reorder\`, icon: '📉', bg: '#FEF2F2', c: '#ef4444', path: '/farming/products' },
-            { label: \`\${pendingReorders} Pending Reorders\`, sub: 'Awaiting approval', icon: '⏳', bg: '#FFFBEB', c: '#f59e0b', path: '/farming/store-request' }
+            { label: `${lowStockCount} Low Stock`, sub: `Items needing reorder`, icon: '📉', bg: '#FEF2F2', c: '#ef4444', path: '/farming/products' },
+            { label: `${pendingReorders} Pending Reorders`, sub: 'Awaiting approval', icon: '⏳', bg: '#FFFBEB', c: '#f59e0b', path: '/farming/store-request' }
           ].map(row => (
             <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
               <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
@@ -365,7 +365,7 @@ const FarmingOverview = () => {
               { label: 'Products',       sub: 'Manage',        icon: '🌾', bg: '#E1F5FE', color: G.sky,     href: '/farming/products' },
               { label: 'Finance Report', sub: 'Overview',      icon: '💵', bg: '#F3E5F5', color: G.purple,  href: '/farming/reports' }
             ].map((a, i) => (
-              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: \`\${0.4 + i * 0.04}s\` }}>
+              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
                 <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
                   <span style={{ fontSize:22 }}>{a.icon}</span>
                 </div>
