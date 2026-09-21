@@ -603,7 +603,7 @@ export default function CustomerRentals() {
                 <RefreshCw size={16} className={refreshing ? styles.spin : ''} />
                 {refreshing ? 'Refreshing…' : 'Refresh'}
               </button>
-              <button className={styles.btnPrimary} onClick={() => navigate('/services/agrirent')}>
+              <button className={styles.btnPrimary} onClick={() => navigate('/fleet-gallery')}>
                 <Plus size={16} /> New Rental
               </button>
             </div>
@@ -633,7 +633,7 @@ export default function CustomerRentals() {
               <Car size={48} className={styles.emptyIcon} />
               <h2 className={styles.emptyTitle}>No Rentals Found</h2>
               <p className={styles.emptyDesc}>You don&apos;t have any rentals in this category.</p>
-              <button className={styles.btnPrimary} onClick={() => navigate('/services/agrirent')}>Rent a Vehicle</button>
+              <button className={styles.btnPrimary} onClick={() => navigate('/fleet-gallery')}>Rent a Vehicle</button>
             </div>
           ) : (
             <>
