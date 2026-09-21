@@ -180,6 +180,7 @@ const HRAttendance = () => {
   const [positions, setPositions] = useState([]);
   const [regCands, setRegCands] = useState([]);
   const [allEmps, setAllEmps] = useState([]);       // all active HR employees for dropdown
+  const [selectedDropdownVal, setSelectedDropdownVal] = useState(''); // Holds the select value
   const [regLoading, setRegLoading] = useState(false);
   const [regBusy, setRegBusy] = useState(false);
   const [regMode, setRegMode] = useState('user'); // 'user' = from system user | 'manual' = brand new
@@ -215,14 +216,35 @@ const HRAttendance = () => {
   const loadRegCands = useCallback(async () => {
     setRegLoading(true);
     try {
-      // Unregistered system users (for Link-System-User mode)
-      const r = await hrService.etp.getAttendanceRegistrationCandidates();
-      setRegCands(Array.isArray(r.data?.data) ? r.data.data : []);
-      // All active HR employees (for dropdown autofill)
-      const r2 = await hrService.etp.listEmployees({ status: 'Active' });
-      setAllEmps(Array.isArray(r2.data?.data) ? r2.data.data : []);
-    } catch (e) { setError(e.response?.data?.message || e.message || 'Failed to load registration data'); }
-    finally { setRegLoading(false); }
+      // All employees — we separate registered vs unregistered from the single listEmployees call
+      // This is the same API used by HREmployees.jsx and works reliably
+      const r2 = await hrService.etp.listEmployees({});
+      const raw = Array.isArray(r2?.data?.data)
+        ? r2.data.data
+        : Array.isArray(r2?.data)
+          ? r2.data
+          : [];
+
+      // Active HR employees → go into dropdown for autofill
+      const empRows = raw.filter(e => e._source === 'hr_employees' && e.employment_status === 'Active');
+      setAllEmps(empRows);
+
+      // Unregistered system users (no hr_employees profile yet) → for linking
+      const candRows = raw
+        .filter(e => e._source === 'users_table')
+        .map(e => ({
+          id: e.employee_id,          // user_id stored as employee_id for unregistered
+          full_name: e.full_name,
+          email: e.personal_email,
+          phone: e.personal_phone,
+          roles: e.position_title,
+        }));
+      setRegCands(candRows);
+    } catch (e) {
+      setError(e.response?.data?.message || e.message || 'Failed to load employee data');
+    } finally {
+      setRegLoading(false);
+    }
   }, []);
 
   const loadDaily = useCallback(async () => {
@@ -368,85 +390,46 @@ const HRAttendance = () => {
     });
   };
 
-  const clearRegForm = () => setRegForm(EMPTY_REG);
+  const clearRegForm = () => {
+    setRegForm(EMPTY_REG);
+    setSelectedDropdownVal('');
+  };
 
   const submitReg = async () => {
-    if (regMode === 'user' && !regForm.user_id) return setError('Please pick a system user from the list.');
+    if (!selectedDropdownVal) return setError('Please select an employee or system user from the dropdown.');
     if (!regForm.full_name.trim()) return setError('Full name is required.');
-    if (!regForm.hire_date) return setError('Hire date is required.');
 
     setRegBusy(true); setError(''); setOkMsg('');
     try {
       let r;
-      if (regMode === 'user') {
-        // Link-from-system-user path
-        r = await hrService.etp.registerAttendanceEmployee({
-          user_id: regForm.user_id,
-          full_name: regForm.full_name,
-          personal_phone: regForm.personal_phone,
-          national_id: regForm.national_id || undefined,
-          date_of_birth: regForm.date_of_birth || undefined,
-          gender: regForm.gender || undefined,
-          marital_status: regForm.marital_status || undefined,
-          physical_address: regForm.physical_address || undefined,
-          dept_id: regForm.dept_id || undefined,
-          position_id: regForm.position_id || undefined,
-          hire_date: regForm.hire_date,
-          employment_type: regForm.employment_type,
-          shift_start_time: regForm.shift_start_time,
-          shift_end_time: regForm.shift_end_time,
-          has_pc_access: regForm.has_pc_access,
-          base_salary: regForm.base_salary || undefined,
-          housing_allowance: regForm.housing_allowance || undefined,
-          transport_allowance: regForm.transport_allowance || undefined,
-          payment_method: regForm.payment_method || undefined,
-          bank_name: regForm.bank_name || undefined,
-          bank_account_number: regForm.bank_account_number || undefined,
-          emergency_contact_name: regForm.emergency_contact_name || undefined,
-          emergency_contact_phone: regForm.emergency_contact_phone || undefined,
-          education_level: regForm.education_level || undefined,
-          institution_name: regForm.institution_name || undefined,
-          field_of_study: regForm.field_of_study || undefined,
-          graduation_year: regForm.graduation_year || undefined,
-        });
+      const payload = {
+        full_name: regForm.full_name,
+        personal_phone: regForm.personal_phone || undefined,
+        personal_email: regForm.personal_email || undefined,
+        gender: regForm.gender || undefined,
+        is_attendance_enabled: regForm.is_attendance_enabled ?? true,
+      };
+
+      if (selectedDropdownVal.startsWith('emp_')) {
+        // Update existing employee
+        const empId = selectedDropdownVal.replace('emp_', '');
+        await hrService.etp.updateEmployee(empId, payload);
+        setOkMsg(`${regForm.full_name} updated successfully.`);
       } else {
-        // Full manual registration path (no system user)
-        r = await hrService.etp.createEmployee({
-          full_name: regForm.full_name,
-          national_id: regForm.national_id || undefined,
-          date_of_birth: regForm.date_of_birth || undefined,
-          gender: regForm.gender || undefined,
-          marital_status: regForm.marital_status || undefined,
-          personal_phone: regForm.personal_phone || undefined,
-          personal_email: regForm.personal_email || undefined,
-          physical_address: regForm.physical_address || undefined,
-          dept_id: regForm.dept_id || undefined,
-          position_id: regForm.position_id || undefined,
-          hire_date: regForm.hire_date,
-          employment_type: regForm.employment_type,
-          base_salary: regForm.base_salary || 0,
-          housing_allowance: regForm.housing_allowance || 0,
-          transport_allowance: regForm.transport_allowance || 0,
-          payment_method: regForm.payment_method || undefined,
-          bank_name: regForm.bank_name || undefined,
-          bank_account_number: regForm.bank_account_number || undefined,
-          has_pc_access: regForm.has_pc_access,
-          shift_start_time: regForm.shift_start_time,
-          shift_end_time: regForm.shift_end_time,
-          emergency_contact_name: regForm.emergency_contact_name || undefined,
-          emergency_contact_phone: regForm.emergency_contact_phone || undefined,
-          education_level: regForm.education_level || undefined,
-          institution_name: regForm.institution_name || undefined,
-          field_of_study: regForm.field_of_study || undefined,
-          graduation_year: regForm.graduation_year || undefined,
-        });
+        // Unregistered System User -> Link & Create
+        payload.user_id = regForm.user_id;
+        r = await hrService.etp.registerAttendanceEmployee(payload);
+        setOkMsg(r.data?.message || `${regForm.full_name} registered successfully.`);
       }
-      setOkMsg(r.data?.message || `${regForm.full_name} registered successfully.`);
-      setRegForm(EMPTY_REG);
+
+      clearRegForm();
       await loadRegCands();
       loadDaily();
-    } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to register employee'); }
-    finally { setRegBusy(false); }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save employee profile.');
+    } finally {
+      setRegBusy(false);
+    }
   };
 
   const s = daily.summary || {};
@@ -575,15 +558,18 @@ const HRAttendance = () => {
                 <select
                   className="hat-input"
                   style={{ width: '100%', fontWeight: 600 }}
-                  value={regForm.user_id || ''}
+                  value={selectedDropdownVal}
                   onChange={e => {
+                    const rawVal = e.target.value;
+                    setSelectedDropdownVal(rawVal);
+                    if (!rawVal) { clearRegForm(); return; }
+
                     // Find in allEmps first (full profile autofill)
                     const empId = e.target.selectedOptions[0]?.dataset?.empid;
                     if (empId) { pickEmpFromDropdown(empId); return; }
+                    
                     // Else it's an unregistered system user candidate
-                    const candId = e.target.value;
-                    if (!candId) { clearRegForm(); return; }
-                    const cand = regCands.find(u => String(u.id) === String(candId));
+                    const cand = regCands.find(u => String(u.id) === String(rawVal));
                     if (cand) pickRegCandidate(cand);
                   }}
                 >
@@ -593,7 +579,7 @@ const HRAttendance = () => {
                       {allEmps.map(emp => (
                         <option
                           key={emp.employee_id}
-                          value={emp.user_id || emp.employee_id}
+                          value={`emp_${emp.employee_id}`}
                           data-empid={emp.employee_id}
                         >
                           {emp.full_name} — {emp.employee_id} {emp.dept_name ? `(${emp.dept_name})` : ''}
@@ -635,186 +621,89 @@ const HRAttendance = () => {
               )}
             </div>
 
-            {/* RIGHT PANEL — Full Registration Form */}
+            {/* RIGHT PANEL — Simple Registration Form */}
             <div className="hat-reg-form">
-              <div className="hat-filter-h" style={{ marginBottom: 12 }}>
+              <div className="hat-filter-h" style={{ marginBottom: 16 }}>
                 <UserPlus size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-                Employee Registration Form — Auto-filled from selection above
+                {selectedDropdownVal.startsWith('emp_') ? 'Registered Employee Details (Read-Only)' : 'Attendance Registration — Select employee above to auto-fill'}
               </div>
 
-              {/* ── PERSONAL INFO ── */}
-              <div style={{ fontWeight: 700, fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>Personal Information</div>
-              <div className="hat-field">
+              {/* Full Name */}
+              <div className="hat-field" style={{ marginBottom: 12 }}>
                 <label>Full Name *</label>
-                <input className="hat-input" value={regForm.full_name} onChange={e => setRegForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Full name" />
-              </div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Login / Personal Email</label>
-                  <input className="hat-input" value={regForm.personal_email || regForm.email} onChange={e => setRegForm(f => ({ ...f, personal_email: e.target.value, email: e.target.value }))} placeholder="Email address" />
-                </div>
-                <div className="hat-field">
-                  <label>Phone</label>
-                  <input className="hat-input" value={regForm.personal_phone} onChange={e => setRegForm(f => ({ ...f, personal_phone: e.target.value }))} placeholder="+251..." />
-                </div>
-              </div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Gender</label>
-                  <select className="hat-input" value={regForm.gender} onChange={e => setRegForm(f => ({ ...f, gender: e.target.value }))}>
-                    <option>Male</option><option>Female</option>
-                  </select>
-                </div>
-                <div className="hat-field">
-                  <label>Marital Status</label>
-                  <select className="hat-input" value={regForm.marital_status} onChange={e => setRegForm(f => ({ ...f, marital_status: e.target.value }))}>
-                    <option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option>
-                  </select>
-                </div>
-              </div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Date of Birth</label>
-                  <input type="date" className="hat-input" value={regForm.date_of_birth} onChange={e => setRegForm(f => ({ ...f, date_of_birth: e.target.value }))} />
-                </div>
-                <div className="hat-field">
-                  <label>National ID</label>
-                  <input className="hat-input" value={regForm.national_id} onChange={e => setRegForm(f => ({ ...f, national_id: e.target.value }))} placeholder="ID number" />
-                </div>
-              </div>
-              <div className="hat-field">
-                <label>Physical Address</label>
-                <input className="hat-input" value={regForm.physical_address} onChange={e => setRegForm(f => ({ ...f, physical_address: e.target.value }))} placeholder="Home address" />
+                <input
+                  className="hat-input"
+                  value={regForm.full_name}
+                  onChange={e => setRegForm(f => ({ ...f, full_name: e.target.value }))}
+                  placeholder="Full name"
+                  disabled={selectedDropdownVal.startsWith('emp_')}
+                />
               </div>
 
-              {/* ── JOB INFO ── */}
-              <div style={{ fontWeight: 700, fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.05em', margin: '14px 0 8px' }}>Job Information</div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Department</label>
-                  <select className="hat-input" value={regForm.dept_id} onChange={e => setRegForm(f => ({ ...f, dept_id: e.target.value }))}>
-                    <option value="">— Select —</option>
-                    {depts.map(dp => <option key={dp.id ?? dp.dept_id} value={dp.id ?? dp.dept_id}>{dp.name || dp.dept_name}</option>)}
-                  </select>
-                </div>
-                <div className="hat-field">
-                  <label>Position</label>
-                  <select className="hat-input" value={regForm.position_id} onChange={e => setRegForm(f => ({ ...f, position_id: e.target.value }))}>
-                    <option value="">— Select —</option>
-                    {positions.map(p => <option key={p.position_id} value={p.position_id}>{p.position_title}</option>)}
-                  </select>
-                </div>
+              {/* Email */}
+              <div className="hat-field" style={{ marginBottom: 12 }}>
+                <label>Email</label>
+                <input
+                  className="hat-input"
+                  value={regForm.personal_email || regForm.email || ''}
+                  onChange={e => setRegForm(f => ({ ...f, personal_email: e.target.value, email: e.target.value }))}
+                  placeholder="Email address"
+                  disabled={selectedDropdownVal.startsWith('emp_')}
+                />
               </div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Hire Date *</label>
-                  <input type="date" className="hat-input" value={regForm.hire_date} onChange={e => setRegForm(f => ({ ...f, hire_date: e.target.value }))} />
-                </div>
-                <div className="hat-field">
-                  <label>Employment Type</label>
-                  <select className="hat-input" value={regForm.employment_type} onChange={e => setRegForm(f => ({ ...f, employment_type: e.target.value }))}>
-                    <option>Permanent</option><option>Contract</option><option>Probation</option><option>Part-time</option><option>Temporary</option>
-                  </select>
-                </div>
+
+              {/* Phone */}
+              <div className="hat-field" style={{ marginBottom: 12 }}>
+                <label>Phone</label>
+                <input
+                  className="hat-input"
+                  value={regForm.personal_phone || ''}
+                  onChange={e => setRegForm(f => ({ ...f, personal_phone: e.target.value }))}
+                  placeholder="+251..."
+                  disabled={selectedDropdownVal.startsWith('emp_')}
+                />
               </div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label><Clock size={12} style={{ verticalAlign: -2, marginRight: 3 }} />Shift Start</label>
-                  <input type="time" className="hat-input" value={regForm.shift_start_time} onChange={e => setRegForm(f => ({ ...f, shift_start_time: e.target.value }))} />
-                </div>
-                <div className="hat-field">
-                  <label><Clock size={12} style={{ verticalAlign: -2, marginRight: 3 }} />Shift End</label>
-                  <input type="time" className="hat-input" value={regForm.shift_end_time} onChange={e => setRegForm(f => ({ ...f, shift_end_time: e.target.value }))} />
-                </div>
-              </div>
-              <div className="hat-field">
-                <label>PC / System Access</label>
-                <select className="hat-input" value={regForm.has_pc_access} onChange={e => setRegForm(f => ({ ...f, has_pc_access: e.target.value }))}>
-                  <option value="Yes">Yes</option><option value="No">No</option>
+
+              {/* Gender */}
+              <div className="hat-field" style={{ marginBottom: 20 }}>
+                <label>Gender</label>
+                <select
+                  className="hat-input"
+                  value={regForm.gender || 'Male'}
+                  onChange={e => setRegForm(f => ({ ...f, gender: e.target.value }))}
+                  disabled={selectedDropdownVal.startsWith('emp_')}
+                >
+                  <option>Male</option>
+                  <option>Female</option>
                 </select>
               </div>
 
-              {/* ── SALARY ── */}
-              <div style={{ fontWeight: 700, fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.05em', margin: '14px 0 8px' }}>Salary & Allowances</div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Base Salary</label>
-                  <input type="number" className="hat-input" min="0" value={regForm.base_salary} onChange={e => setRegForm(f => ({ ...f, base_salary: e.target.value }))} placeholder="0.00" />
+              {/* Attendance Toggle */}
+              <div className="hat-field" style={{ marginBottom: 20 }}>
+                <label>Attendance Status for Employee Dashboard</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: 600, color: regForm.is_attendance_enabled ? '#059669' : '#64748b' }}>
+                    <input
+                      type="checkbox"
+                      checked={regForm.is_attendance_enabled ?? true}
+                      onChange={e => setRegForm(f => ({ ...f, is_attendance_enabled: e.target.checked }))}
+                      style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    />
+                    {regForm.is_attendance_enabled ? 'ON (Attendance Required)' : 'OFF (Not Required)'}
+                  </label>
                 </div>
-                <div className="hat-field">
-                  <label>Housing Allowance</label>
-                  <input type="number" className="hat-input" min="0" value={regForm.housing_allowance} onChange={e => setRegForm(f => ({ ...f, housing_allowance: e.target.value }))} placeholder="0.00" />
-                </div>
-              </div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Transport Allowance</label>
-                  <input type="number" className="hat-input" min="0" value={regForm.transport_allowance} onChange={e => setRegForm(f => ({ ...f, transport_allowance: e.target.value }))} placeholder="0.00" />
-                </div>
-                <div className="hat-field">
-                  <label>Payment Method</label>
-                  <select className="hat-input" value={regForm.payment_method} onChange={e => setRegForm(f => ({ ...f, payment_method: e.target.value }))}>
-                    <option>Bank Transfer</option><option>Cash</option><option>Mobile Money</option>
-                  </select>
-                </div>
-              </div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Bank Name</label>
-                  <input className="hat-input" value={regForm.bank_name} onChange={e => setRegForm(f => ({ ...f, bank_name: e.target.value }))} placeholder="e.g. CBE" />
-                </div>
-                <div className="hat-field">
-                  <label>Bank Account Number</label>
-                  <input className="hat-input" value={regForm.bank_account_number} onChange={e => setRegForm(f => ({ ...f, bank_account_number: e.target.value }))} placeholder="Account no." />
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                  Turn off if this employee does not need to record daily attendance.
                 </div>
               </div>
 
-              {/* ── EMERGENCY CONTACT ── */}
-              <div style={{ fontWeight: 700, fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.05em', margin: '14px 0 8px' }}>Emergency Contact</div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Contact Name</label>
-                  <input className="hat-input" value={regForm.emergency_contact_name} onChange={e => setRegForm(f => ({ ...f, emergency_contact_name: e.target.value }))} placeholder="Name" />
-                </div>
-                <div className="hat-field">
-                  <label>Contact Phone</label>
-                  <input className="hat-input" value={regForm.emergency_contact_phone} onChange={e => setRegForm(f => ({ ...f, emergency_contact_phone: e.target.value }))} placeholder="+251..." />
-                </div>
-              </div>
-
-              {/* ── EDUCATION ── */}
-              <div style={{ fontWeight: 700, fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.05em', margin: '14px 0 8px' }}>Education</div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Education Level</label>
-                  <select className="hat-input" value={regForm.education_level} onChange={e => setRegForm(f => ({ ...f, education_level: e.target.value }))}>
-                    <option value="">— Select —</option>
-                    <option>Primary</option><option>Secondary</option><option>Diploma</option><option>Bachelor</option><option>Masters</option><option>PhD</option>
-                  </select>
-                </div>
-                <div className="hat-field">
-                  <label>Field of Study</label>
-                  <input className="hat-input" value={regForm.field_of_study} onChange={e => setRegForm(f => ({ ...f, field_of_study: e.target.value }))} placeholder="e.g. Accounting" />
-                </div>
-              </div>
-              <div className="hat-reg-row">
-                <div className="hat-field">
-                  <label>Institution Name</label>
-                  <input className="hat-input" value={regForm.institution_name} onChange={e => setRegForm(f => ({ ...f, institution_name: e.target.value }))} placeholder="University / College" />
-                </div>
-                <div className="hat-field">
-                  <label>Graduation Year</label>
-                  <input type="number" className="hat-input" value={regForm.graduation_year} onChange={e => setRegForm(f => ({ ...f, graduation_year: e.target.value }))} placeholder="e.g. 2020" min="1980" max="2030" />
-                </div>
-              </div>
-
-              {/* ── SUBMIT ── */}
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 16, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
+              {/* Submit */}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
                 <button className="hat-btn primary" onClick={submitReg} disabled={regBusy || !regForm.full_name}>
-                  <UserPlus size={15} /> {regBusy ? 'Registering…' : 'Register for Attendance'}
+                  <UserPlus size={15} /> {regBusy ? 'Saving…' : (selectedDropdownVal.startsWith('emp_') ? 'Save Attendance Status' : 'Register for Attendance')}
                 </button>
                 {regForm.full_name && (
-                  <button className="hat-btn" onClick={clearRegForm}>Clear form</button>
+                  <button className="hat-btn" onClick={clearRegForm}>Clear</button>
                 )}
                 {!regForm.full_name && !regLoading && (
                   <span className="hat-step" style={{ margin: 0 }}>← Select an employee from the dropdown to auto-fill.</span>
