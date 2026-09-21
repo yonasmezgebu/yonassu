@@ -155,7 +155,7 @@ const PharmacyTransferRequests = () => {
                       </td>
                       <td style={tdStyle}>{new Date(r.created_at).toLocaleDateString()}</td>
                       <td style={tdStyle}>
-                        <button onClick={() => navigate(`/pharmacy/receive-shipments/${r.id}`)} style={{ ...actionBtn, background: '#F3E8FF', color: '#6B21A8' }}>
+                        <button onClick={() => navigate(`/pharmacy/receive-shipment/${r.id}`)} style={{ ...actionBtn, background: '#F3E8FF', color: '#6B21A8' }}>
                           <Truck size={14} /> View
                         </button>
                       </td>
