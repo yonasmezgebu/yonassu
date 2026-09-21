@@ -28,7 +28,7 @@ const PharmacyShipments = () => {
       if (res.status === 'success') {
         showToast(`Shipped ${shipQty} units to Pharmacy`, 'success');
         playSound('info');
-        sendPushNotification('Pharmacy Transfer Shipped', `${res.data.drug_name || 'Drug'} — ${shipQty} units in transit`, `/pharmacy/receive-shipments/${selected}`);
+        sendPushNotification('Pharmacy Transfer Shipped', `${res.data.drug_name || 'Drug'} — ${shipQty} units in transit`, `/pharmacy/receive-shipment/${selected}`);
         setShipQty('');
         setSelected(null);
         loadApprovedRequests();
@@ -47,7 +47,7 @@ const PharmacyShipments = () => {
       if (res.status === 'success') {
         showToast(`Shipped ${req.quantity_requested} units to Pharmacy`, 'success');
         playSound('info');
-        sendPushNotification('Pharmacy Transfer Shipped', `${req.drug_name} — ${req.quantity_requested} units in transit`, `/pharmacy/receive-shipments/${selected}`);
+        sendPushNotification('Pharmacy Transfer Shipped', `${req.drug_name} — ${req.quantity_requested} units in transit`, `/pharmacy/receive-shipment/${selected}`);
         setShipQty('');
         setSelected(null);
         loadApprovedRequests();
