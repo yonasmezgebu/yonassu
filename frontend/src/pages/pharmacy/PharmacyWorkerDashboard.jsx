@@ -15,6 +15,7 @@ import PharmacyWorkerPrescriptionHistory from './PharmacyWorkerPrescriptionHisto
 
 import PharmacyStockOperations from './PharmacyStockOperations';
 import PharmacyMedicines from './PharmacyMedicines';
+import PharmacyWorkerPOS from './PharmacyWorkerPOS';
 import ManagerChat from '../../components/ManagerChat';
 import PharmacyWorkerAuditLog from './PharmacyWorkerAuditLog';
 
@@ -89,6 +90,7 @@ const PharmacyWorkerDashboard = () => {
             <Route path="sales"           element={<PharmacySalesForm />} />
             <Route path="sales/:id"       element={<PharmacySalesForm />} />
             <Route path="sales-return"    element={<PharmacySalesReturn />} />
+            <Route path="pos"             element={<PharmacyWorkerPOS />} />
 
             {/* ── Prescriptions ── */}
             <Route path="rx"              element={<PharmacyWorkerPrescriptions />} />
