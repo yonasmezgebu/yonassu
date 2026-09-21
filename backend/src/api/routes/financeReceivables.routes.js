@@ -1205,7 +1205,7 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
               });
               if (bid.customer_id) {
                 try {
-                  const notificationRepository = require('../../../repositories/notification.repository');
+                  const notificationRepository = require('../../repositories/notification.repository');
                   await notificationRepository.create({
                     userId: bid.customer_id,
                     title: '✅ Payment Confirmed — Tender Award',
@@ -1229,7 +1229,7 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
                 try {
                   const user = await trx('users').where({ email: bid.email }).first();
                   if (user) {
-                    const notificationRepository = require('../../../repositories/notification.repository');
+                    const notificationRepository = require('../../repositories/notification.repository');
                     await notificationRepository.create({
                       userId: user.id,
                       title: '✅ Payment Confirmed — Public Tender',
@@ -1469,7 +1469,7 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
             });
             if (bid.customer_id) {
               try {
-                const notificationRepository = require('../../../repositories/notification.repository');
+                const notificationRepository = require('../../repositories/notification.repository');
                 await notificationRepository.create({
                   userId: bid.customer_id,
                   title: '❌ Payment Rejected — Tender Award',
@@ -1492,7 +1492,7 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
               try {
                 const user = await knex('users').where({ email: bid.email }).first();
                 if (user) {
-                  const notificationRepository = require('../../../repositories/notification.repository');
+                  const notificationRepository = require('../../repositories/notification.repository');
                   await notificationRepository.create({
                     userId: user.id,
                     title: '❌ Payment Rejected — Public Tender',
