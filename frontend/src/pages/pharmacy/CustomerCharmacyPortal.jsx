@@ -218,7 +218,6 @@ export default function CustomerCharmacyPortal() {
 
   const needsRx = cart.some(i => i.requires_prescription);
 
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [paymentReference, setPaymentReference] = useState('');
 
   const handleCheckout = async () => {
