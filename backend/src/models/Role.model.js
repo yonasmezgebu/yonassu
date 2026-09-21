@@ -172,7 +172,7 @@ class RoleModel {
           reports: ['read', 'export'],
           dashboard: ['read'],
           expenses: ['read'],
-          approvals: ['discount', 'po']
+          approvals: ['discount', 'po'],
           purchase_orders: ['approve', 'read'],
           suppliers: ['read'],
           receiving: ['read', 'create']
@@ -198,7 +198,7 @@ class RoleModel {
         description: 'Supplier and PO management',
         permissions: {
           suppliers: ['create', 'read', 'update'],
-          purchase_orders: ['create', 'read', 'update']
+          purchase_orders: ['create', 'read', 'update'],
           purchase_orders: ['create', 'read', 'update'],
           receiving: ['create', 'read'],
           inventory: ['read'],
