@@ -182,7 +182,7 @@ const RentalDashboard = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
 
         {/* Fleet Value Hero */}
-        <div className="d-card" onClick={() => nav('/car-renting/fleet')}
+        <div className="d-card" onClick={() => nav('/car-renting/manager/fleet')}
           style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
           <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
           <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
@@ -198,7 +198,7 @@ const RentalDashboard = () => {
         </div>
 
         {/* Cars */}
-        <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/car-renting/fleet')}>
+        <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/car-renting/manager/fleet')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Cars Fleet</span>
             <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>🚕</span></div>
@@ -208,7 +208,7 @@ const RentalDashboard = () => {
         </div>
 
         {/* Agri Equipment */}
-        <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/car-renting/fleet')}>
+        <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/car-renting/manager/fleet')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Agri Equipment</span>
             <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>🚜</span></div>
@@ -218,7 +218,7 @@ const RentalDashboard = () => {
         </div>
 
         {/* Active Rentals */}
-        <div className="d-card" style={{ animationDelay: '0.2s', background: activeOrders.length > 0 ? '#FFF8F0' : undefined }} onClick={() => nav('/car-renting/orders')}>
+        <div className="d-card" style={{ animationDelay: '0.2s', background: activeOrders.length > 0 ? '#FFF8F0' : undefined }} onClick={() => nav('/car-renting/manager/orders')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: activeOrders.length > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Active Rentals</span>
             <div style={{ background: activeOrders.length > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{activeOrders.length > 0 ? '⏱️' : '✅'}</span></div>
@@ -316,8 +316,8 @@ const RentalDashboard = () => {
         <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
           {[
-            { label: `${fleetStats.maintenance} In Maintenance`, sub: `Vehicles currently being serviced`, icon: '🔧', bg: '#FFFBEB', c: '#f59e0b', path: '/car-renting/maintenance' },
-            { label: `${activeOrders.length} Active Rentals`, sub: 'Check end dates', icon: '⏱️', bg: '#EFF6FF', c: '#3b82f6', path: '/car-renting/orders' }
+            { label: `${fleetStats.maintenance} In Maintenance`, sub: `Vehicles currently being serviced`, icon: '🔧', bg: '#FFFBEB', c: '#f59e0b', path: '/car-renting/manager/maintenance' },
+            { label: `${activeOrders.length} Active Rentals`, sub: 'Check end dates', icon: '⏱️', bg: '#EFF6FF', c: '#3b82f6', path: '/car-renting/manager/orders' }
           ].map(row => (
             <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
               <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
@@ -335,13 +335,13 @@ const RentalDashboard = () => {
           <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Operations</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
-              { label: 'View Fleet',      sub: 'All assets',   icon: '🚙', bg: '#E6F2EB', color: G.forest,  href: '/car-renting/fleet' },
-              { label: 'New Rental',      sub: 'Create order', icon: '📝', bg: '#E8F9F1', color: G.emerald, href: '/car-renting/new-order' },
-              { label: 'Maintenance',     sub: 'Requests',     icon: '🔧', bg: '#FFF3E0', color: G.orange,  href: '/car-renting/maintenance' },
-              { label: 'Fuel & Service',  sub: 'Refills',      icon: '⛽', bg: '#E1F5FE', color: G.sky,     href: '/car-renting/fuel-service' },
-              { label: 'Asset Register',  sub: 'New Vehicle',  icon: '➕', bg: '#F1F8E9', color: G.olive,   href: '/car-renting/add-asset' },
-              { label: 'Store Requests',  sub: 'Parts/Spares', icon: '📦', bg: '#F3E5F5', color: G.purple,  href: '/car-renting/store-requests' },
-              { label: 'Reports',         sub: 'Analytics',    icon: '📊', bg: '#EFEBE9', color: G.brown,   href: '/car-renting/reports' }
+              { label: 'View Fleet',      sub: 'All assets',   icon: '🚙', bg: '#E6F2EB', color: G.forest,  href: '/car-renting/manager/fleet' },
+              { label: 'New Rental',      sub: 'Create order', icon: '📝', bg: '#E8F9F1', color: G.emerald, href: '/car-renting/manager/orders' },
+              { label: 'Maintenance',     sub: 'Requests',     icon: '🔧', bg: '#FFF3E0', color: G.orange,  href: '/car-renting/manager/maintenance' },
+              { label: 'Fuel & Service',  sub: 'Refills',      icon: '⛽', bg: '#E1F5FE', color: G.sky,     href: '/car-renting/manager/utilization' },
+              { label: 'Asset Register',  sub: 'New Vehicle',  icon: '➕', bg: '#F1F8E9', color: G.olive,   href: '/car-renting/manager/assets/new' },
+              { label: 'Store Requests',  sub: 'Parts/Spares', icon: '📦', bg: '#F3E5F5', color: G.purple,  href: '/car-renting/manager/store-request' },
+              { label: 'Reports',         sub: 'Analytics',    icon: '📊', bg: '#EFEBE9', color: G.brown,   href: '/car-renting/manager/reports/rental' }
             ].map((a, i) => (
               <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
                 <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
