@@ -128,10 +128,10 @@ const PharmacyOverview = () => {
   ];
 
   const QUICK = [
-    { label: 'POS Terminal', sub: 'New sale',     icon: 'shopping-cart', bg: 'var(--color-success-bg)', color: 'var(--color-success)', path: '/pharmacy/pos' },
+    { label: 'POS Terminal', sub: 'New sale',     icon: 'shopping-cart', bg: 'var(--color-success-bg)', color: 'var(--color-success)', path: '/pharmacy/manager-sales' },
     { label: 'Drug Catalog', sub: 'Browse meds',  icon: 'pill',          bg: 'var(--color-info-bg)',    color: 'var(--color-info)',    path: '/pharmacy/medicines' },
     { label: 'Stock Ops',    sub: 'Manage stock', icon: 'package',       bg: 'var(--color-warning-bg)', color: 'var(--color-warning)', path: '/pharmacy/stock-operations' },
-    { label: 'Reports Hub',  sub: 'Analytics',    icon: 'bar-chart-2',   bg: 'var(--color-info-bg)',    color: 'var(--color-info)',    path: '/pharmacy/reports-hub' },
+    { label: 'Reports Hub',  sub: 'Analytics',    icon: 'bar-chart-2',   bg: 'var(--color-info-bg)',    color: 'var(--color-info)',    path: '/pharmacy/reports' },
     { label: 'Procurement',  sub: 'Orders',       icon: 'file-text',     bg: 'var(--color-success-bg)', color: 'var(--color-success)', path: '/pharmacy/procurement-requests' },
     { label: 'Staff',        sub: 'Team mgmt',    icon: 'users',         bg: 'var(--color-info-bg)',    color: 'var(--color-info)',    path: '/pharmacy/staff' },
     { label: 'Expiry Mgmt',  sub: 'Review dates', icon: 'clock',         bg: 'var(--color-warning-bg)', color: 'var(--color-warning)', path: '/pharmacy/expiry-management' },
@@ -161,7 +161,7 @@ const PharmacyOverview = () => {
       {/* ── ROW 1: KPI CARDS ── */}
       <div className="grid-kpi">
 
-        <div className="card kpi-card kpi-primary" onClick={() => nav('/pharmacy/sales-list')}>
+        <div className="card kpi-card kpi-primary" onClick={() => nav('/pharmacy/manager-sales')}>
           <div className="kpi-header">
             <span className="label-text">Today's Revenue</span>
             <div className="kpi-icon"><Icon name="trending-up" size={20} color="currentColor" /></div>
