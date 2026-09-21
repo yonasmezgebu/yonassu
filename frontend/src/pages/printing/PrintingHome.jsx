@@ -286,28 +286,28 @@ export default function PrintingHome() {
         <div className="so-kpis">
           
           {/* Fleet Value Hero */}
-          <div className="d-card" onClick={() => nav('/printing-manager/fleet')} style={{ background: 'var(--color-primary)', color: '#FFF' }}>
+          <div className="d-card" onClick={() => nav('/printing-manager/prod/machines')} style={{ background: 'var(--color-primary)', color: '#FFF' }}>
             <div style={{ fontSize: 13, fontWeight: 500, textTransform: 'uppercase', opacity: 0.8, marginBottom: 8 }}>Total Machine Fleet</div>
             <div style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{fleetStats.total}</div>
             <div style={{ fontSize: 14, opacity: 0.9, fontWeight: 600 }}>Value: ETB {Number(stats.totalMachineValue || 0).toLocaleString()}</div>
           </div>
 
           {/* Prod Machines */}
-          <div className="d-card" onClick={() => nav('/printing-manager/fleet')}>
+          <div className="d-card" onClick={() => nav('/printing-manager/prod/machines')}>
             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Production Machines</div>
             <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 4 }}>{fleetStats.prod}</div>
             <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Active on floor</div>
           </div>
 
           {/* Store Machines */}
-          <div className="d-card" onClick={() => nav('/printing-manager/fleet')}>
+          <div className="d-card" onClick={() => nav('/printing-manager/prod/machines')}>
             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Material Inventory</div>
             <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 4 }}>{stats.totalMaterials || 0} Items</div>
             <div style={{ fontSize: 14, color: 'var(--color-success)', fontWeight: 600 }}>Value: ETB {Number(stats.totalMaterialValue || 0).toLocaleString()}</div>
           </div>
 
           {/* Active Orders */}
-          <div className="d-card" onClick={() => nav('/printing-manager/orders')}>
+          <div className="d-card" onClick={() => nav('/printing-manager/jobs/queue')}>
             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Active Orders</div>
             <div style={{ fontSize: '32px', fontWeight: 700, color: activeOrders.length > 0 ? 'var(--color-warning)' : 'var(--color-text-primary)', marginBottom: 4 }}>{activeOrders.length}</div>
             <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Currently processing</div>
@@ -378,8 +378,8 @@ export default function PrintingHome() {
             <h2 className="so-section-title">Attention Required</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { label: `${fleetStats.maintenance} In Maintenance`, sub: 'Machines currently being serviced', icon: '🔧', bg: 'var(--color-warning-bg)', c: 'var(--color-warning)', path: '/printing-manager/fleet' },
-                { label: `${activeOrders.length} Active Orders`, sub: 'Check end dates', icon: '⏱️', bg: 'var(--color-info-bg)', c: 'var(--color-info)', path: '/printing-manager/orders' }
+                { label: `${fleetStats.maintenance} In Maintenance`, sub: 'Machines currently being serviced', icon: '🔧', bg: 'var(--color-warning-bg)', c: 'var(--color-warning)', path: '/printing-manager/prod/machines' },
+                { label: `${activeOrders.length} Active Orders`, sub: 'Check end dates', icon: '⏱️', bg: 'var(--color-info-bg)', c: 'var(--color-info)', path: '/printing-manager/jobs/queue' }
               ].map(row => (
                 <div key={row.label} className="cat-row" onClick={() => nav(row.path)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -400,11 +400,10 @@ export default function PrintingHome() {
             <h2 className="so-section-title">Quick Operations</h2>
             <div className="ph-actions">
               {[
-                { label: 'View Fleet',      sub: 'All assets',   icon: '🖨️', href: '/printing-manager/fleet' },
-                { label: 'New Order',       sub: 'Create order', icon: '📝', href: '/printing-manager/orders/new' },
-                { label: 'Maintenance',     sub: 'Requests',     icon: '🔧', href: '/printing-manager/fleet' },
-                { label: 'Material Stock',  sub: 'Refills',      icon: '📦', href: '/printing-manager/materials' },
-                { label: 'Tax Receipts',    sub: 'Billing',      icon: '🧾', href: '/printing-manager/tax' },
+                { label: 'View Fleet',      sub: 'All assets',   icon: '🖨️', href: '/printing-manager/prod/machines' },
+                { label: 'New Order',       sub: 'Create order', icon: '📝', href: '/printing-manager/jobs/new' },
+                { label: 'Maintenance',     sub: 'Requests',     icon: '🔧', href: '/printing-manager/prod/machines' },
+                { label: 'Material Stock',  sub: 'Refills',      icon: '📦', href: '/printing-manager/prod/store-materials' },
                 { label: 'Reports',         sub: 'Analytics',    icon: '📊', href: '/printing-manager/reports/finance' }
               ].map((a, i) => (
                 <div key={a.label} className="qa-card" onClick={() => nav(a.href)}>
