@@ -16,12 +16,18 @@ import PurchaseGeneralProcurements from './PurchaseGeneralProcurements';
 // 2. Supplier Management
 import PurchaseSupplierList from './PurchaseSupplierList';
 import PurchaseAddSupplier from './PurchaseAddSupplier';
+import CreateSupplier from './CreateSupplier';
+import SupplierProfile from './SupplierProfile';
 
 // 3. Stock & Inventory
 import PurchaseStockRequests from './PurchaseStockRequests';
 import PurchasePendingDeliveries from './PurchasePendingDeliveries';
 import PurchaseReceivedItems from './PurchaseReceivedItems';
 import PurchaseStockAvailability from './PurchaseStockAvailability';
+
+// 6. Purchase Orders (create / detail / edit)
+import CreatePurchaseOrder from './CreatePurchaseOrder';
+import PurchaseOrderDetail from './PurchaseOrderDetail';
 
 // 4. Approvals
 import PurchaseApprovalsPending from './PurchaseApprovalsPending';
@@ -99,6 +105,9 @@ const PurchaseDashboard = () => {
             <Route path="contact" element={<PurchaseContact />} />
             <Route path="chat" element={<ManagerChat />} />
             <Route path="orders" element={<PurchaseOrders />} />
+            <Route path="orders/create" element={<CreatePurchaseOrder />} />
+            <Route path="orders/edit/:id" element={<CreatePurchaseOrder />} />
+            <Route path="orders/:id" element={<PurchaseOrderDetail />} />
             <Route path="returns" element={<PurchaseReturns />} />
             <Route path="general-procurements" element={<PurchaseGeneralProcurements />} />
             <Route path="expenses" element={<QuotationExpenses />} />
@@ -106,6 +115,8 @@ const PurchaseDashboard = () => {
             {/* 2. Supplier Management */}
             <Route path="suppliers" element={<PurchaseSupplierList />} />
             <Route path="suppliers/add" element={<PurchaseAddSupplier />} />
+            <Route path="suppliers/create" element={<CreateSupplier />} />
+            <Route path="suppliers/:id" element={<SupplierProfile />} />
 
             {/* 5. Reports */}
             <Route path="reports/purchase" element={<PurchaseReportPurchase />} />
