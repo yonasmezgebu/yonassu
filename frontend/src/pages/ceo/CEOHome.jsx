@@ -325,8 +325,8 @@ const CEOHome = () => {
                 { label: 'Finance Module',    path: '/ceo/finance' },
                 { label: 'HR Module',         path: '/ceo/hr' },
                 { label: 'Printing Module',   path: '/ceo/printing' },
-                { label: 'Car Rental Module', path: '/ceo/car-rental' },
-                { label: 'Tenders Module',    path: '/ceo/tender-full' },
+                { label: 'Car Rental Module', path: '/ceo/agri-and-car-rental' },
+                { label: 'Tenders Module',    path: '/ceo/tenders' },
                 { label: 'Executive Reports', path: '/ceo/reports' }
               ].map(action => (
                 <button key={action.label} className="ceo-btn" onClick={() => nav(action.path)} style={{ width: '100%', justifyContent: 'flex-start' }}>
