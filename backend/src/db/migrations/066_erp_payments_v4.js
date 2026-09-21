@@ -1,0 +1,20 @@
+// Migration step 66 of 362
+// Creates table: erp_payments_v4
+exports.up = function (knex) {
+  return knex.raw(`CREATE TABLE \`erp_payments_v4\` (
+  \`id\` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  \`liability_id\` int(10) unsigned NOT NULL,
+  \`payment_date\` date DEFAULT NULL,
+  \`amount\` decimal(15,2) NOT NULL,
+  \`payment_method\` varchar(255) DEFAULT NULL,
+  \`notes\` text,
+  \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  KEY \`erp_payments_v4_liability_id_foreign\` (\`liability_id\`),
+  CONSTRAINT \`erp_payments_v4_liability_id_foreign\` FOREIGN KEY (\`liability_id\`) REFERENCES \`erp_liabilities_v4\` (\`id\`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8`);
+};
+
+exports.down = function (knex) {
+  return knex.schema.dropTableIfExists('erp_payments_v4');
+};

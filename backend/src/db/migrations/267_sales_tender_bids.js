@@ -1,0 +1,23 @@
+// Migration step 267 of 362
+// Creates table: sales_tender_bids
+exports.up = function (knex) {
+  return knex.raw(`CREATE TABLE \`sales_tender_bids\` (
+  \`id\` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  \`sales_tender_id\` int(10) unsigned DEFAULT NULL,
+  \`company_name\` varchar(255) DEFAULT NULL,
+  \`contact_person\` varchar(255) NOT NULL,
+  \`email\` varchar(255) NOT NULL,
+  \`phone\` varchar(255) NOT NULL,
+  \`bid_amount\` decimal(15,2) NOT NULL,
+  \`notes\` text,
+  \`signature_data\` text,
+  \`status\` varchar(255) DEFAULT 'pending',
+  \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8`);
+};
+
+exports.down = function (knex) {
+  return knex.schema.dropTableIfExists('sales_tender_bids');
+};

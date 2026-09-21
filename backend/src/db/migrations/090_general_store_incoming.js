@@ -1,0 +1,23 @@
+// Migration step 90 of 362
+// Creates table: general_store_incoming
+exports.up = function (knex) {
+  return knex.raw(`CREATE TABLE \`general_store_incoming\` (
+  \`id\` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  \`quotation_id\` int(10) unsigned NOT NULL,
+  \`purchase_order_id\` int(10) unsigned DEFAULT NULL,
+  \`quotation_no\` varchar(30) NOT NULL,
+  \`supplier_name\` varchar(150) DEFAULT NULL,
+  \`delivery_note_no\` varchar(50) DEFAULT NULL,
+  \`status\` varchar(30) DEFAULT 'pending',
+  \`created_by\` int(10) unsigned DEFAULT NULL,
+  \`received_by\` int(10) unsigned DEFAULT NULL,
+  \`received_at\` timestamp NULL DEFAULT NULL,
+  \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8`);
+};
+
+exports.down = function (knex) {
+  return knex.schema.dropTableIfExists('general_store_incoming');
+};
