@@ -9,6 +9,7 @@ import RetailPOS from './RetailPOS';
 import ReturnsPage from './ReturnsPage';
 
 import RetailStoreInventory from './RetailStoreInventory';
+import RetailStockOperations from './RetailStockOperations';
 import RetailBranches from './RetailBranches';
 import SalesCEOReport from './SalesCEOReport';
 import SalesFinanceReview from './SalesFinanceReview';
@@ -34,7 +35,7 @@ export const WorkerAuthContext = createContext();
 const SalesDashboard = () => {
   const location = useLocation();
   const FULL_BLEED = [
-    '/sales/staff', '/sales/branches', 
+    '/sales/branches', 
     '/sales/finance-review', '/sales/ceo-report', '/sales/daily-summary',
     '/sales/store-inventory',
     '/sales/procurement-requests',
@@ -94,7 +95,6 @@ const SalesDashboard = () => {
     // ── Settings ──
     { label: 'Settings', icon: 'settings',
       children: [
-        { label: 'Staff & Roles', path: '/sales/staff', icon: 'users', color: '#10b981' },
         { label: 'Chat', path: '/sales/chat', icon: 'message-circle', color: '#6B8E23' },
         { label: 'Contact', path: '/sales/contact', icon: 'phone', color: '#14b8a6' },
       ]
@@ -137,6 +137,7 @@ const SalesDashboard = () => {
 
             {/* Inventory */}
             <Route path="store-inventory"  element={<RetailStoreInventory />} />
+            <Route path="stock-operations" element={<RetailStockOperations />} />
 
             {/* Staff */}
             <Route path="tasks"      element={<SalesTasks />} />
