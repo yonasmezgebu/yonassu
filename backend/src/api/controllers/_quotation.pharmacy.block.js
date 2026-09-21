@@ -1,3 +1,7 @@
+const { db } = require('../../config/database');
+const AppError = require('../../utils/AppError');
+const { catchAsync } = require('../../utils/catchAsync');
+
 exports.listPharmacyIncoming = catchAsync(async (req, res) => {
   const { status } = req.query;
   let query = db('pharmacy_store_incoming as psi').orderBy('psi.created_at', 'desc');
@@ -23,7 +27,7 @@ exports.acceptPharmacyIncomingItem = catchAsync(async (req, res) => {
 
     const name = item.item_description;
     const strength = item.strength || null;
-    const unitCost = parseFloat(item.unit_price) || 0 DavenportPharmacyItemDefaults;
+    const unitCost = parseFloat(item.unit_price) || 0;
     const qty = parseFloat(item.quantity) || 0;
     const batchNo = item.batch_no || null;
     const expiry = item.expiry_date || null;
