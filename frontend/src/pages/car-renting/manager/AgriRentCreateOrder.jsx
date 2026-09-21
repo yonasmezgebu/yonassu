@@ -176,7 +176,7 @@ const AgriRentCreateOrder = () => {
         setLoading(false);
         setTimeout(() => {
           if (isManager) navigate('/car-renting/manager/agri-orders');
-          else navigate('/agrirent/my-orders');
+          else navigate('/customer/farming-orders');
         }, 1800);
       }
     } catch (err) {
