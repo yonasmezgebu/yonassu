@@ -311,6 +311,7 @@ exports.registerAttendanceEmployee = catchAsync(async (req, res) => {
     weekly_off_days: 'Friday,Saturday',
     employment_status: 'Active',
     registration_status: 'active',
+    is_attendance_enabled: req.body.is_attendance_enabled !== undefined ? req.body.is_attendance_enabled : true,
     employment_type: req.body.employment_type || 'Permanent',
     hire_date: req.body.hire_date || new Date(),
     gender: req.body.gender || null,
@@ -519,7 +520,7 @@ exports.updateETPEmployee = catchAsync(async (req, res) => {
     'shift_start_time', 'shift_end_time', 'employment_status', 'employment_type',
     'personal_phone', 'physical_address', 'personal_email', 'overtime_rate', 'bank_name', 'bank_account_number', 'payment_method',
     'emergency_contact_name', 'emergency_contact_phone', 'date_of_birth', 'marital_status', 'document_path',
-    'registration_status', 'hire_date',
+    'registration_status', 'hire_date', 'is_attendance_enabled',
     'education_level', 'institution_name', 'field_of_study', 'graduation_year'];
   // NOTE: id_photo_front / id_photo_back are intentionally excluded from the body loop —
   // they are only updated when multer provides an actual uploaded file (see below).
