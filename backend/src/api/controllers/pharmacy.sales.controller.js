@@ -903,8 +903,29 @@ const salesController = {
   },
 
   listExpiredDrugs: async (req, res) => {
-    const rows = await db('pharmacy_expired_drugs').orderBy('created_at', 'desc');
-    res.json({ status: 'success', data: rows });
+    const rows = await db('pharmacy_expired_drugs as ped')
+      .leftJoin('users as u', 'ped.requested_by', 'u.id')
+      .select(
+        'ped.id', 'ped.drug_name', 'ped.quantity', 'ped.expiry_date',
+        'ped.location', 'ped.action_required', 'ped.status',
+        'ped.requested_by', 'ped.ceo_notes', 'ped.created_at', 'ped.updated_at',
+        db.raw('COALESCE(u.full_name, "Unknown") as requested_by_name')
+      )
+      .orderBy('ped.created_at', 'desc');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const enriched = rows.map(r => ({
+      ...r,
+      days_past: r.expiry_date
+        ? Math.max(0, Math.ceil((today - new Date(r.expiry_date)) / (1000 * 60 * 60 * 24)))
+        : 0,
+      expired_days_ago: r.expiry_date
+        ? Math.ceil((today - new Date(r.expiry_date)) / (1000 * 60 * 60 * 24))
+        : 0
+    }));
+
+    res.json({ status: 'success', data: enriched });
   },
 
   ceoDecideExpiredDrug: async (req, res) => {
