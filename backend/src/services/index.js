@@ -11,7 +11,6 @@ const SmsService = require('./sms.service');
 const BankService = require('./bank.service');
 const BackupService = require('./backup.service');
 const AuditService = require('./audit.service');
-const CacheService = require('./cache.service');
 const PdfService = require('./pdf.service');
 const HrService = require('./hr.service');
 module.exports = {
@@ -28,7 +27,6 @@ module.exports = {
   BankService,
   BackupService,
   AuditService,
-  CacheService,
   PdfService,
   HrService
 };
