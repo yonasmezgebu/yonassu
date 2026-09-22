@@ -14,9 +14,11 @@ const INTEGRATION_META = [
     desc: 'Send alerts, OTPs, and payment reminders directly to phones.',
     fields: [
       { key: 'provider', label: 'SMS Provider', type: 'select', required: true, options: ["Africa's Talking", 'Twilio', 'Nexmo', 'Custom'], help: 'Select your SMS gateway provider.' },
-      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Enter API key', help: 'Your provider API key. Stored securely and never shown in full.' },
-      { key: 'apiSecret', label: 'API Secret', type: 'password', placeholder: 'Enter API secret', help: 'Your provider API secret.' },
-      { key: 'senderId', label: 'Sender ID', type: 'text', placeholder: 'e.g. MyERP', help: 'The name/number that appears as the sender.' },
+      { key: 'environment', label: 'Environment', type: 'select', required: true, options: ['Sandbox', 'Live'], help: 'Sandbox = free testing (username is "sandbox"). Live = real SMS, billed from your AT wallet.' },
+      { key: 'username', label: 'AT Username', type: 'text', required: true, placeholder: 'e.g. sandbox or yourAppUsername', help: 'Your Africa\u2019s Talking username. The sandbox environment always uses "sandbox".' },
+      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Enter API key', help: 'Your Africa\u2019s Talking API key from App \u2192 Settings. Sandbox and Live keys are different.' },
+      { key: 'apiSecret', label: 'API Secret', type: 'password', placeholder: 'Enter API secret', help: 'Only used by non-Africa\u2019s-Talking providers.' },
+      { key: 'senderId', label: 'Sender ID', type: 'text', placeholder: 'e.g. MyERP', help: 'The name/number that appears as the sender (AT "from").' },
     ]
   },
   {
@@ -348,11 +350,16 @@ const DetailPanel = ({ integrationKey, integrations, detailTab, setDetailTab, on
     }
   };
 
+  const [testPhone, setTestPhone] = useState('');
+
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await adminService.testIntegration(integrationKey, config);
+      const payload = integrationKey === 'sms' && testPhone.trim()
+        ? { ...config, testPhone: testPhone.trim() }
+        : config;
+      const res = await adminService.testIntegration(integrationKey, payload);
       const d = res.data?.data || res.data || {};
       setTestResult({ success: true, message: d.message || 'Test successful.' });
     } catch (err) {
@@ -499,6 +506,24 @@ const DetailPanel = ({ integrationKey, integrations, detailTab, setDetailTab, on
               <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', margin: 0 }}>
                 Verify the saved configuration is valid before relying on it.
               </p>
+              {integrationKey === 'sms' && (
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel}>
+                    Test phone number
+                    <span style={{ color: 'var(--color-danger)' }}> *</span>
+                  </label>
+                  <input
+                    className={styles.fieldInput}
+                    type="text"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    placeholder="e.g. 0912345678 (Ethiopian format)"
+                  />
+                  <span className={styles.fieldHelp}>
+                    Enter your own phone number and "Run Test" will send you a real SMS and report the provider status code.
+                  </span>
+                </div>
+              )}
               {testResult && (
                 <div className={`${styles.testResult} ${testResult.success ? styles.testSuccess : styles.testFail}`}>
                   <span className={styles.testTitle}>{testResult.success ? '\u2713 Test Passed' : '\u2717 Test Failed'}</span>
