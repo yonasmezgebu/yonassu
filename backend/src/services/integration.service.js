@@ -12,9 +12,11 @@ const KNOWN_INTEGRATIONS = [
     desc: 'Send alerts, OTPs, and payment reminders directly to phones.',
     fields: [
       { key: 'provider', label: 'SMS Provider', type: 'select', required: true, options: ["Africa's Talking", 'Twilio', 'Nexmo', 'Custom'], help: 'Select your SMS gateway provider.' },
-      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Enter API key', secret: true, help: 'Your provider API key. Stored securely and never shown in full.' },
-      { key: 'apiSecret', label: 'API Secret', type: 'password', placeholder: 'Enter API secret', secret: true, help: 'Your provider API secret.' },
-      { key: 'senderId', label: 'Sender ID', type: 'text', placeholder: 'e.g. MyERP', help: 'The name/number that appears as the sender.' },
+      { key: 'environment', label: 'Environment', type: 'select', required: true, options: ['Sandbox', 'Live'], help: 'Sandbox = free testing (username is "sandbox"). Live = real SMS, billed from your AT wallet.' },
+      { key: 'username', label: 'AT Username', type: 'text', required: true, placeholder: 'e.g. sandbox or yourAppUsername', help: 'Your Africa\u2019s Talking username. The sandbox environment always uses "sandbox".' },
+      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Enter API key', secret: true, help: 'Your Africa\u2019s Talking API key from App → Settings. Sandbox and Live keys are different.' },
+      { key: 'apiSecret', label: 'API Secret', type: 'password', placeholder: 'Enter API secret', secret: true, help: 'Only used by non-Africa\u2019s-Talking providers.' },
+      { key: 'senderId', label: 'Sender ID', type: 'text', placeholder: 'e.g. MyERP', help: 'The name/number that appears as the sender (AT "from").' },
     ]
   },
   {
