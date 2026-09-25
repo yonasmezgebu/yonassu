@@ -13,12 +13,13 @@ const INTEGRATION_META = [
     key: 'sms', title: 'SMS', icon: '📱',
     desc: 'Send alerts, OTPs, and payment reminders directly to phones.',
     fields: [
-      { key: 'provider', label: 'SMS Provider', type: 'select', required: true, options: ["Africa's Talking", 'Twilio', 'Nexmo', 'Custom'], help: 'Select your SMS gateway provider.' },
-      { key: 'environment', label: 'Environment', type: 'select', required: true, options: ['Sandbox', 'Live'], help: 'Sandbox = free testing (username is "sandbox"). Live = real SMS, billed from your AT wallet.' },
-      { key: 'username', label: 'AT Username', type: 'text', required: true, placeholder: 'e.g. sandbox or yourAppUsername', help: 'Your Africa\u2019s Talking username. The sandbox environment always uses "sandbox".' },
-      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Enter API key', help: 'Your Africa\u2019s Talking API key from App \u2192 Settings. Sandbox and Live keys are different.' },
-      { key: 'apiSecret', label: 'API Secret', type: 'password', placeholder: 'Enter API secret', help: 'Only used by non-Africa\u2019s-Talking providers.' },
-      { key: 'senderId', label: 'Sender ID', type: 'text', placeholder: 'e.g. MyERP', help: 'The name/number that appears as the sender (AT "from").' },
+      { key: 'provider', label: 'SMS Provider', type: 'select', required: true, options: ["Africa's Talking", 'AfroMessage', 'Twilio', 'Nexmo', 'Custom'], help: 'Select your SMS gateway provider.' },
+      { key: 'environment', label: 'Environment', type: 'select', options: ['Sandbox', 'Live'], help: 'Africa\u2019s Talking only. Sandbox = free testing (username "sandbox"). Ignored by AfroMessage.' },
+      { key: 'username', label: 'AT Username', type: 'text', placeholder: 'e.g. sandbox or yourAppUsername', help: 'Africa\u2019s Talking only. Ignored by AfroMessage.' },
+      { key: 'identifier', label: 'Identifier ID', type: 'text', placeholder: 'e.g. e80ad9d8-adf3-463f-80f4-7c4b39f7f164', help: 'AfroMessage only (optional). Sent as the "from" parameter alongside the sender name.' },
+      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Enter API key', help: 'AfroMessage: your Bearer API token from the dashboard. Africa\u2019s Talking: your app API key.' },
+      { key: 'apiSecret', label: 'API Secret', type: 'password', placeholder: 'Enter API secret', help: 'Only used by non-Africa\u2019s-Talking/non-AfroMessage providers.' },
+      { key: 'senderId', label: 'Sender Name', type: 'text', placeholder: 'e.g. SUTANA', help: 'AfroMessage: your sender name, requested and verified on the dashboard before production. Sent as "sender".' },
     ]
   },
   {
@@ -351,27 +352,44 @@ const DetailPanel = ({ integrationKey, integrations, detailTab, setDetailTab, on
   };
 
   const [testPhone, setTestPhone] = useState('');
+const [testMessage, setTestMessage] = useState('');
 
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
     try {
       const payload = integrationKey === 'sms' && testPhone.trim()
-        ? { ...config, testPhone: testPhone.trim() }
+        ? { ...config, testPhone: testPhone.trim(), testMessage: testMessage.trim() }
         : config;
       const res = await adminService.testIntegration(integrationKey, payload);
       const d = res.data?.data || res.data || {};
-      setTestResult({ success: true, message: d.message || 'Test successful.' });
+      const msg = d.message || 'Test successful.';
+      setTestResult({ success: true, message: msg });
+      showToast(msg);
     } catch (err) {
-      setTestResult({ success: false, message: err.response?.data?.message || 'Test failed.' });
+      const exact = err.response?.data?.message
+        || (err.response?.data?.errors && err.response.data.errors.map((e) => e.message).join('; '))
+        || err.message
+        || 'Test failed.';
+      setTestResult({ success: false, message: exact });
+      showToast(exact, 'error');
     } finally {
       setTesting(false);
     }
   };
 
-  const renderFields = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {fields.map((field) => (
+  const renderFields = () => {
+    const provider = String(config.provider || '').trim().toLowerCase();
+    const atProvider = provider === '' || provider.includes('africa');
+    const isAfro = provider.includes('afromessage');
+    const effectiveFields = fields.filter((field) => {
+      if (field.key === 'environment' || field.key === 'username') return atProvider;
+      if (field.key === 'identifier') return isAfro;
+      return true;
+    });
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {effectiveFields.map((field) => (
         <div key={field.key} className={styles.fieldGroup}>
           <label className={styles.fieldLabel}>
             {field.label}
@@ -404,9 +422,10 @@ const DetailPanel = ({ integrationKey, integrations, detailTab, setDetailTab, on
             </span>
           )}
         </div>
-      ))}
-    </div>
-  );
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -517,10 +536,28 @@ const DetailPanel = ({ integrationKey, integrations, detailTab, setDetailTab, on
                     type="text"
                     value={testPhone}
                     onChange={(e) => setTestPhone(e.target.value)}
-                    placeholder="e.g. 0912345678 (Ethiopian format)"
+                    placeholder="e.g. 0912345678 (live) or +254722343343 (sandbox)"
                   />
                   <span className={styles.fieldHelp}>
-                    Enter your own phone number and "Run Test" will send you a real SMS and report the provider status code.
+                    Enter your phone and "Run Test" sends a real SMS and reports the provider status code. Sandbox accepts any number but does not deliver (Live delivers to real 09… / 251… numbers).
+                  </span>
+                </div>
+              )}
+              {integrationKey === 'sms' && (
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel}>
+                    Message to send
+                  </label>
+                  <textarea
+                    className={styles.fieldInput}
+                    rows={3}
+                    value={testMessage}
+                    onChange={(e) => setTestMessage(e.target.value)}
+                    placeholder="Leave empty to use the default test message"
+                    style={{ resize: 'vertical', minHeight: 72, fontFamily: 'inherit' }}
+                  />
+                  <span className={styles.fieldHelp}>
+                    This exact text is what gets sent to the phone number above (max 480 characters).
                   </span>
                 </div>
               )}
