@@ -70,9 +70,11 @@ const environment = {
   sms: {
     enabled: process.env.AFRICA_TALKING_ENABLED === 'true',
     endpoint: process.env.AFRICA_TALKING_API_ENDPOINT,
-    apiKey: process.env.AFRICA_TALKING_API_KEY,
+    apiKey: process.env.AFRICA_TALKING_API_KEY || process.env.AFRO_SMS_API_KEY,
     username: process.env.AFRICA_TALKING_USERNAME,
-    senderId: process.env.AFRICA_TALKING_SENDER_ID,
+    senderId: process.env.AFRICA_TALKING_SENDER_ID || process.env.AFRO_SMS_SENDER_ID,
+    provider: process.env.SMS_PROVIDER,
+    identifier: process.env.AFRO_SMS_IDENTIFIER,
   },
   email: {
     enabled: process.env.SENDGRID_ENABLED === 'true',
