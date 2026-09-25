@@ -1,8 +1,28 @@
 const { db } = require('../../config/database');
-const { audit } = require('../../config/logger');
+const { audit, logger } = require('../../config/logger');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
 const integrationService = require('../../services/integration.service');
+const smsService = require('../../services/sms.service');
+
+const dumpSmsError = (err) => {
+  console.log('==== SMS ERROR ====');
+  console.log('error.message:', err && err.message);
+  console.log('error.response?.data:', err && err.response ? err.response.data : (err && err.providerData !== undefined ? err.providerData : null));
+  console.log('===================');
+  logger.error(err && err.message, { providerResponse: err && err.response ? err.response.data : (err && err.providerData !== undefined ? err.providerData : null) });
+};
+
+const smsErrorMessage = (err, fallback) => {
+  const providerRaw = err && err.providerData !== undefined
+    ? err.providerData
+    : (err && err.response && err.response.data);
+  const clean = String(err && err.message || fallback).replace(/^SMS send failed: /, '');
+  const echo = providerRaw
+    ? (typeof providerRaw === 'string' ? providerRaw : JSON.stringify(providerRaw)).substring(0, 400)
+    : '';
+  return { clean, echo, providerRaw };
+};
 
 const requireMeta = (key) => {
   const meta = integrationService.getMeta(key);
@@ -48,6 +68,18 @@ exports.connectIntegration = catchAsync(async (req, res) => {
   const missing = missingRequiredFields(meta, config);
   if (missing.length) {
     throw new AppError(`Missing required credential(s): ${missing.join(', ')}`, 400);
+  }
+
+  // Provider-specific required credentials for SMS.
+  if (key === 'sms') {
+    const provider = String(config.provider || '').toLowerCase();
+    if (provider.includes('afromessage')) {
+      if (!String(config.senderId || config.identifier || '').trim()) {
+        throw new AppError('AfroMessage requires a Sender Name (verified on the AfroMessage dashboard) or an Identifier ID. Add one in the Configure tab.', 400);
+      }
+    } else if (!String(config.username || '').trim()) {
+      throw new AppError(`Africa's Talking requires a username (sandbox uses "sandbox"). Add it under Configure.`, 400);
+    }
   }
   await integrationService.upsert(key, {
     config: JSON.stringify(config),
@@ -113,6 +145,63 @@ exports.testIntegration = catchAsync(async (req, res) => {
     await integrationService.recordSync(key, 'Test', 'FAILED', `Missing credential(s): ${missing.join(', ')}`);
     throw new AppError(`Test failed — missing credential(s): ${missing.join(', ')}`, 400);
   }
+
+  // SMS: actually validate the credentials against the provider (Africa's Talking).
+  if (key === 'sms') {
+    const testPhone = String((req.body && req.body.testPhone) || '').trim();
+    let result;
+    if (!testPhone) {
+      try {
+        result = await smsService.testConnection(body);
+      } catch (err) {
+        dumpSmsError(err);
+        await integrationService.recordSync(key, 'Test', 'FAILED', err.message || 'Connection test error');
+        throw new AppError(`Test failed — ${err.message || 'could not reach the provider.'}`, 400);
+      }
+      if (!result || !result.success) {
+        console.log('==== SMS CONNECTION TEST FAILED ====');
+        console.log('message:', result && result.message);
+        console.log('=====================================');
+        await integrationService.recordSync(key, 'Test', 'FAILED', (result && result.message) || 'Connection test failed');
+        throw new AppError(`Test failed — ${(result && result.message) || 'invalid provider response.'}`, 400);
+      }
+      await integrationService.recordSync(key, 'Test', 'SUCCESS', result.message);
+      return res.json({
+        status: 'success',
+        message: result.message,
+        data: { key, success: true, detail: result.message }
+      });
+    }
+
+    const isAfro = /afromessage/i.test(String(body.provider || '').trim());
+    const sandbox = !isAfro && /^(sandbox|test)$/i.test(String(body.environment || '').trim());
+    if (!smsService.validatePhoneNumber(testPhone, { sandbox })) {
+      const expected = sandbox
+        ? 'international format like +254722343343'
+        : 'Ethiopian format like 0912345678';
+      throw new AppError(`Test failed — invalid phone number: ${testPhone}. Use ${expected}.`, 400);
+    }
+    let sent;
+    try {
+      const testMessage = String((req.body && req.body.testMessage) || '').trim();
+      sent = await smsService.testSMSConfig(testPhone, testMessage);
+    } catch (err) {
+      dumpSmsError(err);
+      const { clean, echo, providerRaw } = smsErrorMessage(err, 'SMS could not be sent.');
+      await integrationService.recordSync(key, 'Test', 'FAILED', `${clean}${echo ? ` — ${echo}` : ''}`);
+      throw new AppError(`Test failed — ${clean}${echo ? ` [provider: ${echo}]` : ''}`, 400, echo ? [{ field: 'provider', message: echo, raw: providerRaw }] : null);
+    }
+    const detail = sent.mock
+      ? 'Test SMS logged as mock (integration disabled). Enable SMS in Integrations to send real messages.'
+      : `Test SMS ${sent && sent.statusCounts ? JSON.stringify(sent.statusCounts) : 'sent'} to ${testPhone} via ${body.environment || 'Sandbox'}`;
+    await integrationService.recordSync(key, 'Test', 'SUCCESS', detail);
+    return res.json({
+      status: 'success',
+      message: detail,
+      data: { key, success: true, mock: !!sent.mock, detail, recipient: testPhone, statusCounts: sent && sent.statusCounts }
+    });
+  }
+
   await integrationService.recordSync(key, 'Test', 'SUCCESS', `${meta.title} configuration validated`);
   res.json({
     status: 'success',
