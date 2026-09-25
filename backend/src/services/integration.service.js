@@ -11,12 +11,13 @@ const KNOWN_INTEGRATIONS = [
     key: 'sms', title: 'SMS', icon: '📱',
     desc: 'Send alerts, OTPs, and payment reminders directly to phones.',
     fields: [
-      { key: 'provider', label: 'SMS Provider', type: 'select', required: true, options: ["Africa's Talking", 'Twilio', 'Nexmo', 'Custom'], help: 'Select your SMS gateway provider.' },
-      { key: 'environment', label: 'Environment', type: 'select', required: true, options: ['Sandbox', 'Live'], help: 'Sandbox = free testing (username is "sandbox"). Live = real SMS, billed from your AT wallet.' },
-      { key: 'username', label: 'AT Username', type: 'text', required: true, placeholder: 'e.g. sandbox or yourAppUsername', help: 'Your Africa\u2019s Talking username. The sandbox environment always uses "sandbox".' },
-      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Enter API key', secret: true, help: 'Your Africa\u2019s Talking API key from App → Settings. Sandbox and Live keys are different.' },
-      { key: 'apiSecret', label: 'API Secret', type: 'password', placeholder: 'Enter API secret', secret: true, help: 'Only used by non-Africa\u2019s-Talking providers.' },
-      { key: 'senderId', label: 'Sender ID', type: 'text', placeholder: 'e.g. MyERP', help: 'The name/number that appears as the sender (AT "from").' },
+      { key: 'provider', label: 'SMS Provider', type: 'select', required: true, options: ["Africa's Talking", 'AfroMessage', 'Twilio', 'Nexmo', 'Custom'], help: 'Select your SMS gateway provider.' },
+      { key: 'environment', label: 'Environment', type: 'select', options: ['Sandbox', 'Live'], help: 'Africa\u2019s Talking only. Sandbox = free testing (username "sandbox"). Ignored by AfroMessage.' },
+      { key: 'username', label: 'AT Username', type: 'text', placeholder: 'e.g. sandbox or yourAppUsername', help: 'Africa\u2019s Talking only. Ignored by AfroMessage.' },
+      { key: 'identifier', label: 'Identifier ID', type: 'text', placeholder: 'e.g. e80ad9d8-adf3-463f-80f4-7c4b39f7f164', help: 'AfroMessage only (optional). Sent as the "from" parameter alongside the sender name.' },
+      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Enter API key', secret: true, help: 'AfroMessage: your Bearer API token from the dashboard. Africa\u2019s Talking: your app API key.' },
+      { key: 'apiSecret', label: 'API Secret', type: 'password', placeholder: 'Enter API secret', secret: true, help: 'Only used by non-Africa\u2019s-Talking/non-AfroMessage providers.' },
+      { key: 'senderId', label: 'Sender Name', type: 'text', placeholder: 'e.g. SUTANA', help: 'AfroMessage: your sender name, requested and verified on the dashboard before production. Sent as "sender".' },
     ]
   },
   {
