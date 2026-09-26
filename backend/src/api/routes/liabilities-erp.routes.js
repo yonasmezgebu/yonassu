@@ -31,7 +31,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
     byTypeRows.forEach(r => { byType[r.liability_type] = parseFloat(r.t || 0); });
 
     const overdueRow = await knex('erp_liabilities_v4')
-      .whereRaw("DATE(due_date) < ?", [today])
+      .whereRaw('(due_date)::date < ?', [today])
       .where('balance', '>', 0)
       .count('id as c')
       .first();

@@ -905,8 +905,8 @@ exports.getPaymentMethods = catchAsync(async (req, res) => {
   });
 });
 exports.getFinanceStatistics = catchAsync(async (req, res) => {
-  const startOfMonth = db.raw('DATE_FORMAT(NOW(), "%Y-%m-01")');
-  const startOfYear = db.raw('DATE_FORMAT(NOW(), "%Y-01-01")');
+  const startOfMonth = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-MM-01\')');
+  const startOfYear = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-01-01\')');
   const monthlyExpensesResult = await db('expenses')
     .where('created_at', '>=', startOfMonth)
     .whereNull('deleted_at')
@@ -1092,7 +1092,7 @@ exports.getExpenseSummaryByTier = catchAsync(async (req, res) => {
 });
 
 exports.getExpenseStatistics = catchAsync(async (req, res) => {
-  const startOfMonth = db.raw('DATE_FORMAT(NOW(), "%Y-%m-01")');
+  const startOfMonth = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-MM-01\')');
   const totalExpenses = await db('expenses').whereNull('deleted_at').sum('amount as total').first();
   const pendingApprovals = await db('expenses').whereNull('approved_at').whereNull('deleted_at').count('id as count').first();
   const pendingAmount = await db('expenses').whereNull('approved_at').whereNull('deleted_at').sum('amount as total').first();
@@ -1428,7 +1428,7 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const invMonthRows = await db('sales_invoices')
     .andWhereNot('status', 'cancelled')
     .modify((q) => { applyRange(q, 'created_at'); })
-    .select(db.raw("DATE_FORMAT(created_at, '%Y-%m') as month"))
+    .select(db.raw('to_char(created_at, \'YYYY-MM\') as month'))
     .sum('subtotal as revenue').sum('vat_total as output_vat')
     .groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
     .orderBy('month');
@@ -1437,7 +1437,7 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
     .andWhereNot('si.status', 'cancelled')
     .modify((q) => { applyRange(q, 'si.created_at'); })
-    .select(db.raw("DATE_FORMAT(si.created_at, '%Y-%m') as month"))
+    .select(db.raw('to_char(si.created_at, \'YYYY-MM\') as month'))
     .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cogs'))
     .groupByRaw("DATE_FORMAT(si.created_at, '%Y-%m')");
 

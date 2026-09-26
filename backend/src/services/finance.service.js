@@ -464,7 +464,7 @@ const processRefund = async (paymentId, amount, reason, userId) => {
       .where('id', paymentId)
       .update({
         status_id: refundedStatus.id,
-        notes: db.raw(`CONCAT(notes, '; Refund: ${amount} ETB, Reason: ${reason}')`),
+        notes: db.raw(`(notes::text || '; Refund: ${amount} ETB, Reason: ${reason}')`),
         updated_at: db.fn.now()
       });
   } else {
@@ -472,7 +472,7 @@ const processRefund = async (paymentId, amount, reason, userId) => {
       .where('id', paymentId)
       .update({
         status_id: refundedStatus.id,
-        notes: db.raw(`CONCAT(notes, '; Refund: ${amount} ETB, Reason: ${reason}')`),
+        notes: db.raw(`(notes::text || '; Refund: ${amount} ETB, Reason: ${reason}')`),
         updated_at: db.fn.now()
       });
   }
@@ -615,8 +615,8 @@ const getPaymentMethods = async () => {
   return methods;
 };
 const getFinanceStatistics = async () => {
-  const startOfMonth = db.raw('DATE_FORMAT(NOW(), "%Y-%m-01")');
-  const startOfYear = db.raw('DATE_FORMAT(NOW(), "%Y-01-01")');
+  const startOfMonth = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-MM-01\')');
+  const startOfYear = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-01-01\')');
   const monthlyExpenses = await db('expenses')
     .where('created_at', '>=', startOfMonth)
     .whereNull('deleted_at')

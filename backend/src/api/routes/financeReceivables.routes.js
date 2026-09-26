@@ -88,7 +88,7 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
         rate = eff.rate;
         treatment = eff.treatment;
       } else {
-        const std = await trx('vat_configurations').where({ treatment: 'standard', is_active: 1 }).orderBy('updated_at', 'desc').first();
+        const std = await trx('vat_configurations').where({ treatment: 'standard', is_active: true }).orderBy('updated_at', 'desc').first();
         if (std) rate = parseFloat(std.rate);
       }
     } catch (e) {
@@ -183,7 +183,7 @@ const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetai
           rate = eff.rate;
           treatment = eff.treatment;
         } else {
-          const std = await trx('vat_configurations').where({ treatment: 'standard', is_active: 1 }).orderBy('updated_at', 'desc').first();
+          const std = await trx('vat_configurations').where({ treatment: 'standard', is_active: true }).orderBy('updated_at', 'desc').first();
           if (std) rate = parseFloat(std.rate);
         }
       } catch (e) {
@@ -272,7 +272,7 @@ router.get('/live-income', authenticate, async (req, res) => {
           .where('department', 'Car Rental')
           .where('status', 'Pending')
           .whereNotNull('manual_details')
-          .select(knex.raw("JSON_UNQUOTE(JSON_EXTRACT(manual_details, '$.order_id'))"))
+          .select(knex.raw('(manual_details) ->> \'{order_id}\''))
       )
       .orderBy('updated_at', 'desc');
 
@@ -1543,10 +1543,10 @@ router.get('/book', authenticate, async (req, res) => {
     const cogsByInvoice = {};
     const itemAgg = await knex('sales_invoice_items')
       .select('invoice_id')
-      .select(knex.raw('SUM(`subtotal`) as selling_sum'))
-      .select(knex.raw('SUM(COALESCE(`cost_price`, 0) * `qty`) as cogs_sum'))
-      .select(knex.raw('SUM(`vat_amount`) as vat_sum'))
-      .select(knex.raw('SUM(CASE WHEN `treatment` = \'standard\' THEN (COALESCE(`cost_price`, 0) * `qty` * `rate`) ELSE 0 END) as input_vat_sum'))
+      .select(knex.raw('SUM(subtotal) as selling_sum'))
+      .select(knex.raw('SUM(COALESCE(cost_price, 0) * qty) as cogs_sum'))
+      .select(knex.raw('SUM(vat_amount) as vat_sum'))
+      .select(knex.raw('SUM(CASE WHEN treatment = \'standard\' THEN (COALESCE(cost_price, 0) * qty * rate) ELSE 0 END) as input_vat_sum'))
       .groupBy('invoice_id');
     for (const row of itemAgg) {
       cogsByInvoice[row.invoice_id] = {
@@ -1783,7 +1783,7 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
             const submission = await knex('finance_income_submissions')
               .where('department', 'Tender')
               .where('status', 'Approved')
-              .whereRaw("JSON_UNQUOTE(JSON_EXTRACT(manual_details, '$.bidId')) = ?", [String(saleId)])
+              .whereRaw('(manual_details) ->> \'{bidId}\' = ?', [String(saleId)])
               .select('manual_details')
               .first();
             if (submission && submission.manual_details) {
@@ -1831,7 +1831,7 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
           const submission = await knex('finance_income_submissions')
             .where('department', 'Tender')
             .where('status', 'Approved')
-            .whereRaw("JSON_UNQUOTE(JSON_EXTRACT(manual_details, '$.bidId')) = ?", [String(inv.sale_id)])
+            .whereRaw('(manual_details) ->> \'{bidId}\' = ?', [String(inv.sale_id)])
             .select('manual_details')
             .first();
           if (submission && submission.manual_details) {

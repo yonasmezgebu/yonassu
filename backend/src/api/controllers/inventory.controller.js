@@ -116,13 +116,13 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
       'pc.name as category_name',
       'u.abbreviation as unit',
       db.raw('COALESCE(i.quantity, 0) as current_stock'),
-      db.raw('DATEDIFF(p.expiry_date, CURDATE()) as days_until_expiry')
+      db.raw('((p.expiry_date)::date - (CURRENT_DATE)::date) as days_until_expiry')
     )
     .whereNull('p.deleted_at')
       .where('p.is_active', true)
       .whereNotNull('p.expiry_date')
-      .whereRaw('DATEDIFF(p.expiry_date, CURDATE()) <= ?', [days])
-      .whereRaw('DATEDIFF(p.expiry_date, CURDATE()) > 0')
+      .whereRaw('((p.expiry_date)::date - (CURRENT_DATE)::date) <= ?', [days])
+      .whereRaw('((p.expiry_date)::date - (CURRENT_DATE)::date) > 0')
       .orderBy('days_until_expiry', 'asc');
     const expiringSoon = products.filter(p => p.days_until_expiry <= 7);
     const expiringLater = products.filter(p => p.days_until_expiry > 7 && p.days_until_expiry <= 30);
@@ -160,7 +160,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
         's.email as supplier_email',
         db.raw('COALESCE(i.quantity, 0) as current_stock'),
         db.raw('COALESCE(i.unit_cost, 0) as average_cost'),
-        db.raw('COALESCE(i.location, "") as storage_location'),
+        db.raw('COALESCE(i.location, \'\') as storage_location'),
         db.raw('COALESCE(i.last_counted, NULL) as last_counted')
       )
       .where('p.id', id)
@@ -816,18 +816,18 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
       .whereNull('deleted_at')
       .where('is_active', true)
       .whereNotNull('expiry_date')
-      .whereRaw('DATEDIFF(expiry_date, CURDATE()) <= 30')
-      .whereRaw('DATEDIFF(expiry_date, CURDATE()) > 0')
+      .whereRaw('((expiry_date)::date - (CURRENT_DATE)::date) <= 30')
+      .whereRaw('((expiry_date)::date - (CURRENT_DATE)::date) > 0')
       .count('id as count')
       .first();
     const recentMovements = await db('inventory_movements')
-      .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 7 DAY)'))
+      .where('created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'7 days\''))
       .count('id as count')
       .first();
     const topMovingProducts = await db('inventory_movements as im')
       .leftJoin('products as p', 'im.product_id', 'p.id')
       .select('p.id', 'p.name', 'p.sku', db.raw('SUM(ABS(im.quantity_change)) as total_movement'))
-      .where('im.created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 30 DAY)'))
+      .where('im.created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'30 days\''))
       .groupBy('im.product_id', 'p.id', 'p.name', 'p.sku')
       .orderBy('total_movement', 'desc')
       .limit(10);

@@ -263,14 +263,14 @@ exports.createReceipt = async (req, res) => {
           expiry_date: item.expiry_date || existing.expiry_date,
           unit_cost: item.unit_cost || existing.unit_cost,
           storage_location: item.storage_location || existing.storage_location,
-          last_received_at: db.raw('NOW()')
+          last_received_at: db.raw('LOCALTIMESTAMP')
         });
       } else {
         await trx('store_inventory').insert({
           drug_id: item.drug_id, quantity: item.quantity,
           batch_no: item.batch_no, expiry_date: item.expiry_date,
           unit_cost: item.unit_cost, storage_location: item.storage_location,
-          last_received_at: db.raw('NOW()')
+          last_received_at: db.raw('LOCALTIMESTAMP')
         });
       }
     }
@@ -317,7 +317,7 @@ exports.getReceipt = async (req, res) => {
 
 exports.listTodayReceipts = async (req, res) => {
   try {
-    const rows = await db('stock_receipts').whereRaw('DATE(created_at) = CURDATE()').orderBy('created_at', 'desc');
+    const rows = await db('stock_receipts').whereRaw('(created_at)::date = CURRENT_DATE').orderBy('created_at', 'desc');
     for (const r of rows) {
       r.items = await db('stock_receipt_items').where('receipt_id', r.id);
     }
@@ -393,7 +393,7 @@ exports.createIssue = async (req, res) => {
       });
       await trx('store_inventory').where('drug_id', item.drug_id).update({
         quantity: db.raw('GREATEST(quantity - ?, 0)', [item.quantity]),
-        last_issued_at: db.raw('NOW()')
+        last_issued_at: db.raw('LOCALTIMESTAMP')
       });
     }
 
@@ -468,7 +468,7 @@ exports.getIssue = async (req, res) => {
 
 exports.listTodayIssues = async (req, res) => {
   try {
-    const rows = await db('stock_issues').whereRaw('DATE(created_at) = CURDATE()').orderBy('created_at', 'desc');
+    const rows = await db('stock_issues').whereRaw('(created_at)::date = CURRENT_DATE').orderBy('created_at', 'desc');
     for (const r of rows) {
       r.items = await db('stock_issue_items').where('issue_id', r.id);
     }
@@ -1256,9 +1256,9 @@ exports.dashboardStats = async (req, res) => {
       .join('drugs', 'store_inventory.drug_id', 'drugs.id')
       .select(db.raw('COALESCE(SUM(store_inventory.quantity * drugs.unit_price), 0) as total_value')).first();
     const todayReceipts = await db('stock_receipts')
-      .whereRaw('DATE(created_at) = CURDATE()').count('id as count').first();
+      .whereRaw('(created_at)::date = CURRENT_DATE').count('id as count').first();
     const todayIssues = await db('stock_issues')
-      .whereRaw('DATE(created_at) = CURDATE()').count('id as count').first();
+      .whereRaw('(created_at)::date = CURRENT_DATE').count('id as count').first();
     const pendingRequisitions = await db('store_requisitions')
       .where('status', 'Pending').count('id as count').first();
     const pendingTransfers = await db('stock_transfers')
@@ -1352,7 +1352,7 @@ exports.stockMovements = async (req, res) => {
           'drugs.unit',
           db.raw("COALESCE(users.full_name, stock_issues.issued_to, 'Store') as performed_by"),
           'stock_issue_items.batch_no',
-          db.raw("CONCAT(IFNULL(stock_issues.department, ''), IF(stock_issues.department IS NOT NULL AND stock_issues.remarks IS NOT NULL, ' - ', ''), IFNULL(stock_issues.remarks, '')) as remarks"),
+          db.raw('(COALESCE(stock_issues.department, \'\')::text || CASE WHEN (stock_issues.department IS NOT NULL AND stock_issues.remarks IS NOT NULL) THEN (\' - \') ELSE (\'\') END::text || COALESCE(stock_issues.remarks, \'\')::text) as remarks'),
           'stock_issues.created_at'
         ), 'stock_issues.issue_date') : [];
 
@@ -1366,8 +1366,8 @@ exports.stockMovements = async (req, res) => {
           'stock_adjustments.adjustment_no as reference_no',
           'drugs.name as drug_name',
           'drugs.strength',
-          db.raw("IF(stock_adjustments.adjustment_type = 'ADD', stock_adjustments.adjustment_qty, NULL) as quantity_in"),
-          db.raw("IF(stock_adjustments.adjustment_type != 'ADD', stock_adjustments.adjustment_qty, NULL) as quantity_out"),
+          db.raw('CASE WHEN (stock_adjustments.adjustment_type = \'ADD\') THEN (stock_adjustments.adjustment_qty) ELSE (NULL) END as quantity_in'),
+          db.raw('CASE WHEN (stock_adjustments.adjustment_type != \'ADD\') THEN (stock_adjustments.adjustment_qty) ELSE (NULL) END as quantity_out'),
           'drugs.unit',
           db.raw("COALESCE(users.full_name, 'Admin') as performed_by"),
           'stock_adjustments.batch_no',
@@ -1388,8 +1388,8 @@ exports.stockMovements = async (req, res) => {
           'stock_counts.count_no as reference_no',
           'drugs.name as drug_name',
           'drugs.strength',
-          db.raw("IF(stock_count_items.variance > 0, stock_count_items.variance, NULL) as quantity_in"),
-          db.raw("IF(stock_count_items.variance < 0, ABS(stock_count_items.variance), NULL) as quantity_out"),
+          db.raw('CASE WHEN (stock_count_items.variance > 0) THEN (stock_count_items.variance) ELSE (NULL) END as quantity_in'),
+          db.raw('CASE WHEN (stock_count_items.variance < 0) THEN (ABS(stock_count_items.variance)) ELSE (NULL) END as quantity_out'),
           'drugs.unit',
           db.raw("COALESCE(users.full_name, 'Counter') as performed_by"),
           'stock_count_items.batch_no',

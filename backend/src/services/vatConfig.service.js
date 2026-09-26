@@ -91,10 +91,10 @@ const MAPPING_SOURCES = [
 ];
 
 async function ensureColumn(table, col, ddl) {
-  const rows = await db.raw(`SHOW COLUMNS FROM \`${table}\``);
-  const existing = new Set(rows[0].map((c) => c.Field));
+  const rows = await db.raw(`SELECT column_name AS "Field", data_type AS "Type", is_nullable AS "Null", column_default AS "Default", character_maximum_length AS "Length" FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = '${table}' ORDER BY ordinal_position`);
+  const existing = new Set(rows.rows.map((c) => c.Field));
   if (!existing.has(col)) {
-    await db.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${ddl}`);
+    await db.raw(`ALTER TABLE "${table}" ADD COLUMN "${col}" ${ddl}`);
   }
 }
 
@@ -118,7 +118,7 @@ async function ensureMappingTables() {
       await ensureColumn('product_tax_mappings', 'item_id', 'BIGINT UNSIGNED NULL');
       await ensureColumn('product_tax_mappings', 'item_name', 'VARCHAR(255) NULL');
       // Legacy product_id is now optional
-      await db.raw('ALTER TABLE `product_tax_mappings` MODIFY `product_id` INT UNSIGNED NULL');
+      await db.raw('ALTER TABLE product_tax_mappings ALTER COLUMN product_id TYPE integer;');
       // Backfill legacy rows that only referenced products.id
       await db.raw(
         'UPDATE product_tax_mappings SET item_id = product_id, item_name = ' +
@@ -127,13 +127,19 @@ async function ensureMappingTables() {
       );
       // Swap the old UNIQUE(product_id) for UNIQUE(source, item_id)
       try {
-        const oldIdx = await db.raw("SHOW INDEX FROM `product_tax_mappings` WHERE `Column_name` = 'product_id' AND `Non_unique` = 0");
-        if (oldIdx[0] && oldIdx[0].length) {
-          await db.raw(`ALTER TABLE \`product_tax_mappings\` DROP INDEX \`${oldIdx[0][0].Key_name}\``);
+        const oldIdx = await db.raw('SELECT c.relname AS "Table", a.attname AS "Column_name",\n       ci.relname AS "Key_name",\n       CASE WHEN i.indisunique THEN 0 ELSE 1 END AS "Non_unique",\n       pg_get_indexdef(i.indexrelid) AS index_def,\n       NULL AS seq_in_index, NULL AS sub_part, NULL AS "Null",\n       \'BTREE\' AS index_type, NULL AS "Comment", \'\' AS index_comment\nFROM pg_class c\nJOIN pg_index i     ON c.oid = i.indrelid\nJOIN pg_class ci    ON ci.oid = i.indexrelid\nJOIN pg_am am       ON am.oid = ci.relam\nJOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)\nWHERE c.relname = \'product_tax_mappings\' AND c.relkind = \'r\' AND am.amname = \'btree\'\n  AND a.attname = \'product_id\' AND i.indisunique\nORDER BY a.attname');
+        if (oldIdx.rows && oldIdx.rows.length) {
+          // A unique index may be a bare index or the backing index of a UNIQUE
+          // constraint; drop the constraint first, then the index.  `DROP COLUMN
+          // "INDEX"` would look for a column named "index" and fail.
+          for (const row of oldIdx.rows) {
+            await db.raw('ALTER TABLE product_tax_mappings DROP CONSTRAINT IF EXISTS ??', [row.Key_name]);
+            await db.raw('DROP INDEX IF EXISTS ??', [row.Key_name]);
+          }
         }
-        const newIdx = await db.raw("SHOW INDEX FROM `product_tax_mappings` WHERE `Column_name` = 'source' AND `Non_unique` = 0");
-        if (!newIdx[0] || !newIdx[0].length) {
-          await db.raw('ALTER TABLE `product_tax_mappings` ADD UNIQUE INDEX `uq_mapping_source_item` (`source`, `item_id`)');
+        const newIdx = await db.raw('SELECT c.relname AS "Table", a.attname AS "Column_name",\n       ci.relname AS "Key_name",\n       CASE WHEN i.indisunique THEN 0 ELSE 1 END AS "Non_unique",\n       pg_get_indexdef(i.indexrelid) AS index_def,\n       NULL AS seq_in_index, NULL AS sub_part, NULL AS "Null",\n       \'BTREE\' AS index_type, NULL AS "Comment", \'\' AS index_comment\nFROM pg_class c\nJOIN pg_index i     ON c.oid = i.indrelid\nJOIN pg_class ci    ON ci.oid = i.indexrelid\nJOIN pg_am am       ON am.oid = ci.relam\nJOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)\nWHERE c.relname = \'product_tax_mappings\' AND c.relkind = \'r\' AND am.amname = \'btree\'\n  AND a.attname = \'source\' AND i.indisunique\nORDER BY a.attname');
+        if (!newIdx.rows || !newIdx.rows.length) {
+          await db.raw('CREATE UNIQUE INDEX uq_mapping_source_item ON product_tax_mappings (source, item_id);');
         }
       } catch (_) { /* non-critical index migration */ }
     }
@@ -177,7 +183,7 @@ const latestHistoryByConfig = async () => {
     )
     .select('h.vat_config_id', 'h.approval_status', 'h.change_type');
   const map = {};
-  rows.forEach((r) => { map[r.vat_config_id] = r; });
+  rows.rows.forEach((r) => { map[r.vat_config_id] = r; });
   return map;
 };
 
@@ -619,7 +625,7 @@ const effectiveRateFor = async (source, itemId) => {
   const row = await db('product_tax_mappings as ptm')
     .join('vat_configurations as vc', 'ptm.vat_config_id', 'vc.id')
     .where({ 'ptm.source': source, 'ptm.item_id': String(itemId) })
-    .andWhere('vc.is_active', 1)
+    .andWhere('vc.is_active', true)
     .select('vc.treatment', 'vc.rate')
     .first();
   if (!row) return null;
@@ -642,7 +648,7 @@ const computeVatForItem = async (source, itemId, amount, fallbackRate = null) =>
     rate = parseFloat(fallbackRate);
   } else {
     const std = await db('vat_configurations')
-      .where({ treatment: 'standard', is_active: 1 })
+      .where({ treatment: 'standard', is_active: true })
       .orderBy('updated_at', 'desc')
       .first();
     rate = std ? parseFloat(std.rate) : DEFAULT_STANDARD_RATE;

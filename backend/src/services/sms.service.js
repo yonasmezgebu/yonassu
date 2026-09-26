@@ -496,11 +496,11 @@ const testSMSConfig = async (testPhone, message) => {
 const getSMSStats = async (days = 7) => {
   const stats = await db('communication_logs')
     .where('type', 'sms')
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .select(
       db.raw('COUNT(*) as total'),
-      db.raw('SUM(CASE WHEN status = "sent" THEN 1 ELSE 0 END) as sent'),
-      db.raw('SUM(CASE WHEN status = "failed" THEN 1 ELSE 0 END) as failed')
+      db.raw('SUM(CASE WHEN status = \'sent\' THEN 1 ELSE 0 END) as sent'),
+      db.raw('SUM(CASE WHEN status = \'failed\' THEN 1 ELSE 0 END) as failed')
     )
     .first();
   return {
@@ -526,7 +526,7 @@ const handleDeliveryWebhook = async (data) => {
     .orWhere('recipient', recipient)
     .update({
       status: status === 'delivered' ? 'sent' : 'failed',
-      provider_response: db.raw(`CONCAT(provider_response, ' - Delivery: ${status}, Reason: ${reason || 'N/A'}')`)
+      provider_response: db.raw(`(provider_response::text || ' - Delivery: ${status}, Reason: ${reason || 'N/A'}')`)
     });
   logger.info(`SMS delivery webhook processed for ${recipient}: ${status}`);
 };

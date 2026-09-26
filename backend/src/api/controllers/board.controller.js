@@ -158,12 +158,12 @@ exports.getFinancials = catchAsync(async (req, res) => {
 
   const trend = await db('pos_transactions')
     .select(
-      db.raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+      db.raw('to_char(created_at, \'YYYY-MM\') as month'),
       db.raw('SUM(total_amount) as revenue'),
       db.raw('COUNT(*) as transactions'),
     )
     .where('status', 'completed')
-    .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 6 MONTH)'))
+    .where('created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'6 months\''))
     .groupByRaw('DATE_FORMAT(created_at, "%Y-%m")')
     .orderBy('month', 'asc')
     .catch(() => []);
@@ -265,8 +265,8 @@ exports.getKPIs = catchAsync(async (req, res) => {
   ] = await Promise.all([
     db('users').where('status_id', 1).whereNull('deleted_at').count('id as c').first().catch(() => ({ c: 0 })),
     db('users').whereExists(db('user_roles').whereRaw('user_roles.user_id = users.id').where('role_id', 8)).count('id as c').first().catch(() => ({ c: 0 })),
-    db('pharmacy_medications').where('is_active', 1).count('id as c').first().catch(() => ({ c: 0 })),
-    db('farming_products').where('is_active', 1).count('id as c').first().catch(() => ({ c: 0 })),
+    db('pharmacy_medications').where('is_active', true).count('id as c').first().catch(() => ({ c: 0 })),
+    db('farming_products').where('is_active', true).count('id as c').first().catch(() => ({ c: 0 })),
     db('farming_orders').where('status', 'pending').count('order_id as c').first().catch(() => ({ c: 0 })),
     db('pharmacy_medications').whereRaw('stock_quantity <= reorder_level').count('id as c').first().catch(() => ({ c: 0 })),
   ]);

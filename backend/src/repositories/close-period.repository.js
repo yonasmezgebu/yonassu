@@ -89,7 +89,7 @@ class ClosePeriodRepository extends BaseRepository {
           status: 'reopened',
           reopened_by: userId,
           reopened_at: db.fn.now(),
-          notes: db.raw("CONCAT(IFNULL(notes, ''), ' | Reopened: ', ?)", [reason]),
+          notes: db.raw('(COALESCE(notes, \'\')::text || \' | Reopened: \' || ?::text)', [reason]),
           updated_at: db.fn.now()
         });
       return true;

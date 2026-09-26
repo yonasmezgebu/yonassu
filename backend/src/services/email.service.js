@@ -444,11 +444,11 @@ const testEmailConfig = async (testEmail) => {
 const getEmailStats = async (days = 7) => {
   const stats = await db('communication_logs')
     .where('type', 'email')
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .select(
       db.raw('COUNT(*) as total'),
-      db.raw('SUM(CASE WHEN status = "sent" THEN 1 ELSE 0 END) as sent'),
-      db.raw('SUM(CASE WHEN status = "failed" THEN 1 ELSE 0 END) as failed')
+      db.raw('SUM(CASE WHEN status = \'sent\' THEN 1 ELSE 0 END) as sent'),
+      db.raw('SUM(CASE WHEN status = \'failed\' THEN 1 ELSE 0 END) as failed')
     )
     .first();
   return {

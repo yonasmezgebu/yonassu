@@ -15,8 +15,8 @@ exports.getDashboardStats = catchAsync(async (req, res) => {
     .leftJoin('user_statuses', 'users.status_id', 'user_statuses.id')
     .select(
       db.raw('COUNT(*) as total'),
-      db.raw('SUM(CASE WHEN user_statuses.status_code = "active" THEN 1 ELSE 0 END) as active'),
-      db.raw('SUM(CASE WHEN DATE(users.created_at) = CURDATE() THEN 1 ELSE 0 END) as new_today')
+      db.raw('SUM(CASE WHEN user_statuses.status_code = \'active\' THEN 1 ELSE 0 END) as active'),
+      db.raw('SUM(CASE WHEN (users.created_at)::date = CURRENT_DATE THEN 1 ELSE 0 END) as new_today')
     )
     .whereNull('users.deleted_at')
     .first();
@@ -71,9 +71,9 @@ exports.getDashboardStats = catchAsync(async (req, res) => {
     days.push(d.toLocaleString('en-US', { weekday: 'short' }));
   }
   const failedLogins = await db('audit_logs')
-    .select(db.raw('DATE(created_at) as date'), db.raw('COUNT(*) as count'))
+    .select(db.raw('(created_at)::date as date'), db.raw('COUNT(*) as count'))
     .where('action', 'LOGIN_FAILED')
-    .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 7 DAY)'))
+    .where('created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'7 days\''))
     .groupByRaw('DATE(created_at)')
     .orderBy('date', 'asc');
   const failedLoginMap = {};
@@ -118,7 +118,7 @@ exports.getDashboardStats = catchAsync(async (req, res) => {
 
   // Alert count
   const alertCountToday = await db('audit_logs')
-    .where('created_at', '>=', db.raw('CURDATE()'))
+    .where('created_at', '>=', db.raw('CURRENT_DATE'))
     .where('status', 'FAILED')
     .count('id as count').first();
 
@@ -566,7 +566,7 @@ exports.getMaintenanceInfo = catchAsync(async (req, res) => {
     }
   }
   const dbSize = await getDatabaseSize();
-  const tableResult = await db.raw('SHOW TABLES');
+  const tableResult = await db.raw('SELECT tablename AS table_name FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename');
   res.json({
     status: 'success',
     data: {
@@ -577,7 +577,7 @@ exports.getMaintenanceInfo = catchAsync(async (req, res) => {
       },
       database: {
         size: formatBytes(dbSize),
-        tables: tableResult[0] ? tableResult[0].length : 0
+        tables: tableResult.rows ? tableResult.rows.length : 0
       },
       cache: {
         keys: 0
@@ -621,24 +621,24 @@ exports.getActivityStatistics = catchAsync(async (req, res) => {
   const { days = 30 } = req.query;
   const activityByDay = await db('audit_logs')
     .select(
-      db.raw('DATE(created_at) as date'),
+      db.raw('(created_at)::date as date'),
       db.raw('COUNT(*) as count')
     )
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .groupByRaw('DATE(created_at)')
     .orderBy('date', 'asc');
   const activityByAction = await db('audit_logs')
     .select('action', db.raw('COUNT(*) as count'))
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .groupBy('action')
     .orderBy('count', 'desc')
     .limit(10);
   const peakHours = await db('audit_logs')
     .select(
-      db.raw('HOUR(created_at) as hour'),
+      db.raw('EXTRACT(HOUR FROM created_at) as hour'),
       db.raw('COUNT(*) as count')
     )
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .groupByRaw('HOUR(created_at)')
     .orderBy('hour', 'asc');
   res.json({
@@ -680,10 +680,14 @@ exports.getPerformanceMetrics = catchAsync(async (req, res) => {
 exports.optimizeDatabase = catchAsync(async (req, res) => {
   const userId = req.user.id;
   const ip = req.ip;
-  const tables = await db.raw('SHOW TABLES');
-  const tableNames = tables[0].map(row => Object.values(row)[0]);
+  const tables = await db.raw('SELECT tablename AS table_name FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename');
+  // node-postgres returns { rows }; mysql2 returned [rows, fields].
+  const tableNames = tables.rows.map(row => row.table_name);
   for (const table of tableNames) {
-    await db.raw(`OPTIMIZE TABLE ${table}`);
+    // MySQL's OPTIMIZE TABLE has no direct equivalent; VACUUM (ANALYZE) is the
+    // PostgreSQL equivalent and, unlike VACUUM FULL, takes no exclusive lock.
+    // ?? binds the name as an identifier so it can never be read as SQL.
+    await db.raw('VACUUM (ANALYZE) ??', [table]);
   }
   await audit('DATABASE_OPTIMIZED', null, {
     ip,
@@ -695,25 +699,23 @@ exports.optimizeDatabase = catchAsync(async (req, res) => {
   });
 });
 exports.getDatabaseStatus = catchAsync(async (req, res) => {
-  const status = await db.raw('SHOW STATUS LIKE "Threads_connected"');
-  const variables = await db.raw('SHOW VARIABLES LIKE "max_connections"');
-  const tableSizes = await db.raw(`
-    SELECT 
+  const status = await db.raw('SELECT count(*)::bigint AS value FROM pg_stat_activity');
+  const variables = await db.raw('SELECT name, setting AS value FROM pg_settings ORDER BY name');
+  const tableSizes = await db.raw(`SELECT 
       table_name,
-      ROUND(((data_length + index_length) / 1024 / 1024), 2) AS size_mb
+      ROUND((pg_total_relation_size(format('%I.%I', table_schema, table_name)::regclass) / 1024 / 1024), 2) AS size_mb
     FROM information_schema.TABLES
-    WHERE table_schema = DATABASE()
-    ORDER BY (data_length + index_length) DESC
-  `);
+    WHERE table_schema = current_schema()
+    ORDER BY pg_total_relation_size(format('%I.%I', table_schema, table_name)::regclass) DESC`);
   res.json({
     status: 'success',
     data: {
       connections: {
-        current: parseInt(status[0][0].Value),
-        max: parseInt(variables[0][0].Value)
+        current: parseInt(status.rows[0].value),
+        max: parseInt(variables.rows[0].value)
       },
-      tableSizes: tableSizes[0],
-      totalSize: formatBytes(tableSizes[0].reduce((sum, t) => sum + (t.size_mb * 1024 * 1024), 0))
+      tableSizes: tableSizes.rows,
+      totalSize: formatBytes(tableSizes.rows.reduce((sum, t) => sum + (t.size_mb * 1024 * 1024), 0))
     }
   });
 });
@@ -1145,12 +1147,11 @@ async function getLowStockCount() {
   return parseInt(result.count);
 }
 async function getDatabaseSize() {
-  const result = await db.raw(`
-    SELECT SUM(data_length + index_length) AS size
+  const result = await db.raw(`SELECT SUM(pg_total_relation_size(format('%I.%I', table_schema, table_name)::regclass)) AS size
     FROM information_schema.TABLES
-    WHERE table_schema = DATABASE()
-  `);
-  return result[0][0].size || 0;
+    WHERE table_schema = current_schema()`);
+
+  return result.rows[0].size || 0;
 }
 function formatBytes(bytes) {
   if (bytes === 0) return '0 Bytes';

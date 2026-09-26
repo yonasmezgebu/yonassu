@@ -174,14 +174,14 @@ const initializeApp = async () => {
     // Ensure notifications table has `type` column
     try {
       const { db } = require('./config/database');
-      const rows = await db.raw("SHOW COLUMNS FROM `notifications` LIKE 'type'");
-      if (!rows[0] || rows[0].length === 0) {
-        await db.raw("ALTER TABLE `notifications` ADD COLUMN `type` VARCHAR(50) NOT NULL DEFAULT 'general'");
-        await db.raw("UPDATE `notifications` SET `type` = 'general' WHERE `type` IS NULL");
+      const rows = await db.raw('SELECT column_name AS "Field", data_type AS "Type", is_nullable AS "Null", column_default AS "Default", character_maximum_length AS "Length" FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = \'notifications\' AND column_name LIKE \'type\' ORDER BY ordinal_position');
+      if (!rows.rows || rows.rows.length === 0) {
+        await db.raw('ALTER TABLE notifications ADD COLUMN type varchar(50) NOT NULL DEFAULT \'general\';');
+        await db.raw('UPDATE notifications SET type = \'general\' WHERE type IS NULL');
         // Backfill types for old farming notifications
-        await db.raw("UPDATE `notifications` SET `type` = 'farming' WHERE `title` LIKE 'Shift Closed%' OR `title` LIKE 'New Online Order%' OR `title` LIKE 'New Online Order%'");
+        await db.raw('UPDATE notifications SET type = \'farming\' WHERE title LIKE \'Shift Closed%\' OR title LIKE \'New Online Order%\' OR title LIKE \'New Online Order%\'');
         // Backfill types for old pharmacy notifications
-        await db.raw("UPDATE `notifications` SET `type` = 'pharmacy' WHERE `title` LIKE 'Prescription Request%'");
+        await db.raw('UPDATE notifications SET type = \'pharmacy\' WHERE title LIKE \'Prescription Request%\'');
         logger.info('✅ Added `type` column to notifications table');
       }
     } catch (_) { /* migration not critical; repository falls back gracefully */ }
@@ -189,10 +189,14 @@ const initializeApp = async () => {
     // Drop unique constraint on requisitions.req_no to allow multi-item requisitions
     try {
       const { db } = require('./config/database');
-      const indexes = await db.raw("SHOW INDEX FROM `requisitions` WHERE `Column_name` = 'req_no' AND `Non_unique` = 0");
-      if (indexes[0] && indexes[0].length > 0) {
-        const indexName = indexes[0][0].Key_name;
-        await db.raw(`ALTER TABLE \`requisitions\` DROP INDEX \`${indexName}\``);
+      const indexes = await db.raw('SELECT c.relname AS "Table", a.attname AS "Column_name",\n       ci.relname AS "Key_name",\n       CASE WHEN i.indisunique THEN 0 ELSE 1 END AS "Non_unique",\n       pg_get_indexdef(i.indexrelid) AS index_def,\n       NULL AS seq_in_index, NULL AS sub_part, NULL AS "Null",\n       \'BTREE\' AS index_type, NULL AS "Comment", \'\' AS index_comment\nFROM pg_class c\nJOIN pg_index i     ON c.oid = i.indrelid\nJOIN pg_class ci    ON ci.oid = i.indexrelid\nJOIN pg_am am       ON am.oid = ci.relam\nJOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)\nWHERE c.relname = \'requisitions\' AND c.relkind = \'r\' AND am.amname = \'btree\'\n  AND a.attname = \'req_no\' AND i.indisunique\nORDER BY a.attname');
+      if (indexes.rows && indexes.rows.length > 0) {
+        const indexName = indexes.rows[0].Key_name;
+        // A unique index may be a bare index or the backing index of a UNIQUE
+        // constraint.  Drop the constraint first (it removes its index too),
+        // then the index, so both shapes are handled.  Both are IF EXISTS.
+        await db.raw('ALTER TABLE requisitions DROP CONSTRAINT IF EXISTS ??', [indexName]);
+        await db.raw('DROP INDEX IF EXISTS ??', [indexName]);
         logger.info('✅ Dropped UNIQUE constraint on requisitions.req_no');
       }
     } catch (_) { /* non-critical migration */ }

@@ -65,8 +65,8 @@ const authenticate = async (req, res, next) => {
         'users.last_login',
         'users.must_change_password',
         'users.two_factor_enabled',
-        db.raw('GROUP_CONCAT(DISTINCT roles.name) as role_names'),
-        db.raw("GROUP_CONCAT(DISTINCT roles.permissions SEPARATOR '|||') as permission_sets")
+        db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'),
+        db.raw('string_agg(DISTINCT roles.permissions::text, \'|||\') as permission_sets')
       )
       .where('users.id', decoded.userId)
       .whereNull('users.deleted_at')

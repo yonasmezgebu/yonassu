@@ -197,6 +197,6 @@ async function createNotifications(post) {
   }));
 
   try {
-    await db.raw('INSERT IGNORE INTO notifications (user_id, news_post_id) VALUES ?', [rows.map(r => [r.user_id, r.news_post_id])]);
+    await db.raw('INSERT INTO notifications (user_id, news_post_id) VALUES ? ON CONFLICT DO NOTHING', [rows.map(r => [r.user_id, r.news_post_id])]);
   } catch (_) { /* silently ignore duplicate/insert errors */ }
 }

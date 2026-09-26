@@ -21,7 +21,7 @@ const reportsController = {
       .orderBy('dd.created_at', 'desc');
 
     if (date) {
-      deliveriesQ = deliveriesQ.whereRaw('DATE(dd.created_at) = ?', [date]);
+      deliveriesQ = deliveriesQ.whereRaw('(dd.created_at)::date = ?', [date]);
     }
 
     const deliveries = await deliveriesQ;
@@ -47,7 +47,7 @@ const reportsController = {
     let hideLog = [];
     try {
       hideLog = await db('pharmacy_drug_hide_log')
-        .where('notify_ceo', 1)
+        .where('notify_ceo', true)
         .select(
           'id', 'drug_id', 'drug_name',
           'hide_type', 'reason', 'auto_show_at',
@@ -145,12 +145,12 @@ const reportsController = {
         'psr.id', 'psr.report_date', 'psr.total_sales',
         'psr.total_amount', 'psr.status',
         'psr.finance_decision', 'psr.finance_notes', 'psr.finance_decided_at',
-        db.raw('COALESCE(u.full_name, "Unknown") as submitted_by_name')
+        db.raw('COALESCE(u.full_name, \'Unknown\') as submitted_by_name')
       )
       .orderBy('psr.report_date', 'desc');
 
     if (date) {
-      salesQ = salesQ.whereRaw('DATE(psr.report_date) = ?', [date]);
+      salesQ = salesQ.whereRaw('(psr.report_date)::date = ?', [date]);
     }
 
     const salesReports = await salesQ;
@@ -164,7 +164,7 @@ const reportsController = {
       .orderBy('pfr.created_at', 'desc');
 
     if (date) {
-      financeRecordsQ = financeRecordsQ.whereRaw('DATE(pfr.created_at) = ?', [date]);
+      financeRecordsQ = financeRecordsQ.whereRaw('(pfr.created_at)::date = ?', [date]);
     }
 
     const financeRecords = await financeRecordsQ;
@@ -183,13 +183,13 @@ const reportsController = {
       .select(
         'pp.id', 'pp.payment_method', 'pp.amount', 'pp.status',
         'pp.receipt_no', 'pp.created_at',
-        db.raw('COALESCE(pp.worker_name, "Unknown") as worker_name'),
-        db.raw('COALESCE(pp.branch_name, "—") as branch_name')
+        db.raw('COALESCE(pp.worker_name, \'Unknown\') as worker_name'),
+        db.raw('COALESCE(pp.branch_name, \'—\') as branch_name')
       )
       .orderBy('pp.created_at', 'desc');
 
     if (date) {
-      paymentsQ = paymentsQ.whereRaw('DATE(pp.created_at) = ?', [date]);
+      paymentsQ = paymentsQ.whereRaw('(pp.created_at)::date = ?', [date]);
     }
 
     const payments = await paymentsQ;
@@ -202,14 +202,14 @@ const reportsController = {
       .select(
         'pat.id', 'pat.action', 'pat.amount',
         'pat.created_at',
-        db.raw('COALESCE(pw.name, "Unknown") as worker_name'),
-        db.raw('COALESCE(pb.name, "—") as branch_name')
+        db.raw('COALESCE(pw.name, \'Unknown\') as worker_name'),
+        db.raw('COALESCE(pb.name, \'—\') as branch_name')
       )
       .orderBy('pat.created_at', 'desc')
       .limit(100);
 
     if (date) {
-      auditQ = auditQ.whereRaw('DATE(pat.created_at) = ?', [date]);
+      auditQ = auditQ.whereRaw('(pat.created_at)::date = ?', [date]);
     }
 
     let auditTrail = [];
@@ -290,7 +290,7 @@ const reportsController = {
 
     // 1. Sales Report for the day
     const salesReport = await db('pharmacy_sales_reports')
-      .whereRaw('DATE(report_date) = ?', [date])
+      .whereRaw('(report_date)::date = ?', [date])
       .select('id', 'total_sales', 'total_amount', 'status', 'submitted_by', 'report_date')
       .first();
 
@@ -302,7 +302,7 @@ const reportsController = {
         .where('prb.report_id', salesReport.id)
         .select(
           'prb.id', 'prb.branch_id',
-          db.raw('COALESCE(pb.name, CONCAT("Branch #", prb.branch_id)) as branch_name'),
+          db.raw('COALESCE(pb.name, (\'Branch #\' || prb.branch_id::text)) as branch_name'),
           'prb.total_sales', 'prb.total_amount', 'prb.worker_count'
         );
     }
@@ -319,19 +319,19 @@ const reportsController = {
     const individualSales = await db('pharmacy_sales as ps')
       .leftJoin('pharmacy_branches as pb', 'ps.branch_id', 'pb.id')
       .leftJoin('pharmacy_workers as pw', 'ps.worker_id', 'pw.id')
-      .whereRaw('DATE(ps.created_at) = ?', [date])
+      .whereRaw('(ps.created_at)::date = ?', [date])
       .select(
         'ps.id', 'ps.receipt_no', 'ps.sale_type', 'ps.total_products',
         'ps.total_amount', 'ps.created_at',
-        db.raw('COALESCE(pb.name, "Main") as branch_name'),
-        db.raw('COALESCE(pw.name, "Unassigned") as worker_name')
+        db.raw('COALESCE(pb.name, \'Main\') as branch_name'),
+        db.raw('COALESCE(pw.name, \'Unassigned\') as worker_name')
       )
       .orderBy('ps.created_at', 'desc')
       .limit(200);
 
     // 5. Individual sales count & total (fallback if no sales_report)
     const salesAgg = await db('pharmacy_sales')
-      .whereRaw('DATE(created_at) = ?', [date])
+      .whereRaw('(created_at)::date = ?', [date])
       .select(
         db.raw('COUNT(*) as total_sales'),
         db.raw('COALESCE(SUM(total_amount), 0) as total_amount'),
@@ -369,7 +369,7 @@ const reportsController = {
         .whereIn('pt.status', ['PENDING', 'OVERDUE'])
         .select(
           'pt.id', 'pt.title', 'pt.priority', 'pt.status', 'pt.due_date', 'pt.branch_id',
-          db.raw('COALESCE(pb.name, "Main") as branch_name')
+          db.raw('COALESCE(pb.name, \'Main\') as branch_name')
         )
         .orderBy('pt.due_date', 'asc');
     } catch (e) {
@@ -867,7 +867,7 @@ const reportsController = {
     const movements = await db('pharmacy_stock_movements as psm')
       .leftJoin('pharmacy_medications as pm', 'psm.medication_id', 'pm.id')
       .where('psm.created_at', '>=', start).where('psm.created_at', '<=', end)
-      .select('psm.id', 'psm.quantity_change', 'psm.reason', 'psm.reference_no', 'psm.created_at', 'psm.created_by', db.raw('COALESCE(pm.name, "—") as drug_name'));
+      .select('psm.id', 'psm.quantity_change', 'psm.reason', 'psm.reference_no', 'psm.created_at', 'psm.created_by', db.raw('COALESCE(pm.name, \'—\') as drug_name'));
     let qtyIn = 0, qtyOut = 0;
     const reasonMap = {};
     movements.forEach(m => {
@@ -956,7 +956,7 @@ const reportsController = {
       .leftJoin('pharmacy_workers as pw', 'pat.worker_id', 'pw.id')
       .leftJoin('pharmacy_branches as pb', 'pat.branch_id', 'pb.id')
       .where('pat.created_at', '>=', start).where('pat.created_at', '<=', end)
-      .select('pat.id', 'pat.action', 'pat.amount', 'pat.recipient', 'pat.created_at', db.raw('COALESCE(pw.name, "Unknown") as worker_name'), db.raw('COALESCE(pb.name, "—") as branch_name'), 'pat.branch_id');
+      .select('pat.id', 'pat.action', 'pat.amount', 'pat.recipient', 'pat.created_at', db.raw('COALESCE(pw.name, \'Unknown\') as worker_name'), db.raw('COALESCE(pb.name, \'—\') as branch_name'), 'pat.branch_id');
     if (branchFilter) auditQ = auditQ.where('pat.branch_id', branchFilter);
     const auditRows = await auditQ.orderBy('pat.created_at', 'desc').limit(200);
     const auditByAction = {};

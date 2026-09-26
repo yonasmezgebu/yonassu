@@ -146,10 +146,10 @@ const getRevenueBreakdown = async (period = 'month') => {
 const getRevenueForecast = async (months = 6) => {
   const last12Months = await db('pos_sales')
     .select(
-      db.raw('DATE_FORMAT(sale_date, "%Y-%m") as month'),
+      db.raw('to_char(sale_date, \'YYYY-MM\') as month'),
       db.raw('SUM(total_amount) as revenue')
     )
-    .where('sale_date', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 12 MONTH)'))
+    .where('sale_date', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'12 months\''))
     .where('status_id', 1)
     .groupByRaw('DATE_FORMAT(sale_date, "%Y-%m")')
     .orderBy('month', 'asc');
@@ -310,7 +310,7 @@ const getCashFlowData = async (period = 'weekly', days = 30) => {
   }
   const inflow = await db('pos_sales')
     .select(
-      db.raw(`DATE_FORMAT(sale_date, '${dateFormat}') as period`),
+      db.raw(`to_char(sale_date, '${dateFormat}') as period`),
       db.raw('SUM(total_amount) as amount')
     )
     .where('sale_date', '>=', startDate)
@@ -319,7 +319,7 @@ const getCashFlowData = async (period = 'weekly', days = 30) => {
     .orderBy('period', 'asc');
   const outflow = await db('expenses')
     .select(
-      db.raw(`DATE_FORMAT(date, '${dateFormat}') as period`),
+      db.raw(`to_char(date, '${dateFormat}') as period`),
       db.raw('SUM(amount) as amount')
     )
     .where('date', '>=', startDate)
@@ -378,13 +378,13 @@ const getPerformanceKPIs = async () => {
   const targetFulfillment = await getTargetSetting('fulfillment_hours_target', 48);
   const actualFulfillmentResult = await db('printing_orders')
     .whereIn('status_id', db('order_statuses').select('id').where('status_code', 'delivered'))
-    .select(db.raw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours'))
+    .select(db.raw('AVG((EXTRACT(EPOCH FROM ((completed_at)::timestamp - (created_at)::timestamp)) / 3600)) as avg_hours'))
     .first();
   const actualFulfillment = parseFloat(actualFulfillmentResult?.avg_hours || 0);
   const targetTurnover = await getTargetSetting('inventory_turnover_target', 4);
   const cogs = await db('inventory_movements')
     .where('transaction_type', 'Sale')
-    .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 1 YEAR)'))
+    .where('created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'1 year\''))
     .select(db.raw('SUM(ABS(quantity_change)) as total_quantity'))
     .first();
   const avgInventory = await db('inventory')
@@ -815,7 +815,7 @@ const getRevenueHistorical = async (startDate, endDate, period) => {
   }
   const historical = await db('pos_sales')
     .select(
-      db.raw(`DATE_FORMAT(sale_date, '${groupFormat}') as date`),
+      db.raw(`to_char(sale_date, '${groupFormat}') as date`),
       db.raw('SUM(total_amount) as revenue')
     )
     .whereBetween('sale_date', [startDate, endDate])
@@ -880,7 +880,7 @@ const generateExecutiveReport = async (startDate, endDate) => {
     .limit(5);
   const monthlyTrend = await db('pos_sales')
     .select(
-      db.raw('DATE_FORMAT(sale_date, "%Y-%m") as month'),
+      db.raw('to_char(sale_date, \'YYYY-MM\') as month'),
       db.raw('SUM(total_amount) as revenue')
     )
     .whereBetween('sale_date', [startDate, endDate])

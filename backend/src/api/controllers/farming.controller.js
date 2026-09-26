@@ -702,7 +702,7 @@ exports.getTopProductsToday = catchAsync(async (req, res) => {
   const products = await db('farming_order_items')
     .join('farming_orders', 'farming_order_items.order_id', 'farming_orders.id')
     .join('farming_products', 'farming_order_items.product_id', 'farming_products.id')
-    .whereRaw('DATE(farming_orders.created_at) = ?', [today])
+    .whereRaw('(farming_orders.created_at)::date = ?', [today])
     .whereNotIn('farming_orders.status', ['CANCELLED'])
     .select(
       'farming_products.id',
@@ -756,7 +756,7 @@ exports.getDailySalesSummary = catchAsync(async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   const sales = await db('farming_orders')
     .where('status', 'COMPLETED')
-    .whereRaw(`DATE(created_at) = ?`, [today]);
+    .whereRaw(`(created_at)::date = ?`, [today]);
 
   const summary = {
     totalSales: sales.reduce((sum, o) => sum + parseFloat(o.total_amount), 0),
@@ -834,12 +834,12 @@ exports.openShift = catchAsync(async (req, res) => {
     if (user) {
       const newEmpId = `EMP${String(worker_id).padStart(4, '0')}`;
       const empEmail = user.email && user.email.trim() ? user.email : `worker_${worker_id}@farming.local`;
-      await db.raw(`INSERT IGNORE INTO employees (employee_id, user_id, full_name, email, phone, department, status, created_at) VALUES (?, ?, ?, ?, ?, 'Farming', 'Active', NOW())`, [newEmpId, worker_id, user.full_name || user.username || user.email, empEmail, user.phone || '']);
+      await db.raw(`INSERT INTO employees (employee_id, user_id, full_name, email, phone, department, status, created_at) VALUES (?, ?, ?, ?, ?, 'Farming', 'Active', LOCALTIMESTAMP) ON CONFLICT DO NOTHING`, [newEmpId, worker_id, user.full_name || user.username || user.email, empEmail, user.phone || '']);
       empId = newEmpId;
     }
   }
   if (empId) {
-    await db.raw(`INSERT IGNORE INTO attendance_records (employee_id, action, status, timestamp, ip_address, work_date, recorded_by, created_at) VALUES (?, 'CLOCK_IN', 'Present', ?, ?, ?, ?, NOW())`, [empId, ts, req.ip || '127.0.0.1', workDate, worker_id]);
+    await db.raw(`INSERT INTO attendance_records (employee_id, action, status, timestamp, ip_address, work_date, recorded_by, created_at) VALUES (?, 'CLOCK_IN', 'Present', ?, ?, ?, ?, LOCALTIMESTAMP) ON CONFLICT DO NOTHING`, [empId, ts, req.ip || '127.0.0.1', workDate, worker_id]);
   }
 
   res.status(201).json({ status: 'success', message: 'Shift opened', data: shift });
@@ -857,13 +857,13 @@ exports.closeShift = catchAsync(async (req, res) => {
   // Online orders (farming_orders)
   const onlineSales = await db('farming_orders')
     .where('status', 'COMPLETED')
-    .whereRaw(`DATE(created_at) = ?`, [today]);
+    .whereRaw(`(created_at)::date = ?`, [today]);
 
   // Walk-in POS sales by this worker
   const walkinSales = await db('pos_sales')
     .where('order_source', 'farming_orders')
     .where('cashier_id', worker_id)
-    .whereRaw('DATE(sale_date) = ?', [today]);
+    .whereRaw('(sale_date)::date = ?', [today]);
 
   const allSales = [...onlineSales, ...walkinSales];
 
@@ -948,12 +948,12 @@ exports.closeShift = catchAsync(async (req, res) => {
     if (user) {
       const newEmpId = `EMP${String(worker_id).padStart(4, '0')}`;
       const empEmail = user.email && user.email.trim() ? user.email : `worker_${worker_id}@farming.local`;
-      await db.raw(`INSERT IGNORE INTO employees (employee_id, user_id, full_name, email, phone, department, status, created_at) VALUES (?, ?, ?, ?, ?, 'Farming', 'Active', NOW())`, [newEmpId, worker_id, user.full_name || user.username || user.email, empEmail, user.phone || '']);
+      await db.raw(`INSERT INTO employees (employee_id, user_id, full_name, email, phone, department, status, created_at) VALUES (?, ?, ?, ?, ?, 'Farming', 'Active', LOCALTIMESTAMP) ON CONFLICT DO NOTHING`, [newEmpId, worker_id, user.full_name || user.username || user.email, empEmail, user.phone || '']);
       empId = newEmpId;
     }
   }
   if (empId) {
-    await db.raw(`INSERT IGNORE INTO attendance_records (employee_id, action, status, timestamp, ip_address, work_date, recorded_by, created_at) VALUES (?, 'CLOCK_OUT', 'Present', ?, ?, ?, ?, NOW())`, [empId, ts, req.ip || '127.0.0.1', workDate, worker_id]);
+    await db.raw(`INSERT INTO attendance_records (employee_id, action, status, timestamp, ip_address, work_date, recorded_by, created_at) VALUES (?, 'CLOCK_OUT', 'Present', ?, ?, ?, ?, LOCALTIMESTAMP) ON CONFLICT DO NOTHING`, [empId, ts, req.ip || '127.0.0.1', workDate, worker_id]);
   }
 
   res.json({
@@ -1013,22 +1013,22 @@ exports.getOverviewStats = catchAsync(async (req, res) => {
   // 1 & 2. Today's Revenue & Monthly Revenue (farming_orders COMPLETED + pos_sales from farming)
   const [todayFarmingRevenue] = await db('farming_orders')
     .where('status', 'COMPLETED')
-    .whereRaw('DATE(created_at) = ?', [today])
+    .whereRaw('(created_at)::date = ?', [today])
     .sum('total_amount as total');
 
   const [monthFarmingRevenue] = await db('farming_orders')
     .where('status', 'COMPLETED')
-    .whereRaw('DATE(created_at) >= ?', [monthStartStr])
+    .whereRaw('(created_at)::date >= ?', [monthStartStr])
     .sum('total_amount as total');
 
   const [todayPosFarmingRevenue] = await db('pos_sales')
     .where('order_source', 'farming_orders')
-    .whereRaw('DATE(sale_date) = ?', [today])
+    .whereRaw('(sale_date)::date = ?', [today])
     .sum('total_amount as total');
 
   const [monthPosFarmingRevenue] = await db('pos_sales')
     .where('order_source', 'farming_orders')
-    .whereRaw('DATE(sale_date) >= ?', [monthStartStr])
+    .whereRaw('(sale_date)::date >= ?', [monthStartStr])
     .sum('total_amount as total');
 
   const todayRevenue = parseFloat(todayFarmingRevenue?.total || 0) + parseFloat(todayPosFarmingRevenue?.total || 0);
@@ -1066,7 +1066,7 @@ exports.getOverviewStats = catchAsync(async (req, res) => {
 
   // 7. Today's Orders
   const [todayOrders] = await db('farming_orders')
-    .whereRaw('DATE(created_at) = ?', [today])
+    .whereRaw('(created_at)::date = ?', [today])
     .count('id as total');
 
   // 8. Budget Used
@@ -1083,7 +1083,7 @@ exports.getOverviewStats = catchAsync(async (req, res) => {
       const [expenses] = await db('finance_expenses')
         .where('department_id', farmingDept.id)
         .where('status', 'APPROVED')
-        .whereRaw('DATE(expense_date) >= ?', [monthStartStr])
+        .whereRaw('(expense_date)::date >= ?', [monthStartStr])
         .sum('amount as total');
       monthlyExpenses = parseFloat(expenses?.total || 0);
     }
@@ -1132,20 +1132,17 @@ exports.getManagerAuditData = catchAsync(async (req, res) => {
   }
 
   // All farming shifts with worker info (raw SQL for exact data)
-  const shifts = await db.raw(`
-    SELECT fs.*, u.full_name AS worker_name, u.email AS worker_email, u.phone AS worker_phone,
+  const shifts = await db.raw(`SELECT fs.*, u.full_name AS worker_name, u.email AS worker_email, u.phone AS worker_phone,
            e.employee_id, e.department,
            fs.clocked_in_at, fs.clocked_out_at
     FROM farming_shifts fs
     LEFT JOIN users u ON fs.worker_id = u.id
     LEFT JOIN employees e ON u.id = e.user_id
-    WHERE DATE(fs.opened_at) >= ? AND DATE(fs.opened_at) <= ?${workerClause}
-    ORDER BY fs.opened_at DESC
-  `, bindings);
+    WHERE (fs.opened_at)::date >= ? AND (fs.opened_at)::date <= ?${workerClause}
+    ORDER BY fs.opened_at DESC`, bindings);
 
   // POS sales from farming (walk-in)
-  const posSales = await db.raw(`
-    SELECT ps.*, u.full_name AS cashier_name,
+  const posSales = await db.raw(`SELECT ps.*, u.full_name AS cashier_name,
            pm.name AS payment_method_name,
            c.name AS customer_name, c.phone AS customer_phone
     FROM pos_sales ps
@@ -1153,25 +1150,21 @@ exports.getManagerAuditData = catchAsync(async (req, res) => {
     LEFT JOIN payment_methods pm ON ps.payment_method_id = pm.id
     LEFT JOIN customers c ON ps.customer_id = c.id
     WHERE ps.order_source = 'farming_orders'
-      AND DATE(ps.sale_date) >= ? AND DATE(ps.sale_date) <= ?
-    ORDER BY ps.sale_date DESC
-  `, [sd, ed]);
+      AND (ps.sale_date)::date >= ? AND (ps.sale_date)::date <= ?
+    ORDER BY ps.sale_date DESC`, [sd, ed]);
 
   // Online farming orders
-  const onlineOrders = await db.raw(`
-    SELECT fo.*,
+  const onlineOrders = await db.raw(`SELECT fo.*,
            COALESCE(u.full_name, c.name, fo.contact_name) AS customer_name,
            COALESCE(u.phone, c.phone, fo.contact_phone) AS customer_phone
     FROM farming_orders fo
     LEFT JOIN customers c ON fo.customer_id = c.id
     LEFT JOIN users u ON c.user_id = u.id
-    WHERE DATE(fo.created_at) >= ? AND DATE(fo.created_at) <= ?
-    ORDER BY fo.created_at DESC
-  `, [sd, ed]);
+    WHERE (fo.created_at)::date >= ? AND (fo.created_at)::date <= ?
+    ORDER BY fo.created_at DESC`, [sd, ed]);
 
   // Attendance records — paired clock_in/clock_out per employee per day with position
-  const attendance = await db.raw(`
-    SELECT
+  const attendance = await db.raw(`SELECT
       a.employee_id,
       e.full_name AS employee_name,
       e.position,
@@ -1180,10 +1173,7 @@ exports.getManagerAuditData = catchAsync(async (req, res) => {
       a.work_date,
       MAX(CASE WHEN a.action = 'CLOCK_IN' THEN a.timestamp END) AS clock_in,
       MAX(CASE WHEN a.action = 'CLOCK_OUT' THEN a.timestamp END) AS clock_out,
-      TIMESTAMPDIFF(MINUTE,
-        MAX(CASE WHEN a.action = 'CLOCK_IN' THEN a.timestamp END),
-        MAX(CASE WHEN a.action = 'CLOCK_OUT' THEN a.timestamp END)
-      ) AS duration_minutes
+      (EXTRACT(EPOCH FROM ((MAX(CASE WHEN a.action = 'CLOCK_OUT' THEN a.timestamp END))::timestamp - (MAX(CASE WHEN a.action = 'CLOCK_IN' THEN a.timestamp END))::timestamp)) / 60) AS duration_minutes
     FROM attendance_records a
     LEFT JOIN employees e ON a.employee_id = e.employee_id
     LEFT JOIN users u ON e.user_id = u.id
@@ -1191,27 +1181,24 @@ exports.getManagerAuditData = catchAsync(async (req, res) => {
     LEFT JOIN roles r ON ur.role_id = r.id
     WHERE a.work_date >= ? AND a.work_date <= ?
     GROUP BY a.employee_id, a.work_date, e.full_name, e.position, e.department, r.name
-    ORDER BY a.work_date DESC, a.employee_id
-  `, [sd, ed]);
+    ORDER BY a.work_date DESC, a.employee_id`, [sd, ed]);
 
   // Today's summary via raw SQL
-  const todaySummary = await db.raw(`
-    SELECT
-      COALESCE((SELECT SUM(total_amount) FROM farming_orders WHERE status = 'COMPLETED' AND DATE(created_at) = CURDATE()), 0) AS online_revenue,
-      COALESCE((SELECT SUM(total_amount) FROM pos_sales WHERE order_source = 'farming_orders' AND DATE(sale_date) = CURDATE()), 0) AS walkin_revenue,
-      (SELECT COUNT(*) FROM farming_shifts WHERE DATE(opened_at) = CURDATE()) AS shifts_today,
-      (SELECT COUNT(*) FROM farming_orders WHERE DATE(created_at) = CURDATE()) AS orders_today,
-      (SELECT COUNT(DISTINCT worker_id) FROM farming_shifts WHERE status = 'OPEN') AS active_workers
-  `);
+  const todaySummary = await db.raw(`SELECT
+      COALESCE((SELECT SUM(total_amount) FROM farming_orders WHERE status = 'COMPLETED' AND (created_at)::date = CURRENT_DATE), 0) AS online_revenue,
+      COALESCE((SELECT SUM(total_amount) FROM pos_sales WHERE order_source = 'farming_orders' AND (sale_date)::date = CURRENT_DATE), 0) AS walkin_revenue,
+      (SELECT COUNT(*) FROM farming_shifts WHERE (opened_at)::date = CURRENT_DATE) AS shifts_today,
+      (SELECT COUNT(*) FROM farming_orders WHERE (created_at)::date = CURRENT_DATE) AS orders_today,
+      (SELECT COUNT(DISTINCT worker_id) FROM farming_shifts WHERE status = 'OPEN') AS active_workers`);
 
   res.json({
     status: 'success',
     data: {
-      shifts: shifts[0] || [],
-      posSales: posSales[0] || [],
-      onlineOrders: onlineOrders[0] || [],
-      attendance: attendance[0] || [],
-      summary: (todaySummary[0] || [])[0] || {
+      shifts: shifts.rows || [],
+      posSales: posSales.rows || [],
+      onlineOrders: onlineOrders.rows || [],
+      attendance: attendance.rows || [],
+      summary: (todaySummary.rows || [])[0] || {
         online_revenue: 0, walkin_revenue: 0,
         shifts_today: 0, orders_today: 0, active_workers: 0
       }
@@ -1258,10 +1245,11 @@ exports.exportReport = catchAsync(async (req, res) => {
   const { format } = req.query;
   const today = new Date().toISOString().split('T')[0];
 
-  const [prodRows] = await db.raw('SELECT name,stock_quantity,reorder_level FROM farming_products WHERE is_active=1');
-  const [budgetRows] = await db.raw('SELECT category, budget, used, remaining, status FROM farming_budget_summary');
-  const [reorderRows] = await db.raw("SELECT fp.name as product_name, u.full_name as requester_name, fp.stock_quantity as current_stock, fr.quantity_requested, fr.priority, fr.created_at FROM farming_reorder_requests fr JOIN farming_products fp ON fr.product_id=fp.id JOIN users u ON fr.requested_by=u.id WHERE fr.status='PENDING' ORDER BY fr.created_at DESC");
-  const [topProdRows] = await db.raw('SELECT fp.name, SUM(foi.quantity) as total_qty, SUM(foi.subtotal) as total_revenue FROM farming_order_items foi JOIN farming_orders fo ON foi.order_id=fo.id JOIN farming_products fp ON foi.product_id=fp.id WHERE DATE(fo.created_at)=CURDATE() AND fo.status NOT IN (\'CANCELLED\') GROUP BY fp.id,fp.name ORDER BY total_qty DESC LIMIT 5');
+  // node-postgres returns { rows }; mysql2 returned [rows, fields].
+  const { rows: prodRows } = await db.raw('SELECT name,stock_quantity,reorder_level FROM farming_products WHERE is_active=true');
+  const { rows: budgetRows } = await db.raw('SELECT category, budget, used, remaining, status FROM farming_budget_summary');
+  const { rows: reorderRows } = await db.raw("SELECT fp.name as product_name, u.full_name as requester_name, fp.stock_quantity as current_stock, fr.quantity_requested, fr.priority, fr.created_at FROM farming_reorder_requests fr JOIN farming_products fp ON fr.product_id=fp.id JOIN users u ON fr.requested_by=u.id WHERE fr.status='PENDING' ORDER BY fr.created_at DESC");
+  const { rows: topProdRows } = await db.raw('SELECT fp.name, SUM(foi.quantity) as total_qty, SUM(foi.subtotal) as total_revenue FROM farming_order_items foi JOIN farming_orders fo ON foi.order_id=fo.id JOIN farming_products fp ON foi.product_id=fp.id WHERE (fo.created_at)::date=CURRENT_DATE AND fo.status NOT IN (\'CANCELLED\') GROUP BY fp.id,fp.name ORDER BY total_qty DESC LIMIT 5');
 
   const filename = `QuickLinks_Report_${today}`;
 
@@ -1344,28 +1332,29 @@ exports.exportReport = catchAsync(async (req, res) => {
 exports.createStoreRequest = catchAsync(async (req, res) => {
   const { items, notes } = req.body;
   if (!items || !items.length) throw new AppError('At least one item required', 400);
-  await db.raw(`CREATE TABLE IF NOT EXISTS \`farming_store_requests\` (
-    \`id\` int UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    \`request_number\` varchar(50) NOT NULL UNIQUE,
-    \`requested_by\` int NOT NULL,
-    \`store_handler\` int DEFAULT NULL,
-    \`approved_by\` int DEFAULT NULL,
-    \`status\` enum('PENDING_STORE','FORWARDED_TO_CEO','APPROVED','REJECTED','SHIPPED','RECEIVED') DEFAULT 'FORWARDED_TO_CEO',
-    \`rejection_reason\` text,
-    \`notes\` text,
-    \`created_at\` timestamp DEFAULT CURRENT_TIMESTAMP,
-    \`updated_at\` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8`);
-  try { await db.raw(`CREATE TABLE IF NOT EXISTS \`farming_store_request_items\` (
-    \`id\` int UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    \`request_id\` int UNSIGNED NOT NULL,
-    \`product_id\` int UNSIGNED NOT NULL,
-    \`quantity_requested\` int NOT NULL,
-    \`quantity_shipped\` int DEFAULT NULL,
-    \`unit_price\` decimal(10,2) DEFAULT NULL,
-    \`notes\` text,
-    FOREIGN KEY (\`request_id\`) REFERENCES \`farming_store_requests\`(\`id\`) ON DELETE CASCADE
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8`); } catch(e) {}
+  await db.raw(`CREATE TABLE IF NOT EXISTS farming_store_requests (
+  id integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  request_number varchar(50) NOT NULL UNIQUE,
+  requested_by integer NOT NULL,
+  store_handler integer DEFAULT NULL,
+  approved_by integer DEFAULT NULL,
+  status citext DEFAULT 'FORWARDED_TO_CEO' CHECK (status IN ('PENDING_STORE', 'FORWARDED_TO_CEO', 'APPROVED', 'REJECTED', 'SHIPPED', 'RECEIVED')),
+  rejection_reason text,
+  notes text,
+  created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp DEFAULT CURRENT_TIMESTAMP
+)`);
+  try { await db.raw(`CREATE TABLE IF NOT EXISTS farming_store_request_items (
+  id integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  request_id integer NOT NULL,
+  product_id integer NOT NULL,
+  quantity_requested integer NOT NULL,
+  quantity_shipped integer DEFAULT NULL,
+  unit_price numeric(10,2) DEFAULT NULL,
+  notes text,
+  CONSTRAINT farming_store_request_items_fk_request_id FOREIGN KEY (request_id) REFERENCES farming_store_requests (id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS farming_store_request_items_fk_request_id ON farming_store_request_items (request_id)`); } catch(e) {}
 
   const num = `FSR-${Date.now()}`;
   const [id] = await db('farming_store_requests').insert({
@@ -1393,38 +1382,39 @@ exports.createStoreRequest = catchAsync(async (req, res) => {
 
 exports.getStoreRequests = catchAsync(async (req, res) => {
   const { status } = req.query;
-  await db.raw(`CREATE TABLE IF NOT EXISTS \`farming_store_requests\` (
-    \`id\` int UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    \`request_number\` varchar(50) NOT NULL UNIQUE,
-    \`requested_by\` int NOT NULL,
-    \`store_handler\` int DEFAULT NULL,
-    \`approved_by\` int DEFAULT NULL,
-    \`status\` enum('PENDING_STORE','FORWARDED_TO_CEO','APPROVED','REJECTED','SHIPPED','RECEIVED') DEFAULT 'FORWARDED_TO_CEO',
-    \`rejection_reason\` text,
-    \`notes\` text,
-    \`created_at\` timestamp DEFAULT CURRENT_TIMESTAMP,
-    \`updated_at\` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8`);
-  try { await db.raw(`CREATE TABLE IF NOT EXISTS \`farming_store_request_items\` (
-    \`id\` int UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    \`request_id\` int UNSIGNED NOT NULL,
-    \`product_id\` int UNSIGNED NOT NULL,
-    \`quantity_requested\` int NOT NULL,
-    \`quantity_shipped\` int DEFAULT NULL,
-    \`unit_price\` decimal(10,2) DEFAULT NULL,
-    \`notes\` text,
-    FOREIGN KEY (\`request_id\`) REFERENCES \`farming_store_requests\`(\`id\`) ON DELETE CASCADE
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8`); } catch(e) {}
+  await db.raw(`CREATE TABLE IF NOT EXISTS farming_store_requests (
+  id integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  request_number varchar(50) NOT NULL UNIQUE,
+  requested_by integer NOT NULL,
+  store_handler integer DEFAULT NULL,
+  approved_by integer DEFAULT NULL,
+  status citext DEFAULT 'FORWARDED_TO_CEO' CHECK (status IN ('PENDING_STORE', 'FORWARDED_TO_CEO', 'APPROVED', 'REJECTED', 'SHIPPED', 'RECEIVED')),
+  rejection_reason text,
+  notes text,
+  created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp DEFAULT CURRENT_TIMESTAMP
+)`);
+  try { await db.raw(`CREATE TABLE IF NOT EXISTS farming_store_request_items (
+  id integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  request_id integer NOT NULL,
+  product_id integer NOT NULL,
+  quantity_requested integer NOT NULL,
+  quantity_shipped integer DEFAULT NULL,
+  unit_price numeric(10,2) DEFAULT NULL,
+  notes text,
+  CONSTRAINT farming_store_request_items_fk_request_id FOREIGN KEY (request_id) REFERENCES farming_store_requests (id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS farming_store_request_items_fk_request_id_2 ON farming_store_request_items (request_id)`); } catch(e) {}
   // fix existing tables that were created with only id column
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`request_number\` varchar(50) NOT NULL UNIQUE'); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`requested_by\` int NOT NULL'); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`store_handler\` int DEFAULT NULL'); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`approved_by\` int DEFAULT NULL'); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` MODIFY \`status\` enum(\'PENDING_STORE\',\'FORWARDED_TO_CEO\',\'APPROVED\',\'REJECTED\',\'SHIPPED\',\'RECEIVED\') DEFAULT \'FORWARDED_TO_CEO\''); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`rejection_reason\` text'); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`notes\` text'); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`created_at\` timestamp DEFAULT CURRENT_TIMESTAMP'); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`updated_at\` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ADD COLUMN request_number varchar(50) NOT NULL UNIQUE;'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ADD COLUMN requested_by integer NOT NULL;'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ADD COLUMN store_handler integer DEFAULT NULL;'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ADD COLUMN approved_by integer DEFAULT NULL;'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ALTER COLUMN status TYPE citext;'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ADD COLUMN rejection_reason text;'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ADD COLUMN notes text;'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ADD COLUMN created_at timestamp DEFAULT CURRENT_TIMESTAMP;'); } catch (e) {}
+  try { await db.raw('ALTER TABLE farming_store_requests ADD COLUMN updated_at timestamp DEFAULT CURRENT_TIMESTAMP;'); } catch (e) {}
   // check if items table exists before using COUNT subquery
   let itemsTableExists = false;
   try { await db.raw('SELECT 1 FROM farming_store_request_items LIMIT 1'); itemsTableExists = true; } catch(e) {}
@@ -1519,30 +1509,27 @@ exports.updateStoreRequestStatus = catchAsync(async (req, res) => {
 
 exports.getQuickActions = catchAsync(async (req, res) => {
   // Auto-create table if not exists
-  await db.raw(`
-    CREATE TABLE IF NOT EXISTS \`farming_manager_quick_actions\` (
-      \`id\` int(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-      \`action_name\` varchar(100) NOT NULL COMMENT 'Name of the quick action',
-      \`action_description\` text COMMENT 'Description of what the action does',
-      \`icon_class\` varchar(100) DEFAULT NULL COMMENT 'CSS icon class for the action button',
-      \`route_path\` varchar(510) NOT NULL COMMENT 'URL route path for the action',
-      \`sort_order\` int(20) DEFAULT '0' COMMENT 'Display order for sorting',
-      \`is_active\` tinyint(1) DEFAULT '1' COMMENT 'Whether this action is active',
-      \`role_access\` json DEFAULT NULL COMMENT 'JSON array of role names that can access this action',
-      \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation timestamp',
-      \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',
-      PRIMARY KEY (\`id\`),
-      KEY \`idx_sort_order\` (\`sort_order\`),
-      KEY \`idx_is_active\` (\`is_active\`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Farming Manager quick actions for dashboard shortcuts'
-  `);
+  await db.raw(`CREATE TABLE IF NOT EXISTS farming_manager_quick_actions (
+  id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  action_name varchar(100) NOT NULL,
+  action_description text,
+  icon_class varchar(100) DEFAULT NULL,
+  route_path varchar(510) NOT NULL,
+  sort_order integer DEFAULT '0',
+  is_active boolean DEFAULT true,
+  role_access jsonb DEFAULT NULL,
+  created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS farming_manager_quick_actions_idx_sort_order ON farming_manager_quick_actions (sort_order);
+CREATE INDEX IF NOT EXISTS farming_manager_quick_actions_idx_is_active ON farming_manager_quick_actions (is_active)`);
 
   // Seed default actions if table is empty
   const [count] = await db('farming_manager_quick_actions').count('id as total');
   if (parseInt(count?.total || 0) === 0) {
-    await db.raw(`
-      INSERT IGNORE INTO \`farming_manager_quick_actions\`
-        (\`action_name\`, \`action_description\`, \`icon_class\`, \`route_path\`, \`sort_order\`, \`is_active\`, \`role_access\`)
+    await db.raw(`INSERT INTO farming_manager_quick_actions
+        (action_name, action_description, icon_class, route_path, sort_order, is_active, role_access)
       VALUES
         ('View Stock Report',    'View current inventory stock levels and reports',             'fa-boxes',        '/farming/stock-report',    1, 1, '["Farming Manager","Admin"]'),
         ('View Workers',         'View and manage farming workers list',                        'fa-users',        '/farming/workers',         2, 1, '["Farming Manager","Admin"]'),
@@ -1552,19 +1539,16 @@ exports.getQuickActions = catchAsync(async (req, res) => {
         ('View Shift Reports',   'View farming shift reports and summaries',                    'fa-clock',        '/farming/shift-reports',   6, 1, '["Farming Manager","Admin"]'),
         ('View Crop Calendar',   'View farming crop calendar and schedule',                     'fa-calendar-alt', '/farming/crop-calendar',   7, 1, '["Farming Manager","Admin"]'),
         ('Export Reports',       'Export farming reports (Excel / PDF)',                        'fa-file-export',  '/farming/export-reports',  8, 1, '["Farming Manager","Admin","Finance"]'),
-        ('Product from Store',   'Request products from Store (Store → CEO → Approval)',           'fa-truck',        '/farming/store-request',   9, 1, '["Farming Manager","Admin"]')
-    `);
+        ('Product from Store',   'Request products from Store (Store → CEO → Approval)',           'fa-truck',        '/farming/store-request',   9, 1, '["Farming Manager","Admin"]') ON CONFLICT DO NOTHING`);
   }
 
   // Fetch actions the user's role can access
   const userRoles = req.user.roles || [];
-  const actions = await db.raw(`
-    SELECT * FROM \`farming_manager_quick_actions\`
-    WHERE \`is_active\` = 1
-    ORDER BY \`sort_order\` ASC
-  `);
+  const actions = await db.raw(`SELECT * FROM farming_manager_quick_actions
+    WHERE is_active = true
+    ORDER BY sort_order ASC`);
 
-  const filtered = (actions[0] || []).filter(a => {
+  const filtered = (actions.rows || []).filter(a => {
     if (!a.role_access) return true;
     try {
       const roles = typeof a.role_access === 'string' ? JSON.parse(a.role_access) : a.role_access;
@@ -1591,7 +1575,7 @@ exports.getTodayFarmingAttendance = catchAsync(async (req, res) => {
   // Today's shifts from farming_shifts
   const shifts = await db('farming_shifts')
     .where(function () {
-      this.whereRaw('DATE(farming_shifts.opened_at) = ?', [today])
+      this.whereRaw('(farming_shifts.opened_at)::date = ?', [today])
         .orWhere('farming_shifts.status', 'OPEN');
     })
     .select('*')
@@ -1599,7 +1583,7 @@ exports.getTodayFarmingAttendance = catchAsync(async (req, res) => {
 
   // Map worker_id -> shift
   const shiftMap = {};
-  shifts.forEach(s => { shiftMap[s.worker_id] = s; });
+  shifts.rows.forEach(s => { shiftMap[s.worker_id] = s; });
 
   const records = [];
   const empSet = new Set();
@@ -1636,7 +1620,7 @@ exports.getTodayFarmingAttendance = catchAsync(async (req, res) => {
 
   // Also add any workers from farming_shifts who are NOT in the users query
   // (e.g., deleted users who still have open shifts)
-  shifts.forEach(s => {
+  shifts.rows.forEach(s => {
     const eid = `EMP${String(s.worker_id).padStart(4, '0')}`;
     if (empSet.has(eid)) return;
     const clockInTime = s.clocked_in_at || s.opened_at;

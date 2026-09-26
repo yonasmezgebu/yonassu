@@ -264,7 +264,7 @@ const getMaintenanceInfo = async () => {
     },
     database: {
       size: formatBytes(dbSize),
-      tables: (await db.raw('SHOW TABLES')).length
+      tables: (await db.raw('SELECT tablename AS table_name FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename')).length
     },
     cache: {
       keys: cacheCount,
@@ -307,24 +307,24 @@ const getUserStatistics = async () => {
 const getActivityStatistics = async (days = 30) => {
   const activityByDay = await db('audit_logs')
     .select(
-      db.raw('DATE(created_at) as date'),
+      db.raw('(created_at)::date as date'),
       db.raw('COUNT(*) as count')
     )
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .groupByRaw('DATE(created_at)')
     .orderBy('date', 'asc');
   const activityByAction = await db('audit_logs')
     .select('action', db.raw('COUNT(*) as count'))
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .groupBy('action')
     .orderBy('count', 'desc')
     .limit(10);
   const peakHours = await db('audit_logs')
     .select(
-      db.raw('HOUR(created_at) as hour'),
+      db.raw('EXTRACT(HOUR FROM created_at) as hour'),
       db.raw('COUNT(*) as count')
     )
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .groupByRaw('HOUR(created_at)')
     .orderBy('hour', 'asc');
   return {
@@ -357,41 +357,44 @@ const getPerformanceMetrics = async () => {
   };
 };
 const optimizeDatabase = async () => {
-  const tables = await db.raw('SHOW TABLES');
-  const tableNames = tables[0].map(row => Object.values(row)[0]);
+  const tables = await db.raw('SELECT tablename AS table_name FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename');
+  // node-postgres returns { rows }; mysql2 returned [rows, fields].
+  const tableNames = tables.rows.map(row => row.table_name);
   for (const table of tableNames) {
-    await db.raw(`OPTIMIZE TABLE ${table}`);
+    // MySQL's OPTIMIZE TABLE has no direct equivalent.  VACUUM (ANALYZE) is the
+    // PostgreSQL equivalent of "reclaim space and refresh planner statistics",
+    // and unlike VACUUM FULL it does not take an exclusive lock.  The name is
+    // bound as an identifier with ?? rather than interpolated, so a table name
+    // can never be read as SQL.
+    await db.raw('VACUUM (ANALYZE) ??', [table]);
   }
   return tableNames.length;
 };
 const getDatabaseStatus = async () => {
-  const status = await db.raw('SHOW STATUS LIKE "Threads_connected"');
-  const variables = await db.raw('SHOW VARIABLES LIKE "max_connections"');
-  const tableSizes = await db.raw(`
-    SELECT 
+  const status = await db.raw('SELECT count(*)::bigint AS value FROM pg_stat_activity');
+  const variables = await db.raw('SELECT name, setting AS value FROM pg_settings ORDER BY name');
+  const tableSizes = await db.raw(`SELECT 
       table_name,
-      ROUND(((data_length + index_length) / 1024 / 1024), 2) AS size_mb
+      ROUND((pg_total_relation_size(format('%I.%I', table_schema, table_name)::regclass) / 1024 / 1024), 2) AS size_mb
     FROM information_schema.TABLES
-    WHERE table_schema = DATABASE()
-    ORDER BY (data_length + index_length) DESC
-  `);
-  const totalSize = tableSizes[0].reduce((sum, t) => sum + (t.size_mb * 1024 * 1024), 0);
+    WHERE table_schema = current_schema()
+    ORDER BY pg_total_relation_size(format('%I.%I', table_schema, table_name)::regclass) DESC`);
+  const totalSize = tableSizes.rows.reduce((sum, t) => sum + (t.size_mb * 1024 * 1024), 0);
   return {
     connections: {
-      current: parseInt(status[0][0].Value),
-      max: parseInt(variables[0][0].Value)
+      current: parseInt(status.rows[0].value),
+      max: parseInt(variables.rows[0].value)
     },
-    tableSizes: tableSizes[0],
+    tableSizes: tableSizes.rows,
     totalSize: formatBytes(totalSize)
   };
 };
 const getDatabaseSize = async () => {
-  const result = await db.raw(`
-    SELECT SUM(data_length + index_length) AS size
+  const result = await db.raw(`SELECT SUM(pg_total_relation_size(format('%I.%I', table_schema, table_name)::regclass)) AS size
     FROM information_schema.TABLES
-    WHERE table_schema = DATABASE()
-  `);
-  return result[0][0].size || 0;
+    WHERE table_schema = current_schema()`);
+  return result.rows[0].size || 0;
+
 };
 const formatBytes = (bytes) => {
   if (bytes === 0) return '0 Bytes';
@@ -404,8 +407,8 @@ const getDashboardStats = async () => {
   const userStats = await db('users')
     .select(
       db.raw('COUNT(*) as total'),
-      db.raw('SUM(CASE WHEN status = "active" THEN 1 ELSE 0 END) as active'),
-      db.raw('SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as new_today')
+      db.raw('SUM(CASE WHEN status = \'active\' THEN 1 ELSE 0 END) as active'),
+      db.raw('SUM(CASE WHEN (created_at)::date = CURRENT_DATE THEN 1 ELSE 0 END) as new_today')
     )
     .whereNull('deleted_at')
     .first();
@@ -492,14 +495,14 @@ const getAdminCoverage = async () => {
    ════════════════════════════════════════════ */
 const requestElevation = async (userId, tier, duration, reason, ticketRef) => {
   const expiresAt = new Date(Date.now() + duration * 60000);
-  const { insertId } = await db('admin_elevations').insert({
+  const [{ id: insertId }] = await db('admin_elevations').insert({
     user_id: userId,
     target_tier: tier,
     duration_minutes: duration,
     reason, ticket_ref: ticketRef,
     status: 'pending', expires_at: expiresAt,
     created_at: db.fn.now()
-  });
+  }).returning('id');
   return { id: insertId, status: 'pending', expiresAt };
 };
 const getActiveElevations = async () => {
@@ -531,10 +534,10 @@ const getElevationHistory = async () => {
 const activateBreakGlass = async (userId, reason, coApproverId) => {
   const active = await db('break_glass_events').whereNull('deactivated_at').first();
   if (active) throw new AppError('Break-glass already active', 409);
-  const { insertId } = await db('break_glass_events').insert({
+  const [{ id: insertId }] = await db('break_glass_events').insert({
     activated_by: userId, reason, co_approver_id: coApproverId,
     activated_at: db.fn.now(), expires_at: new Date(Date.now() + 4 * 3600000)
-  });
+  }).returning('id');
   return { id: insertId, status: 'active' };
 };
 const deactivateBreakGlass = async (userId) => {
@@ -559,7 +562,7 @@ const getSodRules = async () => {
   return await db('sod_rules').orderBy('severity', 'desc');
 };
 const createSodRule = async (data) => {
-  const { insertId } = await db('sod_rules').insert(data);
+  const [{ id: insertId }] = await db('sod_rules').insert(data).returning('id');
   return { id: insertId, ...data };
 };
 const updateSodRule = async (id, data) => {
@@ -604,7 +607,7 @@ const getCertificationList = async () => {
     .orderBy('access_certifications.created_at', 'desc');
 };
 const createCertification = async (data) => {
-  const { insertId } = await db('access_certifications').insert({ ...data, status: 'in_progress', created_at: db.fn.now() });
+  const [{ id: insertId }] = await db('access_certifications').insert({ ...data, status: 'in_progress', created_at: db.fn.now() }).returning('id');
   return { id: insertId, ...data, status: 'in_progress' };
 };
 const getCertificationById = async (id) => {
@@ -646,7 +649,7 @@ const getDormantAccounts = async () => {
   return await db('users')
     .leftJoin('user_statuses', 'users.status_id', 'user_statuses.id')
     .select('users.id', 'users.full_name', 'users.email', 'users.last_login')
-    .where('users.last_login', '<', db.raw('DATE_SUB(NOW(), INTERVAL 90 DAY)'))
+    .where('users.last_login', '<', db.raw('(LOCALTIMESTAMP) - INTERVAL \'90 days\''))
     .orWhereNull('users.last_login');
 };
 const disableDormantAccount = async (id) => {
@@ -690,7 +693,7 @@ const getSessionAnomalies = async () => {
   return await db('user_sessions')
     .leftJoin('users', 'user_sessions.user_id', 'users.id')
     .select('user_sessions.*', 'users.full_name', 'users.email')
-    .whereRaw('(ip_address NOT LIKE "192.168.%" AND ip_address NOT LIKE "10.%" AND ip_address NOT LIKE "172.16.%")')
+    .whereRaw('(ip_address NOT LIKE \'192.168.%\' AND ip_address NOT LIKE \'10.%\' AND ip_address NOT LIKE \'172.16.%\')')
     .orWhereRaw('TIMESTAMPDIFF(HOUR, created_at, last_activity) > 8')
     .orderBy('user_sessions.created_at', 'desc')
     .limit(50);
@@ -703,7 +706,7 @@ const getSingleRoles = async () => {
   return await db('single_roles').orderBy('module', 'asc');
 };
 const createSingleRole = async (data) => {
-  const { insertId } = await db('single_roles').insert(data);
+  const [{ id: insertId }] = await db('single_roles').insert(data).returning('id');
   return { id: insertId, ...data };
 };
 const updateSingleRole = async (id, data) => {
@@ -719,7 +722,7 @@ const getCompositeRoles = async () => {
 };
 const createCompositeRole = async (data) => {
   const { name, description, singleRoleIds } = data;
-  const { insertId } = await db('composite_roles').insert({ name, description });
+  const [{ id: insertId }] = await db('composite_roles').insert({ name, description }).returning('id');
   for (const srId of singleRoleIds) {
     await db('composite_role_mappings').insert({ composite_role_id: insertId, single_role_id: srId });
   }
@@ -759,7 +762,7 @@ const getServiceAccounts = async () => {
 };
 const createServiceAccount = async (data) => {
   const secret = require('crypto').randomBytes(32).toString('hex');
-  const { insertId } = await db('service_accounts').insert({ ...data, secret_hash: require('../config/auth').hashPassword(secret), created_at: db.fn.now() });
+  const [{ id: insertId }] = await db('service_accounts').insert({ ...data, secret_hash: require('../config/auth').hashPassword(secret), created_at: db.fn.now() }).returning('id');
   return { id: insertId, secret, message: 'Save this secret — it will not be shown again' };
 };
 const rotateServiceAccountSecret = async (id) => {
@@ -830,7 +833,7 @@ const getDelegatedNodes = async () => {
   return { nodes, assignments };
 };
 const createDelegatedNode = async (data) => {
-  const { insertId } = await db('delegated_nodes').insert(data);
+  const [{ id: insertId }] = await db('delegated_nodes').insert(data).returning('id');
   return { id: insertId, ...data };
 };
 const assignDelegatedAdmin = async (nodeId, adminId, capability) => {
@@ -850,11 +853,11 @@ const getEvidenceList = async () => {
     .orderBy('generated_at', 'desc');
 };
 const generateEvidence = async (type, periodStart, periodEnd) => {
-  const { insertId } = await db('compliance_evidence').insert({
+  const [{ id: insertId }] = await db('compliance_evidence').insert({
     type, period_start: periodStart, period_end: periodEnd,
     status: 'ready', generated_at: db.fn.now(),
     file_path: `/evidence/${type}_${Date.now()}.pdf`
-  });
+  }).returning('id');
   return { id: insertId, type, periodStart, periodEnd, status: 'ready' };
 };
 const downloadEvidence = async (id) => {
@@ -873,7 +876,7 @@ const getVendorAccessList = async () => {
     .orderBy('vendor_access.created_at', 'desc');
 };
 const onboardVendor = async (data) => {
-  const { insertId } = await db('vendor_access').insert({ ...data, status: 'active', created_at: db.fn.now() });
+  const [{ id: insertId }] = await db('vendor_access').insert({ ...data, status: 'active', created_at: db.fn.now() }).returning('id');
   return { id: insertId, ...data, status: 'active' };
 };
 const extendVendorAccess = async (id, newEndDate) => {
@@ -905,14 +908,14 @@ const getDRStatus = async () => {
   try {
     await db.raw('SELECT 1');
     dbConnected = true;
-    const tables = await db.raw("SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = DATABASE()");
-    tableCount = parseInt(tables[0][0].count) || 0;
-    const sizeRow = await db.raw("SELECT SUM(data_length + index_length) AS size FROM information_schema.tables WHERE table_schema = DATABASE()");
-    totalSizeBytes = parseInt(sizeRow[0][0].size) || 0;
-    const status = await db.raw('SHOW STATUS LIKE "Threads_connected"');
-    const variables = await db.raw('SHOW VARIABLES LIKE "max_connections"');
-    connections.current = parseInt(status[0][0].Value) || 0;
-    connections.max = parseInt(variables[0][0].Value) || null;
+    const tables = await db.raw('SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = current_schema()');
+    tableCount = parseInt(tables.rows[0].count) || 0;
+    const sizeRow = await db.raw('SELECT SUM(pg_total_relation_size(format(\'%I.%I\', table_schema, table_name)::regclass)) AS size FROM information_schema.tables WHERE table_schema = current_schema()');
+    totalSizeBytes = parseInt(sizeRow.rows[0].size) || 0;
+    const status = await db.raw('SELECT count(*)::bigint AS value FROM pg_stat_activity');
+    const variables = await db.raw('SELECT name, setting AS value FROM pg_settings ORDER BY name');
+    connections.current = parseInt(status.rows[0].value) || 0;
+    connections.max = parseInt(variables.rows[0].value) || null;
   } catch (e) { /* database unreachable — keep defaults */ }
 
   const backupDir = process.env.BACKUP_PATH || './backups';
@@ -1003,7 +1006,7 @@ const formatUptime = (seconds) => {
   return `${m}m`;
 };
 const initiateDRTest = async () => {
-  const { insertId } = await db('dr_tests').insert({ status: 'in_progress', created_at: db.fn.now() });
+  const [{ id: insertId }] = await db('dr_tests').insert({ status: 'in_progress', created_at: db.fn.now() }).returning('id');
   return { id: insertId, status: 'in_progress' };
 };
 const completeDRTest = async (id, result, notes) => {
@@ -1032,7 +1035,7 @@ const getDidDoAnalysis = async () => {
     .leftJoin('user_roles', 'users.id', 'user_roles.user_id')
     .select('users.id', 'users.full_name',
       db.raw('COUNT(DISTINCT user_roles.role_id) as assigned_role_count'),
-      db.raw('(SELECT COUNT(*) FROM audit_logs WHERE audit_logs.user_id = users.id AND created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)) as actions_30d')
+      db.raw('(SELECT COUNT(*) FROM audit_logs WHERE audit_logs.user_id = users.id AND created_at > (LOCALTIMESTAMP) - INTERVAL \'30 days\') as actions_30d')
     )
     .groupBy('users.id')
     .orderBy('actions_30d', 'desc')

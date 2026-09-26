@@ -14,14 +14,12 @@ const getOverdueCustomers = async () => {
   try {
     const overdueCustomers = await db('customers')
       .where('current_balance', '>', 0)
-      .whereRaw(`
-        EXISTS (
+      .whereRaw(`EXISTS (
           SELECT 1 FROM pos_sales 
           WHERE customer_id = customers.id 
           AND status = 'Completed'
-          AND sale_date < DATE_SUB(NOW(), INTERVAL 30 DAY)
-        )
-      `)
+          AND sale_date < (LOCALTIMESTAMP) - INTERVAL '30 days'
+        )`)
       .whereNull('deleted_at')
       .select(
         'id',

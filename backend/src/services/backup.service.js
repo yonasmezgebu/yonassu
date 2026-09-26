@@ -1,4 +1,4 @@
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const util = require('util');
 const fs = require('fs');
 const path = require('path');
@@ -9,7 +9,7 @@ const config = require('../config/env');
 const { db } = require('../config/database');
 const { logger } = require('../config/logger');
 const { sendEmail } = require('./email.service');
-const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 const BACKUP_CONFIG = {
   path: config.backup.path || './backups',
   retentionDays: config.backup.retentionDays || 30,
@@ -45,12 +45,39 @@ const createBackup = async () => {
       password: config.database.password,
       database: config.database.database
     };
-    // Create mysqldump command
-    const dumpCommand = `mysqldump -h ${dbConfig.host} -P ${dbConfig.port} -u ${dbConfig.user} -p${dbConfig.password} ${dbConfig.database} --single-transaction --routines --triggers --events`;
+    // pg_dump, invoked with an argv array and no shell.
+    //
+    // Two deliberate changes from the MySQL version:
+    //   - The password goes through PGPASSWORD in the child environment rather
+    //     than `-p<password>` on the command line, where any local user could
+    //     read it out of the process list.
+    //   - No shell, so a value in the config can never be interpreted as shell
+    //     syntax.
+    // `--single-transaction` means the same thing in both tools.  Triggers,
+    // functions and procedures are included by default by pg_dump; MySQL's
+    // --routines/--triggers/--events have no pg_dump equivalent (PostgreSQL
+    // has no scheduled events).
+    const dumpArgs = [
+      '-h', String(dbConfig.host),
+      '-p', String(dbConfig.port),
+      '-U', String(dbConfig.user),
+      '-d', String(dbConfig.database),
+      '--single-transaction',
+      '--no-owner',
+      '--no-privileges',
+      '--format=plain',
+    ];
     // Execute backup
-    const { stdout, stderr } = await execPromise(dumpCommand);
-    if (stderr && !stderr.includes('Warning')) {
-      throw new Error(`MySQL dump error: ${stderr}`);
+    const { stdout, stderr } = await execFilePromise('pg_dump', dumpArgs, {
+      env: { ...process.env, PGPASSWORD: String(dbConfig.password) },
+      maxBuffer: 1024 * 1024 * 512,
+    });
+    if (stderr && stderr.trim()) {
+      // pg_dump writes advisory notices to stderr even on success.
+      logger.warn(`pg_dump notices: ${stderr.trim()}`);
+    }
+    if (!stdout || !stdout.trim()) {
+      throw new Error('pg_dump produced an empty dump');
     }
     fs.writeFileSync(tempSqlPath, stdout);
     logger.info(`SQL dump created: ${tempSqlPath}`);
@@ -226,8 +253,22 @@ const restoreBackup = async (filename) => {
       password: config.database.password,
       database: config.database.database
     };
-    const restoreCommand = `mysql -h ${dbConfig.host} -P ${dbConfig.port} -u ${dbConfig.user} -p${dbConfig.password} ${dbConfig.database} < ${sqlFilePath}`;
-    await execPromise(restoreCommand);
+    // psql -f feeds the dump straight in, so there is no shell redirection and
+    // no need for the password to appear in the process list.  ON_ERROR_STOP
+    // makes psql exit non-zero on the first failing statement instead of
+    // carrying on and reporting success on a half-restored database.
+    const restoreArgs = [
+      '-h', String(dbConfig.host),
+      '-p', String(dbConfig.port),
+      '-U', String(dbConfig.user),
+      '-d', String(dbConfig.database),
+      '-v', 'ON_ERROR_STOP=1',
+      '-f', sqlFilePath,
+    ];
+    await execFilePromise('psql', restoreArgs, {
+      env: { ...process.env, PGPASSWORD: String(dbConfig.password) },
+      maxBuffer: 1024 * 1024 * 64,
+    });
     if (sqlFilePath !== filePath && fs.existsSync(sqlFilePath)) {
       fs.unlinkSync(sqlFilePath);
     }

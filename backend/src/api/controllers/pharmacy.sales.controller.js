@@ -909,7 +909,7 @@ const salesController = {
         'ped.id', 'ped.drug_name', 'ped.quantity', 'ped.expiry_date',
         'ped.location', 'ped.action_required', 'ped.status',
         'ped.requested_by', 'ped.ceo_notes', 'ped.created_at', 'ped.updated_at',
-        db.raw('COALESCE(u.full_name, "Unknown") as requested_by_name')
+        db.raw('COALESCE(u.full_name, \'Unknown\') as requested_by_name')
       )
       .orderBy('ped.created_at', 'desc');
 

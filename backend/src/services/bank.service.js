@@ -94,7 +94,7 @@ const initiatePayment = async (paymentData) => {
     bank_code: bankCode,
     status: 'pending',
     created_at: db.fn.now(),
-    expires_at: db.raw('DATE_ADD(NOW(), INTERVAL 30 MINUTE)')
+    expires_at: db.raw('(LOCALTIMESTAMP) + INTERVAL \'30 minutes\'')
   });
   let redirectUrl;
   let transactionId;
@@ -305,8 +305,8 @@ const getPayments = async (filters) => {
     .select(
       db.raw('SUM(amount) as total_amount'),
       db.raw('COUNT(*) as total_count'),
-      db.raw('SUM(CASE WHEN status = "completed" THEN amount ELSE 0 END) as completed_amount'),
-      db.raw('SUM(CASE WHEN status = "failed" THEN amount ELSE 0 END) as failed_amount')
+      db.raw('SUM(CASE WHEN status = \'completed\' THEN amount ELSE 0 END) as completed_amount'),
+      db.raw('SUM(CASE WHEN status = \'failed\' THEN amount ELSE 0 END) as failed_amount')
     )
     .first();
   return {
@@ -351,18 +351,18 @@ const getBankStatus = () => {
 };
 const getPaymentStats = async (days = 30) => {
   const stats = await db('bank_payments')
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .select(
       db.raw('COUNT(*) as total'),
-      db.raw('SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed'),
-      db.raw('SUM(CASE WHEN status = "failed" THEN 1 ELSE 0 END) as failed'),
-      db.raw('SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending'),
+      db.raw('SUM(CASE WHEN status = \'completed\' THEN 1 ELSE 0 END) as completed'),
+      db.raw('SUM(CASE WHEN status = \'failed\' THEN 1 ELSE 0 END) as failed'),
+      db.raw('SUM(CASE WHEN status = \'pending\' THEN 1 ELSE 0 END) as pending'),
       db.raw('SUM(amount) as total_amount'),
-      db.raw('SUM(CASE WHEN status = "completed" THEN amount ELSE 0 END) as completed_amount')
+      db.raw('SUM(CASE WHEN status = \'completed\' THEN amount ELSE 0 END) as completed_amount')
     )
     .first();
   const byBank = await db('bank_payments')
-    .where('created_at', '>=', db.raw(`DATE_SUB(NOW(), INTERVAL ${days} DAY)`))
+    .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
     .select('bank_code', db.raw('COUNT(*) as count'), db.raw('SUM(amount) as total_amount'))
     .groupBy('bank_code');
   return {

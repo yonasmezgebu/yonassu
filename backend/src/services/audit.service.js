@@ -154,10 +154,10 @@ const getUserActivitySummary = async (userId, days = 30) => {
     .where('user_id', userId)
     .where('created_at', '>=', startDate)
     .select(
-      db.raw('DATE(created_at) as date'),
+      db.raw('(created_at)::date as date'),
       db.raw('COUNT(*) as count'),
-      db.raw('COUNT(CASE WHEN status = "success" THEN 1 END) as success_count'),
-      db.raw('COUNT(CASE WHEN status = "failure" THEN 1 END) as failure_count')
+      db.raw('COUNT(CASE WHEN status = \'success\' THEN 1 END) as success_count'),
+      db.raw('COUNT(CASE WHEN status = \'failure\' THEN 1 END) as failure_count')
     )
     .groupByRaw('DATE(created_at)')
     .orderBy('date', 'desc');
@@ -201,8 +201,8 @@ const getSystemAuditSummary = async (days = 7) => {
   const successRate = await db('audit_logs')
     .where('created_at', '>=', startDate)
     .select(
-      db.raw('SUM(CASE WHEN status = "success" THEN 1 ELSE 0 END) as success'),
-      db.raw('SUM(CASE WHEN status = "failure" THEN 1 ELSE 0 END) as failure')
+      db.raw('SUM(CASE WHEN status = \'success\' THEN 1 ELSE 0 END) as success'),
+      db.raw('SUM(CASE WHEN status = \'failure\' THEN 1 ELSE 0 END) as failure')
     )
     .first();
   const topUsers = await db('audit_logs')
@@ -221,7 +221,7 @@ const getSystemAuditSummary = async (days = 7) => {
   const hourlyPattern = await db('audit_logs')
     .where('created_at', '>=', startDate)
     .select(
-      db.raw('HOUR(created_at) as hour'),
+      db.raw('EXTRACT(HOUR FROM created_at) as hour'),
       db.raw('COUNT(*) as count')
     )
     .groupByRaw('HOUR(created_at)')

@@ -1291,13 +1291,13 @@ exports.getPrintingStatistics = catchAsync(async (req, res) => {
     .groupBy('po.status_id', 'os.status_name', 'os.status_code', 'os.color_hex');
   const monthlyRevenue = await db('printing_orders')
     .select(
-      db.raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+      db.raw('to_char(created_at, \'YYYY-MM\') as month'),
       db.raw('SUM(total_price) as revenue'),
       db.raw('COUNT(*) as order_count')
     )
     .whereNull('deleted_at')
     .where('status_id', '!=', (await db('order_statuses').where('status_code', 'received').first())?.id)
-    .groupBy(db.raw('DATE_FORMAT(created_at, "%Y-%m")'))
+    .groupBy(db.raw('to_char(created_at, \'YYYY-MM\')'))
     .orderBy('month', 'desc')
     .limit(6);
   const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
@@ -1668,7 +1668,7 @@ exports.closeShift = catchAsync(async (req, res) => {
   const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
   const sales = await db('printing_orders')
     .where('status_id', deliveredStatus?.id || 8)
-    .whereRaw('DATE(created_at) = ?', [today]);
+    .whereRaw('(created_at)::date = ?', [today]);
   const totalSales = sales.reduce((sum, o) => sum + parseFloat(o.total_price), 0);
   const financeUser = await db('users').join('user_roles', 'users.id', 'user_roles.user_id').join('roles', 'user_roles.role_id', 'roles.id').where('roles.name', 'Finance').first() || { user_id: 3 };
   const [handoverId] = await db('cash_handovers').insert({

@@ -52,7 +52,7 @@ const getSalesByPeriod = async (startDate, endDate, groupBy = 'day') => {
   }
   const sales = await db('pos_sales')
     .select(
-      db.raw(`DATE_FORMAT(sale_date, '${dateFormat}') as period`),
+      db.raw(`to_char(sale_date, '${dateFormat}') as period`),
       db.raw('COUNT(*) as order_count'),
       db.raw('SUM(total_amount) as total_revenue'),
       db.raw('SUM(tax_amount) as total_tax'),
@@ -221,7 +221,7 @@ const getPrintingRevenueReport = async (startDate, endDate, groupBy = 'month') =
   }
   const revenue = await db('printing_orders')
     .select(
-      db.raw(`DATE_FORMAT(created_at, '${dateFormat}') as period`),
+      db.raw(`to_char(created_at, '${dateFormat}') as period`),
       db.raw('SUM(total_price) as revenue'),
       db.raw('COUNT(*) as order_count'),
       db.raw('AVG(total_price) as avg_order_value')
@@ -319,12 +319,12 @@ const getExpiringProductsReport = async (days = 30) => {
       'p.expiry_date',
       'u.abbreviation as unit',
       db.raw('COALESCE(i.quantity, 0) as current_stock'),
-      db.raw('DATEDIFF(p.expiry_date, CURDATE()) as days_until_expiry')
+      db.raw('((p.expiry_date)::date - (CURRENT_DATE)::date) as days_until_expiry')
     )
     .whereNull('p.deleted_at')
     .where('p.is_active', true)
     .whereNotNull('p.expiry_date')
-    .whereRaw('DATEDIFF(p.expiry_date, CURDATE()) <= ?', [days])
+    .whereRaw('((p.expiry_date)::date - (CURRENT_DATE)::date) <= ?', [days])
     .orderBy('days_until_expiry', 'asc');
   const expiringSoon = products.filter(p => p.days_until_expiry <= 7);
   const expiringLater = products.filter(p => p.days_until_expiry > 7 && p.days_until_expiry <= 30);
@@ -667,7 +667,7 @@ const getKPIReport = async (period = 'month') => {
   const avgFulfillment = await db('printing_orders')
     .whereNotNull('completed_at')
     .whereBetween('created_at', [startDate, endDate])
-    .select(db.raw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours'))
+    .select(db.raw('AVG((EXTRACT(EPOCH FROM ((completed_at)::timestamp - (created_at)::timestamp)) / 3600)) as avg_hours'))
     .first();
   return {
     period,
@@ -739,9 +739,9 @@ const getBankReconciliation = async (asOfDate = null, bankCode = null) => {
       'bank_code',
       db.raw('COUNT(*) as total_count'),
       db.raw('SUM(amount) as total_amount'),
-      db.raw('SUM(CASE WHEN status = "completed" THEN amount ELSE 0 END) as settled_amount'),
-      db.raw('SUM(CASE WHEN status = "pending" THEN amount ELSE 0 END) as outstanding_amount'),
-      db.raw('SUM(CASE WHEN status = "failed" THEN amount ELSE 0 END) as failed_amount')
+      db.raw('SUM(CASE WHEN status = \'completed\' THEN amount ELSE 0 END) as settled_amount'),
+      db.raw('SUM(CASE WHEN status = \'pending\' THEN amount ELSE 0 END) as outstanding_amount'),
+      db.raw('SUM(CASE WHEN status = \'failed\' THEN amount ELSE 0 END) as failed_amount')
     )
     .groupBy('bank_code');
   if (bankCode) {

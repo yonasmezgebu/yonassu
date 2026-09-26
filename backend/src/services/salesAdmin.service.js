@@ -194,7 +194,7 @@ const getCustomerLoyalty = async (customerId) => {
 
   const annualSpend = await db('pos_sales')
     .where('customer_id', customerId)
-    .whereRaw('YEAR(created_at) = YEAR(CURDATE())')
+    .whereRaw('EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)')
     .sum('total_amount as total').first();
 
   const annualValue = parseFloat(annualSpend?.total || 0);
@@ -232,7 +232,7 @@ const earnPoints = async (customerId, saleId, totalAmount, multiplier = 1) => {
     type: 'earned',
     reference_type: 'sale',
     reference_id: saleId,
-    expires_at: db.raw('DATE_ADD(NOW(), INTERVAL 12 MONTH)'),
+    expires_at: db.raw('(LOCALTIMESTAMP) + INTERVAL \'12 months\''),
     notes: `Earned from sale INV-${saleId}`
   });
   await db('customers').where('id', customerId).increment('total_lifetime_value', totalAmount);
@@ -259,7 +259,7 @@ const redeemPoints = async (customerId, pointsToRedeem, saleId) => {
 const updateCustomerTier = async (customerId) => {
   const annualSpend = await db('pos_sales')
     .where('customer_id', customerId)
-    .whereRaw('YEAR(created_at) = YEAR(CURDATE())')
+    .whereRaw('EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)')
     .sum('total_amount as total').first();
   const value = parseFloat(annualSpend?.total || 0);
   let bestTier = null;
@@ -358,7 +358,7 @@ const createQuotation = async (data, userId) => {
     customer_id: data.customer_id,
     opportunity_id: data.opportunity_id || null,
     subtotal, tax_amount: taxAmount, total_amount: total,
-    valid_until: data.valid_until || db.raw('DATE_ADD(NOW(), INTERVAL 30 DAY)'),
+    valid_until: data.valid_until || db.raw('(LOCALTIMESTAMP) + INTERVAL \'30 days\''),
     terms_conditions: data.terms_conditions,
     notes: data.notes,
     created_by: userId,
@@ -513,10 +513,10 @@ const getSalesTargets = async (filters = {}) => {
 const updateTargetAchievement = async () => {
   const targets = await db('sales_targets')
     .where('target_date', '<=', db.fn.now())
-    .whereRaw("DATE_FORMAT(target_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')");
+    .whereRaw('to_char(target_date, \'YYYY-MM\') = to_char(LOCALTIMESTAMP, \'YYYY-MM\')');
   for (const t of targets) {
     const achieved = await db('pos_sales')
-      .whereRaw('MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())')
+      .whereRaw('EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM LOCALTIMESTAMP) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM LOCALTIMESTAMP)')
       .where(function () {
         if (t.user_id) this.where('cashier_id', t.user_id);
       })
@@ -531,37 +531,37 @@ const updateTargetAchievement = async () => {
 // 7. SALES DASHBOARD / REPORTS
 // =========================================================
 const getSalesDashboard = async (businessUnitId = null) => {
-  const todayStart = db.raw("CURDATE()");
-  const monthStart = db.raw("DATE_FORMAT(CURDATE(), '%Y-%m-01')");
+  const todayStart = db.raw('CURRENT_DATE');
+  const monthStart = db.raw('to_char(CURRENT_DATE, \'YYYY-MM-01\')');
 
   const todaySales = await db('pos_sales')
-    .whereRaw('DATE(created_at) = CURDATE()')
+    .whereRaw('(created_at)::date = CURRENT_DATE')
     .where(function () { if (businessUnitId) this.where('business_unit_id', businessUnitId); })
     .sum('total_amount as total').count('id as count').first();
 
   const monthSales = await db('pos_sales')
-    .whereRaw('MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())')
+    .whereRaw('EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM LOCALTIMESTAMP) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM LOCALTIMESTAMP)')
     .where(function () { if (businessUnitId) this.where('business_unit_id', businessUnitId); })
     .sum('total_amount as total').count('id as count').first();
 
   const topProducts = await db('pos_items as pi')
     .join('pos_sales as ps', 'pi.sale_id', 'ps.id')
     .join('products as p', 'pi.product_id', 'p.id')
-    .whereRaw('DATE(ps.created_at) = CURDATE()')
+    .whereRaw('(ps.created_at)::date = CURRENT_DATE')
     .groupBy('pi.product_id', 'p.name')
     .select('p.name', db.raw('SUM(pi.quantity) as qty'), db.raw('SUM(pi.line_total) as revenue'))
     .orderBy('qty', 'desc').limit(10);
 
   const paymentBreakdown = await db('pos_sales')
-    .whereRaw('DATE(created_at) = CURDATE()')
+    .whereRaw('(created_at)::date = CURRENT_DATE')
     .groupBy('payment_method_id')
     .select('payment_method_id', db.raw('COUNT(*) as count'), db.raw('SUM(total_amount) as total'))
     .where(function () { if (businessUnitId) this.where('business_unit_id', businessUnitId); });
 
   const hourlySales = await db('pos_sales')
-    .whereRaw('DATE(created_at) = CURDATE()')
-    .groupBy(db.raw("HOUR(created_at)"))
-    .select(db.raw("HOUR(created_at) as hour"), db.raw('COUNT(*) as count'), db.raw('SUM(total_amount) as total'))
+    .whereRaw('(created_at)::date = CURRENT_DATE')
+    .groupBy(db.raw('EXTRACT(HOUR FROM created_at)'))
+    .select(db.raw('EXTRACT(HOUR FROM created_at) as hour'), db.raw('COUNT(*) as count'), db.raw('SUM(total_amount) as total'))
     .where(function () { if (businessUnitId) this.where('business_unit_id', businessUnitId); })
     .orderBy('hour');
 

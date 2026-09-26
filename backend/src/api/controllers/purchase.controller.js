@@ -142,7 +142,7 @@ exports.createSupplier = catchAsync(async (req, res) => {
   if (existing) {
     throw new AppError('Supplier with this name already exists', 400);
   }
-  const [supplierId] = await db('suppliers').insert({
+  const [{ id: supplierId }] = await db('suppliers').insert({
     name,
     contact_person: contactPerson,
     phone,
@@ -154,7 +154,7 @@ exports.createSupplier = catchAsync(async (req, res) => {
     bank_account: bankAccount || null,
     is_active: true,
     created_at: db.fn.now()
-  });
+  }).returning('id');
   await audit('SUPPLIER_CREATED', userId, {
     ip,
     details: { name, contactPerson, email }
@@ -464,7 +464,7 @@ exports.createPurchaseOrder = catchAsync(async (req, res) => {
   const draftStatus = await db('po_statuses').where('status_code', 'draft').first();
   const poNumber = await generatePONumber();
   const result = await transaction(async (trx) => {
-    const [poId] = await trx('purchase_orders').insert({
+    const [{ id: poId }] = await trx('purchase_orders').insert({
       po_number: poNumber,
       supplier_id: supplierId || 1,
       order_date: db.fn.now(),
@@ -478,7 +478,7 @@ exports.createPurchaseOrder = catchAsync(async (req, res) => {
       notes: notes || null,
       created_by: userId,
       created_at: db.fn.now()
-    });
+    }).returning('id');
 
     // If created by a Store Worker, insert a notification for the Purchase department (if notifications table exists)
     if (req.user.roles && req.user.roles.includes('Store Worker')) {
@@ -932,14 +932,14 @@ exports.registerReceiving = catchAsync(async (req, res) => {
             const defaultCat = await trx('product_categories').first() || { id: 1 };
             const defaultUnit = await trx('units').first() || { id: 1 };
             
-            const [insertId] = await trx('products').insert({
+            const [{ id: insertId }] = await trx('products').insert({
               name: poItem.product_name,
               sku: `PO-${poId}-ITEM-${item.poItemId}-${Date.now().toString().slice(-4)}`,
               category_id: defaultCat.id,
               unit_id: defaultUnit.id,
               selling_price: poItem.unit_price * 1.5,
               is_active: true
-            });
+            }).returning('id');
             productId = insertId;
           }
           
@@ -1020,14 +1020,14 @@ exports.registerReceiving = catchAsync(async (req, res) => {
       .count('id as count')
       .first();
     const grnNumber = `GRN-${purchaseOrder.po_number}-${(grnCount.count || 0) + 1}`;
-    const [grnId] = await trx('goods_receipt_notes').insert({
+    const [{ id: grnId }] = await trx('goods_receipt_notes').insert({
       grn_number: grnNumber,
       po_id: poId,
       received_date: db.fn.now(),
       received_by: userId,
       receiving_note: receivingNote || null,
       status: allReceived && anyReceived ? 'completed' : 'partial'
-    });
+    }).returning('id');
 
     for (const item of items) {
       const poItem = await trx('po_items').where('id', item.poItemId).first();
@@ -1120,7 +1120,7 @@ exports.getGRNDetail = catchAsync(async (req, res) => {
 });
 
 exports.getPurchaseStatistics = catchAsync(async (req, res) => {
-  const startOfMonth = db.raw('DATE_FORMAT(NOW(), "%Y-%m-01")');
+  const startOfMonth = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-MM-01\')');
   const monthlyPOs = await db('purchase_orders')
     .where('created_at', '>=', startOfMonth)
     .count('id as count')
@@ -1135,7 +1135,7 @@ exports.getPurchaseStatistics = catchAsync(async (req, res) => {
       .first();
   }
   
-  const startOfYear = db.raw('DATE_FORMAT(NOW(), "%Y-01-01")');
+  const startOfYear = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-01-01\')');
   const totalSpend = await db('purchase_orders')
     .where('created_at', '>=', startOfYear)
     .sum('total_amount as total')

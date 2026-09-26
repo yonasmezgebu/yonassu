@@ -17,7 +17,7 @@ exports.getDailySalesReport = catchAsync(async (req, res) => {
       'users.full_name as cashier_name',
       'sale_statuses.status_name as status_name'
     )
-    .whereRaw('DATE(pos_sales.sale_date) = ?', [date])
+    .whereRaw('(pos_sales.sale_date)::date = ?', [date])
     .where('pos_sales.status_id', 1)
     .orderBy('pos_sales.sale_date', 'desc');
   const summary = {
@@ -66,7 +66,7 @@ exports.getSalesByPeriod = catchAsync(async (req, res) => {
   }
   const sales = await db('pos_sales')
     .select(
-      db.raw(`DATE_FORMAT(sale_date, '${dateFormat}') as period`),
+      db.raw(`to_char(sale_date, '${dateFormat}') as period`),
       db.raw('COUNT(*) as order_count'),
       db.raw('SUM(total_amount) as total_revenue'),
       db.raw('SUM(tax_amount) as total_tax'),

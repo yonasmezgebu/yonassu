@@ -345,7 +345,7 @@ exports.getCEOHROverview = catchAsync(async (req, res) => {
   const deptBreakdown = await db('hr_employees as e')
     .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
     .select(
-      db.raw('COALESCE(d.dept_name, CONCAT("Dept #", e.dept_id)) as department'),
+      db.raw('COALESCE(d.dept_name, (\'Dept #\' || e.dept_id::text)) as department'),
       db.raw('COUNT(e.employee_id) as count')
     )
     .groupBy('e.dept_id', 'd.dept_name')
@@ -403,8 +403,8 @@ exports.getCEOHROverview = catchAsync(async (req, res) => {
     .select(
       'e.employee_id as id',
       'e.full_name as name',
-      db.raw('COALESCE(d.dept_name, IF(e.dept_id IS NOT NULL, CONCAT("Dept #", e.dept_id), "Unassigned")) as dept'),
-      db.raw('COALESCE(p.position_title, IF(e.position_id IS NOT NULL, CONCAT("Position #", e.position_id), "No Role")) as role'),
+      db.raw('COALESCE(d.dept_name, CASE WHEN (e.dept_id IS NOT NULL) THEN ((\'Dept #\' || e.dept_id::text)) ELSE (\'Unassigned\') END) as dept'),
+      db.raw('COALESCE(p.position_title, CASE WHEN (e.position_id IS NOT NULL) THEN ((\'Position #\' || e.position_id::text)) ELSE (\'No Role\') END) as role'),
       'e.hire_date as hireDate',
       'e.employment_status as status',
       'e.employment_type as empType',
@@ -420,8 +420,8 @@ exports.getCEOHROverview = catchAsync(async (req, res) => {
     .select(
       'e.employee_id as id',
       'e.full_name as name',
-      db.raw('COALESCE(d.dept_name, IF(e.dept_id IS NOT NULL, CONCAT("Dept #", e.dept_id), "Unassigned")) as dept'),
-      db.raw('COALESCE(p.position_title, IF(e.position_id IS NOT NULL, CONCAT("Position #", e.position_id), "No Role")) as role'),
+      db.raw('COALESCE(d.dept_name, CASE WHEN (e.dept_id IS NOT NULL) THEN ((\'Dept #\' || e.dept_id::text)) ELSE (\'Unassigned\') END) as dept'),
+      db.raw('COALESCE(p.position_title, CASE WHEN (e.position_id IS NOT NULL) THEN ((\'Position #\' || e.position_id::text)) ELSE (\'No Role\') END) as role'),
       'e.hire_date as hireDate',
       'e.employment_status as status',
       'e.employment_type as empType',
@@ -984,10 +984,10 @@ exports.getRevenueForecast = catchAsync(async (req, res) => {
   const { months = 6 } = req.query;
   const last12Months = await db('pos_sales')
     .select(
-      db.raw('DATE_FORMAT(sale_date, "%Y-%m") as month'),
+      db.raw('to_char(sale_date, \'YYYY-MM\') as month'),
       db.raw('SUM(total_amount) as revenue')
     )
-    .where('sale_date', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 12 MONTH)'))
+    .where('sale_date', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'12 months\''))
     .where('status_id', 1)
     .groupByRaw('DATE_FORMAT(sale_date, "%Y-%m")')
     .orderBy('month', 'asc');
@@ -1183,7 +1183,7 @@ exports.getFulfillmentMetrics = catchAsync(async (req, res) => {
   const result = await db('printing_orders')
     .where('status_id', 5)
     .whereNotNull('completed_at')
-    .select(db.raw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours'))
+    .select(db.raw('AVG((EXTRACT(EPOCH FROM ((completed_at)::timestamp - (created_at)::timestamp)) / 3600)) as avg_hours'))
     .first();
   const actual = parseFloat(result?.avg_hours || 0);
   const status = getStatusColor(actual, targetHours, true);
@@ -1209,7 +1209,7 @@ exports.getInventoryTurnover = catchAsync(async (req, res) => {
   const targetTurnover = await getTargetSetting('inventory_turnover_target', 4);
   const cogs = await db('inventory_movements')
     .where('transaction_type', 'Sale')
-    .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 1 YEAR)'))
+    .where('created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'1 year\''))
     .select(db.raw('SUM(ABS(quantity_change)) as total_quantity'))
     .first();
   const avgInventory = await db('inventory')
@@ -1610,7 +1610,7 @@ async function generateExecutiveReport(startDate, endDate) {
     .whereBetween('completed_at', [startDate, endDate])
     .whereNotNull('completed_at')
     .where('status_id', 5)
-    .select(db.raw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours'))
+    .select(db.raw('AVG((EXTRACT(EPOCH FROM ((completed_at)::timestamp - (created_at)::timestamp)) / 3600)) as avg_hours'))
     .first();
   const sectors = [
     { name: 'Printing', revenue: parseFloat(printingRevenue?.total || 0) },
@@ -1800,7 +1800,7 @@ async function getCashFlowData(period, days) {
   }
   const inflow = await db('pos_sales')
     .select(
-      db.raw(`DATE_FORMAT(sale_date, '${dateFormat}') as period`),
+      db.raw(`to_char(sale_date, '${dateFormat}') as period`),
       db.raw('SUM(total_amount) as amount')
     )
     .where('sale_date', '>=', startDate)
@@ -1809,7 +1809,7 @@ async function getCashFlowData(period, days) {
     .orderBy('period', 'asc');
   const outflow = await db('expenses')
     .select(
-      db.raw(`DATE_FORMAT(date, '${dateFormat}') as period`),
+      db.raw(`to_char(date, '${dateFormat}') as period`),
       db.raw('SUM(amount) as amount')
     )
     .where('date', '>=', startDate)
@@ -1844,13 +1844,13 @@ async function getPerformanceKPIs() {
   const targetFulfillment = await getTargetSetting('fulfillment_hours_target', 48);
   const actualFulfillmentResult = await db('printing_orders')
     .where('status_id', 5)
-    .select(db.raw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours'))
+    .select(db.raw('AVG((EXTRACT(EPOCH FROM ((completed_at)::timestamp - (created_at)::timestamp)) / 3600)) as avg_hours'))
     .first();
   const actualFulfillment = parseFloat(actualFulfillmentResult?.avg_hours || 0);
   const targetTurnover = await getTargetSetting('inventory_turnover_target', 4);
   const cogs = await db('inventory_movements')
     .where('transaction_type', 'Sale')
-    .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 1 YEAR)'))
+    .where('created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'1 year\''))
     .select(db.raw('SUM(ABS(quantity_change)) as total_quantity'))
     .first();
   const avgInventory = await db('inventory')
@@ -2028,7 +2028,7 @@ async function getRevenueHistorical(startDate, endDate, period) {
   }
   const historical = await db('pos_sales')
     .select(
-      db.raw(`DATE_FORMAT(sale_date, '${groupFormat}') as date`),
+      db.raw(`to_char(sale_date, '${groupFormat}') as date`),
       db.raw('SUM(total_amount) as revenue')
     )
     .whereBetween('sale_date', [startDate, endDate])
@@ -2249,7 +2249,7 @@ async function generateExecutiveReport(startDate, endDate) {
     .limit(5);
   const monthlyTrend = await db('pos_sales')
     .select(
-      db.raw('DATE_FORMAT(sale_date, "%Y-%m") as month'),
+      db.raw('to_char(sale_date, \'YYYY-MM\') as month'),
       db.raw('SUM(total_amount) as revenue')
     )
     .whereBetween('sale_date', [startDate, endDate])
@@ -2389,8 +2389,7 @@ module.exports.getDailyEmployees = catchAsync(async (req, res) => {
     .orderBy('full_name', 'asc');
 
   // 2. Attendance records for today
-  const attendanceRaw = await db.raw(`
-    SELECT
+  const attendanceRaw = await db.raw(`SELECT
       a.employee_id,
       e.full_name AS employee_name,
       e.position,
@@ -2402,23 +2401,20 @@ module.exports.getDailyEmployees = catchAsync(async (req, res) => {
     FROM attendance_records a
     LEFT JOIN employees e ON a.employee_id = e.employee_id
     WHERE a.work_date = ?
-    GROUP BY a.employee_id, a.work_date, e.full_name, e.position, e.department, a.status
-  `, [today]);
+    GROUP BY a.employee_id, a.work_date, e.full_name, e.position, e.department, a.status`, [today]);
 
-  const farmingShiftsRaw = await db.raw(`
-    SELECT fs.id as shift_id, fs.worker_id, fs.opened_at, fs.closed_at, fs.status as shift_status, u.full_name, e.employee_id
+  const farmingShiftsRaw = await db.raw(`SELECT fs.id as shift_id, fs.worker_id, fs.opened_at, fs.closed_at, fs.status as shift_status, u.full_name, e.employee_id
     FROM farming_shifts fs
     LEFT JOIN users u ON fs.worker_id = u.id
     LEFT JOIN employees e ON u.id = e.user_id
-    WHERE DATE(fs.opened_at) = ? OR fs.status = 'OPEN'
-  `, [today]);
+    WHERE (fs.opened_at)::date = ? OR fs.status = 'OPEN'`, [today]);
 
   res.json({
     status: 'success',
     data: { 
       employees, 
-      attendance: attendanceRaw[0] || [], 
-      farmingShifts: farmingShiftsRaw[0] || [] 
+      attendance: attendanceRaw.rows || [], 
+      farmingShifts: farmingShiftsRaw.rows || [] 
     }
   });
 });
@@ -2433,24 +2429,19 @@ module.exports.getEmployeeMonthlyAttendance = catchAsync(async (req, res) => {
   const startDate = `${month}-01`;
   const endDate = `${month}-${daysInMonth}`;
   
-  const recordsRaw = await db.raw(`
-    SELECT
+  const recordsRaw = await db.raw(`SELECT
       a.employee_id,
       a.work_date,
       a.status,
       MAX(CASE WHEN a.action IN ('CLOCK_IN', 'MANAGER_MARK') THEN a.timestamp END) AS clock_in,
       MAX(CASE WHEN a.action = 'CLOCK_OUT' THEN a.timestamp END) AS clock_out,
-      TIMESTAMPDIFF(MINUTE,
-        MAX(CASE WHEN a.action IN ('CLOCK_IN', 'MANAGER_MARK') THEN a.timestamp END),
-        MAX(CASE WHEN a.action = 'CLOCK_OUT' THEN a.timestamp END)
-      ) AS duration_minutes
+      (EXTRACT(EPOCH FROM ((MAX(CASE WHEN a.action = 'CLOCK_OUT' THEN a.timestamp END))::timestamp - (MAX(CASE WHEN a.action IN ('CLOCK_IN', 'MANAGER_MARK') THEN a.timestamp END))::timestamp)) / 60) AS duration_minutes
     FROM attendance_records a
     WHERE a.employee_id = ? AND a.work_date >= ? AND a.work_date <= ?
     GROUP BY a.employee_id, a.work_date, a.status
-    ORDER BY a.work_date
-  `, [employeeId, startDate, endDate]);
+    ORDER BY a.work_date`, [employeeId, startDate, endDate]);
 
-  const records = recordsRaw[0] || [];
+  const records = recordsRaw.rows || [];
   res.json({ status: 'success', data: { records } });
 });
 

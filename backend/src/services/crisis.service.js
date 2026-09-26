@@ -34,7 +34,7 @@ const deactivateCrisisMode = async () => {
 };
 
 const getEmergencyActions = async () => {
-  const actions = await db('crisis_actions').orderByRaw("FIELD(priority, 'critical', 'high', 'medium', 'low')").orderBy('created_at', 'desc');
+  const actions = await db('crisis_actions').orderByRaw('array_position(ARRAY[\'critical\', \'high\', \'medium\', \'low\'], priority)').orderBy('created_at', 'desc');
   const total = await db('crisis_actions').count('id as c').first();
   const byStatus = await db('crisis_actions').select('status').count('id as count').groupBy('status');
   const byPriority = await db('crisis_actions').select('priority').count('id as count').groupBy('priority');

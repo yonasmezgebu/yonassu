@@ -20,6 +20,12 @@ exports.login = catchAsync(async (req, res) => {
   const { username, password } = req.body;
   const ip = req.ip;
   const userAgent = req.get('user-agent');
+  // Emails are stored lower-cased at registration and password-reset time, but
+  // MySQL's default collation made `=` case-insensitive so a mixed-case login
+  // still matched.  PostgreSQL compares text byte-for-byte, so the identifier
+  // has to be normalised here or capitalised emails stop being able to log in.
+  // Lower-casing is a no-op for the digits and '+' of a phone number.
+  const loginIdentifier = String(username || '').toLowerCase();
   const user = await db('users')
     .leftJoin('user_roles', 'users.id', 'user_roles.user_id')
     .leftJoin('roles', 'user_roles.role_id', 'roles.id')
@@ -30,12 +36,12 @@ exports.login = catchAsync(async (req, res) => {
       'users.profile_photo',
       'departments.name as department_name',
       'user_statuses.status_code',
-      db.raw('GROUP_CONCAT(DISTINCT roles.name) as role_names'),
-      db.raw('GROUP_CONCAT(DISTINCT roles.permissions) as permission_sets')
+      db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'),
+      db.raw('string_agg(DISTINCT roles.permissions::text, \', \') as permission_sets')
     )
     .where(function() {
-      this.where('users.email', username)
-        .orWhere('users.phone', username);
+      this.where('users.email', loginIdentifier)
+        .orWhere('users.phone', loginIdentifier);
     })
     .whereNull('users.deleted_at')
     .groupBy('users.id')
@@ -265,7 +271,7 @@ exports.refreshToken = catchAsync(async (req, res) => {
   const user = await db('users')
     .leftJoin('user_roles', 'users.id', 'user_roles.user_id')
     .leftJoin('roles', 'user_roles.role_id', 'roles.id')
-    .select('users.*', db.raw('GROUP_CONCAT(DISTINCT roles.name) as role_names'))
+    .select('users.*', db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'))
     .where('users.id', decoded.userId)
     .groupBy('users.id')
     .first();
@@ -330,7 +336,7 @@ exports.requestPasswordReset = catchAsync(async (req, res) => {
     .where('id', user.id)
     .update({
       reset_token: hashedToken,
-      reset_token_expires: db.raw('DATE_ADD(NOW(), INTERVAL 1 HOUR)')
+      reset_token_expires: db.raw('(LOCALTIMESTAMP) + INTERVAL \'1 hour\'')
     });
   try {
     await sendPasswordResetEmail(user, resetToken, ip);
@@ -356,7 +362,7 @@ exports.getCurrentUser = catchAsync(async (req, res) => {
       'departments.name as department',
       'users.last_login',
       'users.must_change_password',
-      db.raw('GROUP_CONCAT(DISTINCT roles.name) as roles')
+      db.raw('string_agg(DISTINCT roles.name::text, \', \') as roles')
     )
     .where('users.id', req.user.id)
     .groupBy('users.id')

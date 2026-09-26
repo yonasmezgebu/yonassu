@@ -115,7 +115,7 @@ const warmupTopProducts = async () => {
         db.raw('SUM(pi.total) as total_revenue')
       )
       .where('ps.status', 'Completed')
-      .where('ps.sale_date', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 30 DAY)'))
+      .where('ps.sale_date', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'30 days\''))
       .groupBy('pi.product_id', 'p.id', 'p.name', 'p.sku')
       .orderBy('total_revenue', 'desc')
       .limit(20);
@@ -188,7 +188,7 @@ const warmupFrequentProducts = async () => {
     const productIds = await db('pos_items as pi')
       .leftJoin('pos_sales as ps', 'pi.sale_id', 'ps.id')
       .where('ps.status', 'Completed')
-      .where('ps.sale_date', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 30 DAY)'))
+      .where('ps.sale_date', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'30 days\''))
       .select('pi.product_id')
       .groupBy('pi.product_id')
       .orderByRaw('COUNT(*) DESC')

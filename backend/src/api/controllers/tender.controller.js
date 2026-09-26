@@ -9,7 +9,7 @@ const genRef = async () => {
   const year = new Date().getFullYear();
   const rows = await db('tenders')
     .select('reference_number')
-    .whereRaw('YEAR(created_at) = ?', [year])
+    .whereRaw('EXTRACT(YEAR FROM created_at) = ?', [year])
     .where('reference_number', 'like', `TND-${year}-%`);
 
   let maxSeq = 0;

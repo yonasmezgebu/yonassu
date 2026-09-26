@@ -36,8 +36,8 @@ const login = async (credentials, ip, userAgent) => {
       'users.must_change_password',
       'users.two_factor_enabled',
       'users.two_factor_secret',
-      db.raw('GROUP_CONCAT(DISTINCT roles.name) as role_names'),
-      db.raw('GROUP_CONCAT(DISTINCT roles.permissions) as permission_sets')
+      db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'),
+      db.raw('string_agg(DISTINCT roles.permissions::text, \', \') as permission_sets')
     )
     .where(function() {
       this.where('users.email', username.toLowerCase())
@@ -152,8 +152,8 @@ const verify2FA = async (token, code, ip, userAgent) => {
       'users.phone',
       'users.department_id',
       'departments.name as department_name',
-      db.raw('GROUP_CONCAT(DISTINCT roles.name) as role_names'),
-      db.raw('GROUP_CONCAT(DISTINCT roles.permissions) as permission_sets')
+      db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'),
+      db.raw('string_agg(DISTINCT roles.permissions::text, \', \') as permission_sets')
     )
     .where('users.id', userId)
     .groupBy('users.id', 'departments.name')
@@ -214,7 +214,7 @@ const refreshToken = async (refreshToken, ip) => {
   const user = await db('users')
     .leftJoin('user_roles', 'users.id', 'user_roles.user_id')
     .leftJoin('roles', 'user_roles.role_id', 'roles.id')
-    .select('users.*', db.raw('GROUP_CONCAT(DISTINCT roles.name) as role_names'))
+    .select('users.*', db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'))
     .where('users.id', userId)
     .groupBy('users.id')
     .first();
@@ -521,7 +521,7 @@ const getCurrentUser = async (userId) => {
       'users.last_login',
       'users.created_at',
       'users.two_factor_enabled',
-      db.raw('GROUP_CONCAT(DISTINCT roles.name) as roles')
+      db.raw('string_agg(DISTINCT roles.name::text, \', \') as roles')
     )
     .where('users.id', userId)
     .groupBy('users.id', 'departments.name', 'user_statuses.status_code')

@@ -213,7 +213,7 @@ const recordHealthResult = async (healthStatus) => {
       checked_at: db.fn.now()
     });
     await db('health_checks')
-      .where('checked_at', '<', db.raw('DATE_SUB(NOW(), INTERVAL 7 DAY)'))
+      .where('checked_at', '<', db.raw('(LOCALTIMESTAMP) - INTERVAL \'7 days\''))
       .delete();
   } catch (error) {
     logger.error('[Health Check] Failed to record health result:', error.message);

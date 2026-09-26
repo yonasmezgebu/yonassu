@@ -134,7 +134,7 @@ const requestsController = {
           message: `${customerName} ordered ${request.medication_name} x${request.quantity}`,
           type: 'pharmacy',
           link: '/pharmacy-worker/sales?tab=online',
-          is_read: 0,
+          is_read: false,
           created_at: db.fn.now()
         });
       }
@@ -187,7 +187,7 @@ const requestsController = {
     const requests = await db('prescription_requests as pr')
       .leftJoin('finance_income_submissions as fis', function() {
         this.on('fis.department', '=', db.raw('?', ['Pharmacy']))
-          .andOn(db.raw("JSON_EXTRACT(fis.manual_details, '$.request_id')"), '=', 'pr.id')
+          .andOn(db.raw('(fis.manual_details) -> \'{request_id}\''), '=', 'pr.id')
       })
       .select(
         'pr.*',

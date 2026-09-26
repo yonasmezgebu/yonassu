@@ -702,7 +702,7 @@ exports.submitDailyReport = async (req, res) => {
     const dateStr = report_date;
     
     // Process all UNSUBMITTED sales for this date
-    let salesQuery = trx('sales').where('status', 'UNSUBMITTED').whereRaw('DATE(created_at) = ?', [dateStr]);
+    let salesQuery = trx('sales').where('status', 'UNSUBMITTED').whereRaw('(created_at)::date = ?', [dateStr]);
     if (branch_id) salesQuery = salesQuery.where('branch_id', branch_id);
     
     const unsubmittedSales = await salesQuery.select('*');
@@ -746,7 +746,7 @@ exports.submitDailyReport = async (req, res) => {
     }
 
     // Aggregate for the report (count COMPLETED ones that match today)
-    let aggQuery = trx('sales').whereRaw('DATE(created_at) = ?', [dateStr]).where('status', 'COMPLETED');
+    let aggQuery = trx('sales').whereRaw('(created_at)::date = ?', [dateStr]).where('status', 'COMPLETED');
     if (branch_id) aggQuery = aggQuery.where('branch_id', branch_id);
     const [agg] = await aggQuery.select(db.raw('COUNT(*) as cnt, COALESCE(SUM(total_amount),0) as total'));
 
@@ -1004,7 +1004,7 @@ exports.salesStats = async (req, res) => {
     const { branch_id, date } = req.query;
     const today = date || new Date().toISOString().slice(0, 10);
 
-    let baseQuery = db('sales').where('status', 'COMPLETED').whereRaw('DATE(created_at) = ?', [today]);
+    let baseQuery = db('sales').where('status', 'COMPLETED').whereRaw('(created_at)::date = ?', [today]);
     if (branch_id) baseQuery = baseQuery.where('branch_id', branch_id);
 
     const [todayStats] = await baseQuery.clone().select(
@@ -1015,7 +1015,7 @@ exports.salesStats = async (req, res) => {
 
     const [monthStats] = await db('sales')
       .where('status', 'COMPLETED')
-      .whereRaw('MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())')
+      .whereRaw('EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)')
       .modify(q => { if (branch_id) q.where('branch_id', branch_id); })
       .select(db.raw('COUNT(*) as total_sales'), db.raw('COALESCE(SUM(total_amount), 0) as total_revenue'));
 

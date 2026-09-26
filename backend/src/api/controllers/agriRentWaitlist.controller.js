@@ -124,7 +124,7 @@ exports.listWaitlist = async (req, res) => {
     let q = db('agrirent_waitlist as w')
       .leftJoin('tractors as t', 'w.tractor_id', 't.id')
       .whereNot('w.status', 'removed')
-      .orderByRaw(`FIELD(w.status, 'waiting', 'notified', 'converted') ASC, w.created_at DESC`);
+      .orderByRaw(`array_position(ARRAY['waiting', 'notified', 'converted'], w.status) ASC, w.created_at DESC`);
 
     if (status && VALID_STATUSES.includes(status)) q = q.where('w.status', status);
     if (tractorId) q = q.where('w.tractor_id', tractorId);

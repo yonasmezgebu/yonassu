@@ -141,7 +141,7 @@ async function syncAlerts() {
   try {
     const row = await db('central_audit_logs')
       .where('action', 'UNAUTHORIZED_ACCESS_ATTEMPT')
-      .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 24 HOUR)'))
+      .where('created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'24 hours\''))
       .count('* as count').first();
     await syncStateAlert({
       active: parseInt(row.count) > 0,
@@ -186,7 +186,7 @@ async function syncAlerts() {
   // ── CRITICAL · Security (suspicious login / unrecognized device) ──
   try {
     const anomalies = await db('session_anomalies')
-      .where('detected_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 24 HOUR)'))
+      .where('detected_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'24 hours\''))
       .count('* as count').first();
     await syncStateAlert({
       active: parseInt(anomalies.count) > 0,
@@ -202,7 +202,7 @@ async function syncAlerts() {
   try {
     const expired = await db('products')
       .whereNotNull('expiry_date')
-      .whereRaw('expiry_date < CURDATE()')
+      .whereRaw('expiry_date < CURRENT_DATE')
       .count('* as count').first();
     await syncStateAlert({
       active: parseInt(expired.count) > 0,
@@ -292,8 +292,8 @@ async function syncAlerts() {
   try {
     const expiring = await db('products')
       .whereNotNull('expiry_date')
-      .whereRaw('DATEDIFF(expiry_date, CURDATE()) > 0')
-      .whereRaw('DATEDIFF(expiry_date, CURDATE()) <= 30')
+      .whereRaw('((expiry_date)::date - (CURRENT_DATE)::date) > 0')
+      .whereRaw('((expiry_date)::date - (CURRENT_DATE)::date) <= 30')
       .select('id', 'name', 'expiry_date')
       .orderBy('expiry_date', 'asc');
     if (expiring.length > 0) {
@@ -316,7 +316,7 @@ async function syncAlerts() {
   try {
     const overdue = await db('finance_supplier_bills')
       .whereNotNull('due_date')
-      .whereRaw('due_date < CURDATE()')
+      .whereRaw('due_date < CURRENT_DATE')
       .whereRaw('amount_paid < total_amount')
       .select('id', 'bill_number', 'supplier_name', 'due_date', 'total_amount', 'amount_paid');
     if (overdue.length > 0) {
@@ -339,8 +339,8 @@ async function syncAlerts() {
   try {
     const dueSoon = await db('finance_supplier_bills')
       .whereNotNull('due_date')
-      .whereRaw('due_date >= CURDATE()')
-      .whereRaw('due_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)')
+      .whereRaw('due_date >= CURRENT_DATE')
+      .whereRaw('due_date <= (CURRENT_DATE) + INTERVAL \'7 days\'')
       .whereRaw('amount_paid < total_amount')
       .select('id', 'bill_number', 'supplier_name', 'due_date', 'total_amount', 'amount_paid');
     if (dueSoon.length > 0) {
@@ -405,7 +405,7 @@ async function syncAlerts() {
   try {
     const sales = await db('sales')
       .where('status', 'COMPLETED')
-      .whereRaw('DATE(created_at) = CURDATE()')
+      .whereRaw('(created_at)::date = CURRENT_DATE')
       .count('* as count').first();
     if (parseInt(sales.count) > 0) {
       await createAlert({
@@ -421,7 +421,7 @@ async function syncAlerts() {
   // ── INFO · Finance (payments received today) ──
   try {
     const payments = await db('payments')
-      .whereRaw('DATE(created_at) = CURDATE()')
+      .whereRaw('(created_at)::date = CURRENT_DATE')
       .count('* as count').first();
     if (parseInt(payments.count) > 0) {
       await createAlert({
@@ -437,7 +437,7 @@ async function syncAlerts() {
   // ── INFO · HR (new users created today) ──
   try {
     const users = await db('users')
-      .whereRaw('DATE(created_at) = CURDATE()')
+      .whereRaw('(created_at)::date = CURRENT_DATE')
       .count('* as count').first();
     if (parseInt(users.count) > 0) {
       await createAlert({
@@ -453,9 +453,9 @@ async function syncAlerts() {
   // ── WARNING · System (storage usage high) ──
   try {
     const sizeRow = await db.raw(
-      "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) AS size_mb FROM information_schema.tables WHERE table_schema = DATABASE()"
+      'SELECT ROUND(SUM(pg_total_relation_size(format(\'%I.%I\', table_schema, table_name)::regclass)) / 1024 / 1024, 1) AS size_mb FROM information_schema.tables WHERE table_schema = current_schema()'
     );
-    const sizeMb = parseFloat(sizeRow[0][0].size_mb) || 0;
+    const sizeMb = parseFloat(sizeRow.rows[0].size_mb) || 0;
     await syncStateAlert({
       active: sizeMb > 1500,
       type: 'WARNING',

@@ -597,7 +597,7 @@ const getTodayActivities = async () => {
     if (tableExists) {
       logs = await db('central_audit_logs')
         .where('module', 'HR')
-        .whereRaw('DATE(created_at) = CURDATE()')
+        .whereRaw('(created_at)::date = CURRENT_DATE')
         .orderBy('created_at', 'desc')
         .limit(50);
     }
@@ -606,8 +606,8 @@ const getTodayActivities = async () => {
     const leaveTableExists = await db.schema.hasTable('leave_requests');
     if (leaveTableExists) {
       leaves = await db('leave_requests')
-        .whereRaw('start_date <= CURDATE()')
-        .whereRaw('end_date >= CURDATE()')
+        .whereRaw('start_date <= CURRENT_DATE')
+        .whereRaw('end_date >= CURRENT_DATE')
         .limit(20);
     }
   } catch (e) { /* table not ready yet */ }

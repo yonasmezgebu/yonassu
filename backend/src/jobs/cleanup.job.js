@@ -22,7 +22,7 @@ const JOB_CONFIG = {
 let scheduledTask = null;
 const cleanupExpiredSessions = async () => {
   try {
-    const cutoffDate = db.raw(`DATE_SUB(NOW(), INTERVAL ${JOB_CONFIG.retention.sessions} DAY)`);
+    const cutoffDate = db.raw(`(LOCALTIMESTAMP) - INTERVAL '${JOB_CONFIG.retention.sessions} days'`);
     const result = await db('sessions')
       .where('expires_at', '<', cutoffDate)
       .delete();
@@ -37,7 +37,7 @@ const cleanupExpiredSessions = async () => {
 };
 const cleanupPasswordResets = async () => {
   try {
-    const cutoffDate = db.raw(`DATE_SUB(NOW(), INTERVAL ${JOB_CONFIG.retention.passwordResets} DAY)`);
+    const cutoffDate = db.raw(`(LOCALTIMESTAMP) - INTERVAL '${JOB_CONFIG.retention.passwordResets} days'`);
     const result = await db('password_resets')
       .where('created_at', '<', cutoffDate)
       .orWhere('used', true)
@@ -53,7 +53,7 @@ const cleanupPasswordResets = async () => {
 };
 const cleanupCommunicationLogs = async () => {
   try {
-    const cutoffDate = db.raw(`DATE_SUB(NOW(), INTERVAL ${JOB_CONFIG.retention.communicationLogs} DAY)`);
+    const cutoffDate = db.raw(`(LOCALTIMESTAMP) - INTERVAL '${JOB_CONFIG.retention.communicationLogs} days'`);
     const result = await db('communication_logs')
       .where('created_at', '<', cutoffDate)
       .delete();
@@ -68,7 +68,7 @@ const cleanupCommunicationLogs = async () => {
 };
 const archiveOldAuditLogs = async () => {
   try {
-    const cutoffDate = db.raw(`DATE_SUB(NOW(), INTERVAL ${JOB_CONFIG.retention.auditLogs} DAY)`);
+    const cutoffDate = db.raw(`(LOCALTIMESTAMP) - INTERVAL '${JOB_CONFIG.retention.auditLogs} days'`);
     const logsToArchive = await db('audit_logs')
       .where('created_at', '<', cutoffDate)
       .select('*');

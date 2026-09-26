@@ -1,0 +1,2105 @@
+{
+ "src/api/controllers/admin.controller.js": {
+  "sha256": "f2897f36d2d371b6edee464930bfca7671cdb7bf5e25024685638862716bb9b7"
+ },
+ "src/api/controllers/auth.controller.js": {
+  "sha256": "9e7fcbfa551c120328445d446267470ee12872e7ce7fda22e27967235589dd50"
+ },
+ "src/api/controllers/carRenting.controller.js": {
+  "sha256": "cff2fcce7fa4d599c3c59846c11eeae52685cb60f76198c10e6fb722dc1f21ae"
+ },
+ "src/api/controllers/ceo.controller.js": {
+  "sha256": "bb80a45edc13dcef1725b9d3d6510ac5255e54239485698ba44e56898acd9b0e"
+ },
+ "src/api/controllers/farming.controller.js": {
+  "sha256": "16c32847960242339bf11a5b0af1acfe54e202ece4425e62ff1aa35542597cb1"
+ },
+ "src/api/controllers/hr_etp.controller.js": {
+  "sha256": "6a06a8337896aca6b37d3757c95b866369e008950efd3dbe9755b34cd6c0face"
+ },
+ "src/api/controllers/inventory.controller.js": {
+  "sha256": "f95574f60c9c7658f5e47a62c8874408ce5ecdd890fa12e80e374a97aa943264"
+ },
+ "src/api/controllers/pharmacy.reports.controller.js": {
+  "sha256": "99804580d31bd3322f836c23b1084338a3fe8e49c7cb6c08d90099b48637ac83"
+ },
+ "src/api/controllers/pharmacySales.controller.js": {
+  "sha256": "96b62631e0db79d4362c17b763571f6906b545d18b4ab2c8600ff7a8ed54cd4d"
+ },
+ "src/api/controllers/pos.controller.js": {
+  "sha256": "5be4098ec47a7f696f9d8da96a8000680d93f7138b50f80dd4930dbaf2877858"
+ },
+ "src/api/controllers/printing.controller.js": {
+  "sha256": "79f5d58ead1198343db02702efcc13ddb7d4660525a96a63ac554750611bb909"
+ },
+ "src/api/controllers/purchaseWorkflow.controller.js": {
+  "sha256": "5864fd187aa40916b9a7b634cf3581b338778c21139a8fece044c64642f0471d"
+ },
+ "src/api/controllers/report.controller.js": {
+  "sha256": "a530fe46f9ca715925b82ec504438a83fd22473d908112d695a915711b90fe4e"
+ },
+ "src/api/controllers/retail.controller.js": {
+  "sha256": "bc5defc2f43852ec6cc523d95d6dcf4f52c859ffbe977bfdd02fecdbb322367b"
+ },
+ "src/api/controllers/store.inventory.controller.js": {
+  "sha256": "248f21b500af33aaadc9e1e21936d35a3a226505f04453a7858409f607e07ed6"
+ },
+ "src/api/controllers/storePurchaseResearch.controller.js": {
+  "sha256": "e1c45e83cdcf8f2c12197a124f45aea317ae9b3d890bc728a6067d0121654d56"
+ },
+ "src/api/middleware/auth.middleware.js": {
+  "sha256": "86f91bd92c48496512e624bb422719c5e28817e9e89443704fa8b7bfadf418e5"
+ },
+ "src/api/migrations/generalize_product_tax_mappings.js": {
+  "sha256": "fda8a12473b247b7c9544fc7b58c005d51f8c09f702d3259917b784c2b521aef"
+ },
+ "src/api/routes/financeLiabilities.routes.js": {
+  "sha256": "b14f8084f2f04cdeeaace4e959a5f64f54ec975d5a05944acdfad5862bc70df9"
+ },
+ "src/api/routes/liabilities-erp.routes.js": {
+  "sha256": "f569ae0bea6cd11535d2b781cd664511a13f55d32d698507e350d99f022a3a38"
+ },
+ "src/config/database.js": {
+  "sha256": "ef47c2250f3ad2a8bdfdd56b21a885c7793183669c9cf6a77c32e1f5debaf772"
+ },
+ "src/db/migrations/000_extensions.js": {
+  "sha256": "8034447bd7c5ad11b5209848caaba3996c3679131b3d24bd4acbfd448675671c"
+ },
+ "src/db/migrations/004_admin_tiers.js": {
+  "sha256": "b090300e781e7b4c916335f004d10ab5654c5aae31d696064cfdae48d4de6227"
+ },
+ "src/db/migrations/005_agrirent_orders.js": {
+  "sha256": "22503ab8b529de4e1dcaaa255377e4dafc89386a61b27c85c472972abf9516d0"
+ },
+ "src/db/migrations/006_agrirent_waitlist.js": {
+  "sha256": "c3fbf3a9daae9d514246180d47933d390335336b79487b5014d561955904ac9c"
+ },
+ "src/db/migrations/007_alerts.js": {
+  "sha256": "026479e54b93f3fec61484ef989464ec763f6d6487d0f0b068cb61a301284648"
+ },
+ "src/db/migrations/008_approvals.js": {
+  "sha256": "fafafb3a63e5c2a76077412dec5d90a9e55b4c63114aaa70fb9edd5ee6329299"
+ },
+ "src/db/migrations/009_audit_logs_archive.js": {
+  "sha256": "dcc392be561974e7ead2baadb76cb70dc1d31fbc9900cdaf29c6e27e723cb24a"
+ },
+ "src/db/migrations/010_bank_payments.js": {
+  "sha256": "e96afa8feb4a6e4ef1d8f748f8840b5b72f55003604c3695ab2ce8c12f27bbc1"
+ },
+ "src/db/migrations/011_bids.js": {
+  "sha256": "42bf31b36f0613b1df1ae139fa5b2b02ee17e4900e582975466c44c26c48f3b1"
+ },
+ "src/db/migrations/012_board_activities.js": {
+  "sha256": "1b65047c8c26674725dc9c3a688704c17936559167c7c3214feb900e2f9f6dfe"
+ },
+ "src/db/migrations/013_board_meetings.js": {
+  "sha256": "24575baae47f2c04fd4636f91f068cf540873cf4788122645cccd99540dbf78d"
+ },
+ "src/db/migrations/014_board_packs.js": {
+  "sha256": "eeefc773ee0d4aa7c4b51df4ee76b517b16ee0ca148b8ef1da0c37b586fb4d24"
+ },
+ "src/db/migrations/015_board_resolutions.js": {
+  "sha256": "b68db1827600d6a476cfc02b79efc089d09ab05f995f1a7d02b1465bf6759afc"
+ },
+ "src/db/migrations/016_boards.js": {
+  "sha256": "0623f7181d6636f8538d25298f64c0651dd4626c6b0e8dd729ea8a969ca0f7a3"
+ },
+ "src/db/migrations/017_board_members.js": {
+  "sha256": "9ac4dceb81a5f8c503f2d9671c9e0b260c3d4accb17538df9422ae12acc6e37e"
+ },
+ "src/db/migrations/018_branches.js": {
+  "sha256": "db83c60a84213444bfd6549591540fa1697b49896c45b2cd9974b5b6240241be"
+ },
+ "src/db/migrations/020_budget_periods.js": {
+  "sha256": "ff2e1fd704f4e477be134c46ed226f38548aba613c305d33fb597e5ee69e04c4"
+ },
+ "src/db/migrations/021_car_renting_fuel_service.js": {
+  "sha256": "e6096fcaf8f1ecbe86f786a9952378ea8de8ab8959d7c3fd2938c2c26c0629ab"
+ },
+ "src/db/migrations/022_car_renting_maintenance.js": {
+  "sha256": "3c1afcaac0c075e4fa466c1195b6a38a44c721eb397b5065e3aa969e76e4ea99"
+ },
+ "src/db/migrations/023_car_renting_store_requests.js": {
+  "sha256": "3320c09c845c08529a0061b7c7314c6529f1df62a97e117c0e167e39c095cb47"
+ },
+ "src/db/migrations/024_car_renting_store_request_items.js": {
+  "sha256": "996d98d59694994a0a5debe29c8ffa4bab84e0b75d94fcb414e732a59fb7693c"
+ },
+ "src/db/migrations/025_car_waitlist.js": {
+  "sha256": "4ba2b7c5691def8ea61f8b3f6c2f5b97c5073b3494632c7f3bb9f731660147b0"
+ },
+ "src/db/migrations/026_cars.js": {
+  "sha256": "11af51d6cddda14ecec2fa0d2e99a49bd015a5d008ec50f93e1b1069aa950e0f"
+ },
+ "src/db/migrations/027_cash_handovers.js": {
+  "sha256": "7f368adb0e8b09f8ef8a312cfb692ad48e01b5ed4f73c95f153fb1fa10230273"
+ },
+ "src/db/migrations/029_chart_of_accounts.js": {
+  "sha256": "1999bba59b1ef26f080f42474968767d2dc0c51d1ff87c6e94e48ce5a6ddb1b7"
+ },
+ "src/db/migrations/030_communication_logs.js": {
+  "sha256": "a2b6398afe2add8ebfe93210a26b5512faa6fe2c2b934b66bd0ee86a3e413d4f"
+ },
+ "src/db/migrations/032_compliance_status.js": {
+  "sha256": "6a80a9a96aad0f9312c48fe6424ab9711c70fa3dfb8937b9175ea41dc1db9d27"
+ },
+ "src/db/migrations/035_contact_messages.js": {
+  "sha256": "604176951e01bed6c12ae0a538d81893e60a92b7ac4c6c1e3970a9edc6ae65cc"
+ },
+ "src/db/migrations/036_contracts.js": {
+  "sha256": "fa2077d8390a0895f7c0880d546dc75a6e901c4b8e2ccc91251e655cdc7fd9e1"
+ },
+ "src/db/migrations/037_crisis_actions.js": {
+  "sha256": "2910f1097536ae93e34b42117bd8c3af85ee14ef6367698b5d99649cf83209ee"
+ },
+ "src/db/migrations/038_crisis_fast_track.js": {
+  "sha256": "fe5de72a9e161e9c03201dab2da968d812eb26871b3ca4ae788b83891004ea4d"
+ },
+ "src/db/migrations/039_crisis_status.js": {
+  "sha256": "26bbe342ee96e17f8bdf04187dec0751961e75dc69df0698357f30995f43856f"
+ },
+ "src/db/migrations/040_customer_quotes.js": {
+  "sha256": "f6fee89fffc7d17d64cb3157699f6de386ed7c5ebc59c264c15dec4ebb1c9ed0"
+ },
+ "src/db/migrations/041_customer_types.js": {
+  "sha256": "738e8fac79c1642dbf11be76a7f36a5e4df2f4a1a46b3fc66ebc24af47eb9832"
+ },
+ "src/db/migrations/042_danger_zone_requests.js": {
+  "sha256": "81c9049c5e768816915f5de287ab535fa2d5026a74839bca040fb53081701c65"
+ },
+ "src/db/migrations/043_delegated_assignments.js": {
+  "sha256": "2331e379d689578889c283b3be5fa8c35af37bf430c6e402072b34dd78dbdbd8"
+ },
+ "src/db/migrations/044_delegated_nodes.js": {
+  "sha256": "6d51c80b38b225c0ca19feba99e64090d227186e83ca530eb2b76f9ba0589e40"
+ },
+ "src/db/migrations/045_departments.js": {
+  "sha256": "62c5369e861b352cfe146cfccdf3589f5c5fe7c5c9fcc931179806aaf0c11b4b"
+ },
+ "src/db/migrations/046_dr_tests.js": {
+  "sha256": "91886c4226c9f758e2f6ace0518bb20ae3603332ead73166338db68e1435b942"
+ },
+ "src/db/migrations/047_drug_categories.js": {
+  "sha256": "8196172dbf1f8c740b442a5ec4ab65d421d4a0d0a14d1bc525cf587210fc5f91"
+ },
+ "src/db/migrations/048_drugs.js": {
+  "sha256": "b2471c10db7dee5a44ccbf7dc1a24cfccd10650b3d0fd264589cdf27012c7246"
+ },
+ "src/db/migrations/049_email_subscribers.js": {
+  "sha256": "14b8f18ada776c73d31f3aa731ec160ed66a291bc281e92224ddf56032169f46"
+ },
+ "src/db/migrations/050_employee_reports.js": {
+  "sha256": "59d0dbbaa514b4e944ae7d957fb82d6f70f6a214c8c2ee8eb17e441ae39fd688"
+ },
+ "src/db/migrations/051_employee_tasks.js": {
+  "sha256": "e7de41c592a0436f09bb570e0d1c8d3af337ad915487c41145409fa2fcc23f8d"
+ },
+ "src/db/migrations/052_erp_customers.js": {
+  "sha256": "489f33c74828dc9d86e0aac57bcb8561cdfb34768fbaea258f5a7cda2f0233cd"
+ },
+ "src/db/migrations/053_erp_equity_transactions.js": {
+  "sha256": "c790cad406773d473c93b9781c9cc9efc272b62442972103b1ba64611a266bf9"
+ },
+ "src/db/migrations/054_erp_liabilities.js": {
+  "sha256": "ab6898fb1c3956f045c99145f0581601d23ad1b8392db32c551b4835ba5b9c16"
+ },
+ "src/db/migrations/055_erp_liabilities_v3.js": {
+  "sha256": "cd0480a60f4ae7bd5fa3aad2b29652aaa69c483ed15e134cd9580e7d5ff20de9"
+ },
+ "src/db/migrations/056_erp_owners.js": {
+  "sha256": "eace38f5783d66f83792b8319266942910733f6fefc208fa671e655f16eac0bf"
+ },
+ "src/db/migrations/057_erp_payments.js": {
+  "sha256": "439d00f758af377ef1c883390ccf6174e167b9239cfdb7bd439cb91fb630917d"
+ },
+ "src/db/migrations/058_erp_payments_v3.js": {
+  "sha256": "bdecf1609a7e212f2563fbf720f42fe1d51179f239e65736210b4e08e19adf13"
+ },
+ "src/db/migrations/059_erp_receivables.js": {
+  "sha256": "64e3591727a216bd4d129280370d79ad45df119874475063b5ab6ab4d045b2cc"
+ },
+ "src/db/migrations/060_erp_receivable_payments.js": {
+  "sha256": "c23a1e3d5d60d39f343648e6fc26966ad3eca5acd143a003ef42d6f48b5a7405"
+ },
+ "src/db/migrations/061_erp_suppliers.js": {
+  "sha256": "72fb91fe3a2a8dd96cbbb24c3f5fbba39641fc895b2354a49005029dd4338590"
+ },
+ "src/db/migrations/062_erp_suppliers_v3.js": {
+  "sha256": "bd3d539c57cb2727054a9e5d85eff90fb31073c4fdf8039c25e618683d93de50"
+ },
+ "src/db/migrations/063_erp_suppliers_v4.js": {
+  "sha256": "64385eb9896f827afc405c5318c0bb357d8e03daa340cfec63fa47ee333c2a06"
+ },
+ "src/db/migrations/064_erp_liabilities_v4.js": {
+  "sha256": "8eb6f4b3ced0ffc00c23756100cc0592c7d15697833449c41c0582a207161392"
+ },
+ "src/db/migrations/065_erp_loan_details_v4.js": {
+  "sha256": "ad0fdc88480a4a888c1648e91f5a730a191207a4406bd450c373be130bfa3489"
+ },
+ "src/db/migrations/066_erp_payments_v4.js": {
+  "sha256": "39156d8a74aba3de44b6e7316f8ccc3d75db50ee5f06ce6adc016c9bf1957e94"
+ },
+ "src/db/migrations/067_erp_tax_details_v4.js": {
+  "sha256": "bfafdd8fe6db4802c1512e7ece9f91bc5e51d4aceab7db39397a4b7f05072006"
+ },
+ "src/db/migrations/068_expense_categories.js": {
+  "sha256": "b7cbcf0879b3f9f6f57754a5ee32fa669effbe295bff9aca35f674f610831bd7"
+ },
+ "src/db/migrations/069_budget_items.js": {
+  "sha256": "e064e16a305a55ed2160fe81d431d39b9a65b90e8ba76ab9d23c41c2041db0a6"
+ },
+ "src/db/migrations/070_farming_store_requests.js": {
+  "sha256": "c134f1192f839687d8654f4f390407973a6ad0faa19594ca1e73607f65d7dd80"
+ },
+ "src/db/migrations/071_farming_store_request_items.js": {
+  "sha256": "2969652e6188322d8057aec4576481eb4764595a732f78c1b84d3f346bcb359d"
+ },
+ "src/db/migrations/072_field_security.js": {
+  "sha256": "ec7e22eeb67cc86d4b2ff572ec422b5a1b592ee5a30b9ff465e4992ea38d311d"
+ },
+ "src/db/migrations/073_finance_accounts.js": {
+  "sha256": "ba28c0725a534ed371259c397bf2dea52e2da9bac62f4c39a2918ccd1a476e3e"
+ },
+ "src/db/migrations/074_finance_cashbook.js": {
+  "sha256": "88c9dc3603816e143ad4714b30b25f3765f3e328b6b0f05c43d9962b96d6bafc"
+ },
+ "src/db/migrations/075_finance_crvs.js": {
+  "sha256": "3bd3f5000f365c81155b15d395f4f83e0d1cc32e2c6bc5762a627632fd51d131"
+ },
+ "src/db/migrations/076_finance_departments.js": {
+  "sha256": "4362b6026db1c0cef31dfadcf612afa498fb9905032da6d18add2bf8fa127353"
+ },
+ "src/db/migrations/077_finance_evs.js": {
+  "sha256": "6da3a210d10866485667c0ac49180cb9addbfc2b391a126d71e16f7658f084d7"
+ },
+ "src/db/migrations/078_finance_expense_categories.js": {
+  "sha256": "70a7deb1a643d3b64fd670c74f159c3f4a3b42cfe22b94038262007b0d9a5acd"
+ },
+ "src/db/migrations/079_finance_expense_seq.js": {
+  "sha256": "74c1ee0e566f75b634ba02ebb6fa6f6938cf92a9f6b4174da131839b9826cb24"
+ },
+ "src/db/migrations/080_finance_income_submissions.js": {
+  "sha256": "85829064bece03fb0da4ed56b23257fe608152c5bc63674c3b4edba5045105b6"
+ },
+ "src/db/migrations/081_finance_payables.js": {
+  "sha256": "2ab42b6cb127f850764d81705c6dcfaf455535cdab40fcc378dd29a815b27cb9"
+ },
+ "src/db/migrations/082_finance_receivables.js": {
+  "sha256": "6a5055dce1e221cf7a409c9e970988d0432916a57cbec7ef7566905858a711b5"
+ },
+ "src/db/migrations/083_finance_reconciliations.js": {
+  "sha256": "f7957a16a8f2ed2165a70b2991c39df0deed8abaac51cf6c7e2506d39a1d1aed"
+ },
+ "src/db/migrations/084_finance_recon_items.js": {
+  "sha256": "9144f70a386e1f665c3ebaa1eb2c150bbf33e2c303816a40188ff0de5c99bfd7"
+ },
+ "src/db/migrations/085_finance_supplier_bills.js": {
+  "sha256": "df58b57bf9f376aafad4503115b63486aeedc91a4e4bcaed88c0c0f09f67b3f3"
+ },
+ "src/db/migrations/086_fund_requests.js": {
+  "sha256": "2b13fe145555f0c5e458275cd53b45b7ab3c5b052a5cc4f2635ec8e26a3c2c10"
+ },
+ "src/db/migrations/087_gallery_images.js": {
+  "sha256": "78e1112ac5bc6afb7c2b47e143d03a5e522ba0e8c57026f282dc6b41e1d874d6"
+ },
+ "src/db/migrations/088_general_movement_log.js": {
+  "sha256": "7835cdd762fd6e6c6e6f9db08d66450ccbcff1d34097685a95027adc11c01617"
+ },
+ "src/db/migrations/089_general_procurement_requests.js": {
+  "sha256": "d40ac36b43ca2cb2c670cfb60fbe08f9024e7d7a13aa2f3951967f227b11c0fd"
+ },
+ "src/db/migrations/090_general_store_incoming.js": {
+  "sha256": "74b49c703cd5504f7724dd1074763e4faa4d0cd25760837fa9e9cc09b14a6982"
+ },
+ "src/db/migrations/091_general_store_incoming_items.js": {
+  "sha256": "94b516bb56b83cc0f26f3977c57a5212d156aac812968a246ffe3f4ee8cc22d3"
+ },
+ "src/db/migrations/092_general_store_materials.js": {
+  "sha256": "5f71ca4e385711eaf4e05b639a9a794b54aa64611d4b03a1560d064f7413ffd0"
+ },
+ "src/db/migrations/093_goods_receipt_notes.js": {
+  "sha256": "f59c060405edbd3a5335bfde279c58d38dda66be9192a68bf94cd3c838c48937"
+ },
+ "src/db/migrations/094_grn.js": {
+  "sha256": "2171b757d5389f6e5029b216f9fcc0a704b1b1efeb582ace02f2f770ea743844"
+ },
+ "src/db/migrations/095_grn_items.js": {
+  "sha256": "6f9566a059ff6f3b950e4110412fe0ec486f8d091b90ac74c641aae6054eeb15"
+ },
+ "src/db/migrations/096_hr_deductions.js": {
+  "sha256": "74ad896236335261033387ebd281a8400e7af936011ccf9fe1ce3b3ed12c804e"
+ },
+ "src/db/migrations/098_hr_employees.js": {
+  "sha256": "0d41ebfcc05e864c3d7bb8786a0c6769b912ea6642f38aa5c6fb9e327df2b78b"
+ },
+ "src/db/migrations/099_etp_agent_installations.js": {
+  "sha256": "ca1bf27acfc4c0171538d33506d8635936c0ba366221bf093693ed9c6dc7b1fb"
+ },
+ "src/db/migrations/100_etp_daily_attendance.js": {
+  "sha256": "a5ad6596deb4e15ef7bd666cb28e3464dde1fe9cc032085b62bfec7fc9498ed9"
+ },
+ "src/db/migrations/101_etp_heartbeat_logs.js": {
+  "sha256": "7e2543356dab4bcb9b7e0a808096420b21d14ed8bf7a259975b03f82ec8a1865"
+ },
+ "src/db/migrations/102_etp_monthly_summary.js": {
+  "sha256": "2fea06c85b37883b9cf87ee1ee791f007e7d280d20162b87d20b3bdebcf46240"
+ },
+ "src/db/migrations/103_etp_session_logs.js": {
+  "sha256": "8edf003676b9071b7e40fcbda5503ec375098db03b6c27c370e73e1b12e45187"
+ },
+ "src/db/migrations/104_etp_weekly_summary.js": {
+  "sha256": "d49d28379719c86f2f67db4f1c4079226e0ce6be857bb1db2425d310bb01815f"
+ },
+ "src/db/migrations/105_hr_employee_documents.js": {
+  "sha256": "229f63c417359449f7537ad73e4a254ad72abeb7c23174b2a7e9330a2a7a6050"
+ },
+ "src/db/migrations/106_hr_messages.js": {
+  "sha256": "982ad830082d4c93777324f16927e45fc90aacecfb72dea1f86cc99dc5673970"
+ },
+ "src/db/migrations/108_hr_notifications_log.js": {
+  "sha256": "e8c9dc6bce779a29cd0c03db51b49997b179096b1c79935df357c7d1b44ed302"
+ },
+ "src/db/migrations/109_hr_positions.js": {
+  "sha256": "003d64f42758e4574154078d113f89109449f4002d5dc52d0775e21956519564"
+ },
+ "src/db/migrations/110_hr_settings.js": {
+  "sha256": "00f7f305194516f0efa07663572855d0203c2cbfe58e243168979d18ffaec5a7"
+ },
+ "src/db/migrations/111_hr_units.js": {
+  "sha256": "662495f914cfcc2d63a48c8c6153ecb40c59889e0e03aa5b06fce84077299f80"
+ },
+ "src/db/migrations/112_integration_settings.js": {
+  "sha256": "a5a94b5b2755f3d4902aa354167ee3718a02877d5ac12c3f4b46f702bb02e3f5"
+ },
+ "src/db/migrations/113_integration_sync_logs.js": {
+  "sha256": "749706d2f84890e2c065f80d8df17479a3cb56e78b56833110e3cd8d492496f1"
+ },
+ "src/db/migrations/115_inventory_movements.js": {
+  "sha256": "5da80a0845d577ad942da500dae1f45ceeb67d2c6e3bad78f177a8d5c54d0415"
+ },
+ "src/db/migrations/116_invoice_payments.js": {
+  "sha256": "d98a2eb89d2bde173946efe89e7d6483186e849f692f5d27ed480e93d19f2ebf"
+ },
+ "src/db/migrations/117_issue_vouchers.js": {
+  "sha256": "d6d0e248c9f45ff1f5fcd02d8bb94c163acea6fb2a234605bee834b806eeef48"
+ },
+ "src/db/migrations/118_knex_migrations.js": {
+  "sha256": "27fa57f17d4384ff4cfa094cc815a46a1e894237d097f72b7c5de2fe03fd8acb"
+ },
+ "src/db/migrations/119_knex_migrations_lock.js": {
+  "sha256": "310959a2bdbb5bf9a49787044d3c7f17d2076419d58712b51523bbe84f3fa71f"
+ },
+ "src/db/migrations/120_leads.js": {
+  "sha256": "6214c08b8143e11df78fe57d3d5e774e36a8252f55d988afb45abf488ac8b91c"
+ },
+ "src/db/migrations/121_leave_types.js": {
+  "sha256": "353eca15ab5af69699db1bac48ba4071b8405c3c5589b089545617847b175b61"
+ },
+ "src/db/migrations/122_liabilities.js": {
+  "sha256": "186bcc53af85b9a3dd878699cb6e6a318f9b414ea016bcc48f34b65dc96f2be2"
+ },
+ "src/db/migrations/123_liability_payments.js": {
+  "sha256": "9d687d82a7b0cf948387ca5ffa5d50d1c64db9f81aff82d00904fa681e94eaf0"
+ },
+ "src/db/migrations/124_loan_details.js": {
+  "sha256": "e8a9ba8e61206a450f3845e01bb29e506b9564c3a6632eac6b0072f034883ac4"
+ },
+ "src/db/migrations/125_loyalty_rewards.js": {
+  "sha256": "451394593e57ee0ea72cb3cac4eea33ae8ea81c8a323c89e897a8d4b9cb63195"
+ },
+ "src/db/migrations/126_loyalty_tiers.js": {
+  "sha256": "0dfd2805c5b1929e57b9a4adac84e655f7c8e9225a4068990b8ea5c82885f4ef"
+ },
+ "src/db/migrations/127_manager_chat_group_members.js": {
+  "sha256": "e117e92d86f57a51f47629ec1a9afa1d0f2ad9979d6c4906be02c8a2bfb2f01b"
+ },
+ "src/db/migrations/128_manager_chat_group_messages.js": {
+  "sha256": "5148371ddbe55b6c55486199c34352c161a9a50d9a6484e2ea040f886c334499"
+ },
+ "src/db/migrations/129_manager_chat_groups.js": {
+  "sha256": "f5f617beac8a12fccb426ec5e015c19c6063a12aa55a5c33228bfad151069185"
+ },
+ "src/db/migrations/130_manager_chats.js": {
+  "sha256": "42db8e1a1cd94d8f11f09e16a98d2206a30aa5341a4e8ce438620edef0645824"
+ },
+ "src/db/migrations/131_manager_sale_actions.js": {
+  "sha256": "369db37169a4d9343ef04f40028ac7a1789d3c77758f5fad4b21ac4cc23cf771"
+ },
+ "src/db/migrations/132_manufacturers.js": {
+  "sha256": "1e049031415c294d3eb10b4f80240b638e02ba05d745b97fe5e7f14282ffb840"
+ },
+ "src/db/migrations/133_month_end_closes.js": {
+  "sha256": "5e4be816bb557b4109fe5837273bb4312af5f2fcac01dd893412912691bc7d81"
+ },
+ "src/db/migrations/134_news_posts.js": {
+  "sha256": "d44025f506d493513a15e23e8416afad5550004ca1aaf45352d247d8289f2be8"
+ },
+ "src/db/migrations/135_job_applications.js": {
+  "sha256": "cc24a49385fe38a11df8cf352b5c74ded5f79ae06b0fdc0b0a0ee65b32cbf457"
+ },
+ "src/db/migrations/136_notifications.js": {
+  "sha256": "3b6bc3916465f1d5fcf962cd59bd907b5e492dd32dd662e094da61addbff8086"
+ },
+ "src/db/migrations/137_opportunities.js": {
+  "sha256": "1bcbce28ff3f66fff1bc5d74d51149b17224172a6c49c0f41677dc0661e2548d"
+ },
+ "src/db/migrations/138_order_status_history.js": {
+  "sha256": "8534d1bcdacd54ed7fa54077b44ab754c68e4f4003a9cfffc0a5ba05b02514f9"
+ },
+ "src/db/migrations/139_order_statuses.js": {
+  "sha256": "827089a7640841c8ae21c898978a3839893fc5bf17ca4deb397355715c33fc7d"
+ },
+ "src/db/migrations/140_password_history.js": {
+  "sha256": "b8a6060b290d2fc1bf2d35d142fe38779bf07c22da8fa4ea8ada5ab1f9988f4a"
+ },
+ "src/db/migrations/141_payment_methods.js": {
+  "sha256": "0689b294aee59dc136e1ec7fa88e87c42fcbb736d2364b64a9e1f6d011fed22d"
+ },
+ "src/db/migrations/142_payment_schedules.js": {
+  "sha256": "5b8588748687eab7c645664ad0a5c2ed819bb54a385ceaa621f956fcb19d0da7"
+ },
+ "src/db/migrations/143_payment_statuses.js": {
+  "sha256": "dc470e518d59e09e14e93d0a711d68f48c1026eb196472a2483ec354e982b6c7"
+ },
+ "src/db/migrations/144_payment_terms.js": {
+  "sha256": "e7f570cb2a9d7cca2fc75a6c1de1b7496689146b483ad9994db166dc3a2ce627"
+ },
+ "src/db/migrations/145_payroll.js": {
+  "sha256": "6ee9ae9de1e02a5b889fc6c04864869a5664ce09e8e3d5b147218632de65841f"
+ },
+ "src/db/migrations/146_payroll_company_aggregation.js": {
+  "sha256": "71a0252e71ebda0b72a9519aa5aca5bed1bb3c5a9e8f8e14b0d1264de86146e9"
+ },
+ "src/db/migrations/147_payroll_department_aggregation.js": {
+  "sha256": "d9317301462718854eeea1fda6414cf20eb7090a863f7f1e092db85f7ac8b8c1"
+ },
+ "src/db/migrations/148_payroll_finance_queue.js": {
+  "sha256": "3e449656a5a31c06038c57ced45b7b8584fc14f3b9c622f5f6496b23818fc8b3"
+ },
+ "src/db/migrations/149_payroll_salary_components.js": {
+  "sha256": "8cec1592005245dece74c8be8eaed14ee0f82060ff51e8fdd72d169fafb74f1a"
+ },
+ "src/db/migrations/150_pharmacy_branches.js": {
+  "sha256": "fba6b5a6e92957c7ae6899c4a4a57bad6adea543644c72bde44cd79ef228e9d9"
+ },
+ "src/db/migrations/151_pharmacy_categories.js": {
+  "sha256": "fee900e16074cf4882a349a0649550536afae2b7b8087a78b31875b637472d92"
+ },
+ "src/db/migrations/152_pharmacy_customer_queries.js": {
+  "sha256": "bee02109ac9723c782d998b58a369100fbdaec6c084dd05b2c5a2173ce0e08c6"
+ },
+ "src/db/migrations/153_pharmacy_direct_deliveries.js": {
+  "sha256": "520084cb8fe298fc8bf795f1194ef79910b02890bde1eecd474869dc19af441c"
+ },
+ "src/db/migrations/154_pharmacy_dispenses.js": {
+  "sha256": "f081cb6d52ca910d8d54a1261c22a6f05c4dbb5cd1f2c8974a62640166e6a9ff"
+ },
+ "src/db/migrations/155_pharmacy_expired_drugs.js": {
+  "sha256": "2f42620d6cb86c92398591b0914380e1390b58d3783a90b0554056d3c5085ce8"
+ },
+ "src/db/migrations/156_pharmacy_inventory.js": {
+  "sha256": "6fb54a5397424604bbead91d984ed5137b84ad5bdcf156d9ce20825591b4abfa"
+ },
+ "src/db/migrations/157_pharmacy_manager_requests.js": {
+  "sha256": "426d7c5486f2db1f13b3219986b91e90a65ad8e7bc78d2dd512d6f6acf80e906"
+ },
+ "src/db/migrations/158_pharmacy_medications.js": {
+  "sha256": "d7f7e2c9dabcd0fb5711e43a650578420d5d6bd14efe75caa4ad49db25fe1eb2"
+ },
+ "src/db/migrations/159_pharmacy_messages.js": {
+  "sha256": "3179681110e490dc82ae1ab9bc738302a09fd65b49af47f469d2a5ed427b76b4"
+ },
+ "src/db/migrations/160_pharmacy_prescriptions.js": {
+  "sha256": "a542beb2ebf4f336553800ee312ebbeb0e3b04e1dd92eaad0aedeae47b43b9bd"
+ },
+ "src/db/migrations/161_pharmacy_product_posts.js": {
+  "sha256": "4aa919d3fe1185968f4d31666b5ccad2dec08f9af9ecf05457e4ab0072e6d386"
+ },
+ "src/db/migrations/162_pharmacy_sales_reports.js": {
+  "sha256": "0590b5057c71f80fd8f7a8e0e4df91a5e67b0ccf6296ce95915ea8f6341ad9ce"
+ },
+ "src/db/migrations/163_pharmacy_finance_records.js": {
+  "sha256": "02e3a683826d1cfb4415aed17576f74c26ae3aef1d4377584e796e03f51c2fd7"
+ },
+ "src/db/migrations/164_pharmacy_report_branches.js": {
+  "sha256": "6d34b7de4b624613fde7cbdae2941a57b70095fd22ec9a18e8df3a0813c87008"
+ },
+ "src/db/migrations/165_pharmacy_report_payments.js": {
+  "sha256": "1abed7e03c6511a356782c0119bb28cfc3f0d3514c350f15904b8913318f9aec"
+ },
+ "src/db/migrations/166_pharmacy_settings.js": {
+  "sha256": "23bd2cd6a8d3ef6c4adee5b42a8c6f6b2d1eb136b9c92b8520789d2397076c9c"
+ },
+ "src/db/migrations/167_pharmacy_stock_movements.js": {
+  "sha256": "bc98cc2087831d014d9c89013eeb760cd5715ffea771a5c238d4e7b82500b2b3"
+ },
+ "src/db/migrations/168_pharmacy_targets.js": {
+  "sha256": "8df61f44c8014919561f260f45335481deec9d9b2671dab762887241dfd9a323"
+ },
+ "src/db/migrations/169_pharmacy_tasks.js": {
+  "sha256": "746e8b242dfcc35b787ac23fed21ad5cd4b7c7bece6caa5ee42740c392d2ab31"
+ },
+ "src/db/migrations/170_pharmacy_transfer_requests.js": {
+  "sha256": "d9bff9e076de95612ab7000e2da589c844c82e47d3e9e39a64d5ec5ed5f3b01d"
+ },
+ "src/db/migrations/171_pharmacy_workers.js": {
+  "sha256": "dfe9ecc02f49b8f629161fcb7b01de94eb4449528590cfdd2538ecb3a915a389"
+ },
+ "src/db/migrations/172_pharmacy_audit_trail.js": {
+  "sha256": "c1247d2f31d233da5a2bcc4cf548a77710e4db58e67d5e19a55cacbdc2e5c80d"
+ },
+ "src/db/migrations/173_pharmacy_sales.js": {
+  "sha256": "2ea751d166175194eceaf916d9c9be9dcbc2108ec6cda777f4c2cc301ef2b713"
+ },
+ "src/db/migrations/174_pharmacy_payments.js": {
+  "sha256": "2b5cd37b2068176c4c250067c01f41db365ec5c1b65e1ff692bd70f11f5df220"
+ },
+ "src/db/migrations/175_pharmacy_sale_items.js": {
+  "sha256": "2c5032097fe6e04025243792b9c1f24432140700d9d1bb18577d01969daadc9c"
+ },
+ "src/db/migrations/176_po_items.js": {
+  "sha256": "a323e136b10bc2985e97b830b05eb62beb9667d6054662a0828c8f89a887db55"
+ },
+ "src/db/migrations/177_po_payments.js": {
+  "sha256": "e78dfc641ed7d049168ef780a2a3eb2212bde2bdaea1edcd66a33e7e8d509b69"
+ },
+ "src/db/migrations/178_po_statuses.js": {
+  "sha256": "bbdb6ca2865d53563ec5e6448142a54b1cdd31afc8514140bd83066a841b279c"
+ },
+ "src/db/migrations/179_pos_audit_trail.js": {
+  "sha256": "b701833b5f906af03b08e2b16095023abf108489897a7720eb97729663a58428"
+ },
+ "src/db/migrations/180_pos_items.js": {
+  "sha256": "4c9be7d1fb126ddd2fe26446e9c73160e4aa5b6a64952905e4041106755cf71a"
+ },
+ "src/db/migrations/181_pos_returns.js": {
+  "sha256": "ae6f5b48a17b7dee36d7c6e0adcfb2e0ef0e5eb24d7cd2d2a5773a1baab97767"
+ },
+ "src/db/migrations/182_pos_return_items.js": {
+  "sha256": "fcc6ea534075be532cb4abb969ae253d3ab6224cbdfcd83e8c04b1200168f143"
+ },
+ "src/db/migrations/183_pos_sales.js": {
+  "sha256": "7ca315a4c7939bd3522039b30917da31c71924d791e0b03f0c5bc785a19701e8"
+ },
+ "src/db/migrations/184_pos_shifts.js": {
+  "sha256": "2cc6e202b158f966671ee76988aabeb6ef9aca2644fde910f6f52c210209ea3b"
+ },
+ "src/db/migrations/185_price_lists.js": {
+  "sha256": "8f5b344dd572d1d86586f07492e2df5a4cad081b8041f1ac3186457516927f43"
+ },
+ "src/db/migrations/186_printing_assets_machines.js": {
+  "sha256": "7b140b847106688a18582ece1d58cd3e945ae8b9aff0e72b1d65adca395a25d5"
+ },
+ "src/db/migrations/187_printing_binding_types.js": {
+  "sha256": "08058122536d9646b034092f54529ae67cf0087162885494997ad989dd96d6a1"
+ },
+ "src/db/migrations/188_printing_material_requests.js": {
+  "sha256": "9ab61be42824eb3a49b95d26a6b0909025f89f049b95881fc0fe6a70a1a56b10"
+ },
+ "src/db/migrations/189_printing_messages.js": {
+  "sha256": "aeeff6aa3ad4d20bade3f939a63a9849066e3a93f3f7731f2a68e0f80a43aea8"
+ },
+ "src/db/migrations/190_printing_orders.js": {
+  "sha256": "b5d41e55c519e5de84fb68aafc4c8f76a9ef9892709222f7cc118cb2768fbde5"
+ },
+ "src/db/migrations/191_printing_order_works.js": {
+  "sha256": "6b3b189121c869b64df65d108b8d8a2ef6ff405626fbc7de8574d4c17a6fa499"
+ },
+ "src/db/migrations/192_printing_paper_types.js": {
+  "sha256": "efad131712f9005381c1759c9cf4594ee004f418d862a4d75a1955df1f8509a7"
+ },
+ "src/db/migrations/193_printing_posts.js": {
+  "sha256": "179336e2bd3ce425146d267e0b9c1d7d22df8ec7ee6106fd9bb5b1506667e0ed"
+ },
+ "src/db/migrations/194_printing_product_types.js": {
+  "sha256": "7b9b25ec0578bc746fdb1ec59fb97874cdf4716666ccfcc73a8f8afc4689cb2c"
+ },
+ "src/db/migrations/195_printing_production_machines.js": {
+  "sha256": "288394509c207f3d88c37404fa7336508b664774de02807ec03d39136949a22c"
+ },
+ "src/db/migrations/196_printing_production_materials.js": {
+  "sha256": "307108c7dee4ba53180cff41482dd5c6b5dfdafd094d4227bfdf884419f0fb36"
+ },
+ "src/db/migrations/197_printing_settings.js": {
+  "sha256": "5e3e49d3464425c467c5d8b9a31594a42f8dcf68f7bc98cc5789c337702c4a49"
+ },
+ "src/db/migrations/198_procurement_messages.js": {
+  "sha256": "fa8d4e35270445500d6ef450d34c4a0bd721dbcf38d4f48032c96bce0a65486a"
+ },
+ "src/db/migrations/199_procurement_requests.js": {
+  "sha256": "d670166ef2f67c157d39511dab876e099a75bdea019cad80b161323e95518a2e"
+ },
+ "src/db/migrations/200_procurement_market_tasks.js": {
+  "sha256": "de3a74264879939da7d8cd7b10f7316941aaef963822ba297dd819a1a0097745"
+ },
+ "src/db/migrations/201_procurement_settings.js": {
+  "sha256": "9f24899f97526f2cec921582876b785180f8b21736fa2e37c08c3abddfeb89ad"
+ },
+ "src/db/migrations/202_procurement_tenders.js": {
+  "sha256": "6ba56415685488f7b29a14dbb568d42e30140e5d172f59c3b9964f2bf9240abc"
+ },
+ "src/db/migrations/203_procurement_bids.js": {
+  "sha256": "aebdbe752496800bcf49f9ec0e0ff0af8f404f0cb8eeb4dc29df9b22d5886012"
+ },
+ "src/db/migrations/204_procurement_fund_requests.js": {
+  "sha256": "34bcc5918a7e0cbfefa88cbdc8d307db366a461c6883fcb8a470d67a8c46443f"
+ },
+ "src/db/migrations/205_procurement_payments.js": {
+  "sha256": "c6f3c178d9dde4e1f21c7fc854c9a8aa1fee24688e98ccff0cfbfe5695eea7e5"
+ },
+ "src/db/migrations/206_procurement_receipts.js": {
+  "sha256": "5bf8f9e761e50e8cc4e4dc22ccdacdcfa2e4e73c7da3278664a7d0cce955fa50"
+ },
+ "src/db/migrations/207_procurement_tender_decisions.js": {
+  "sha256": "c64b561cf640ccbc8f124b67c6c8eac3824bf03b320bc0f3047437117012a5fa"
+ },
+ "src/db/migrations/208_product_categories.js": {
+  "sha256": "7ab66e5198648a129639362dd3a5cfd4544f8498e13b4bc9fa597975e9f280b5"
+ },
+ "src/db/migrations/209_product_tax_mapping_history.js": {
+  "sha256": "edab30e75e1246ef5531d4c3e3912d7c81a92755fb6ef920d78449a721cd13c8"
+ },
+ "src/db/migrations/210_product_tax_mappings.js": {
+  "sha256": "a7a0d461b9b4c59c7175698368785ea9b44d788f17e4a20126da0bf0728d393c"
+ },
+ "src/db/migrations/211_products.js": {
+  "sha256": "38df821393b9814d882d567400f0a7546e11bdf315c237c66dacc7ce66d56ae7"
+ },
+ "src/db/migrations/212_inventory_serials.js": {
+  "sha256": "d9cafb709b36fc914e84d145f6a5abf757658bbb47a0b4dc89fcac9949d47115"
+ },
+ "src/db/migrations/213_price_list_items.js": {
+  "sha256": "d7d607e5d1182e61c5fb084cdc95e8b01cddc76f1aa54823eb1d942e87450eee"
+ },
+ "src/db/migrations/214_promotions.js": {
+  "sha256": "1d1c7f29c239a3e8c5fb9b320e36aa920f73de8647bb1af5b4e773606f8d07ee"
+ },
+ "src/db/migrations/215_public_fund_requests.js": {
+  "sha256": "21128d536bcbcea1672d96ef31552682ede8da6ceaab2b389d3db9c9161a18bf"
+ },
+ "src/db/migrations/216_public_payments.js": {
+  "sha256": "5e7c6dac3c07e1b54444087e7ebfe722f61a58e64c1ba441a4e2a6f9abb21f54"
+ },
+ "src/db/migrations/217_public_tenders.js": {
+  "sha256": "7145dd03b93291e851e09cb8d9d891bc750c96d50ab971a12d05de55acde3980"
+ },
+ "src/db/migrations/218_public_bids.js": {
+  "sha256": "18e5e29cc8d401647b3e252b0b642e94bea781158438aed131a6b508215a42a9"
+ },
+ "src/db/migrations/219_public_deliveries.js": {
+  "sha256": "bb7dcb622b615fad2eace0571241a2c755682c74cf0e4830201065fb0d3dcf66"
+ },
+ "src/db/migrations/220_public_fund_request_items.js": {
+  "sha256": "1f212310314f06db14007f83a239888b7ea4738460951f46b3989a9f1cfe528a"
+ },
+ "src/db/migrations/221_public_tender_items.js": {
+  "sha256": "14071b5a687239a440c14f21a43b0bc9e7677eeeb9760efc83903891e3dbc378"
+ },
+ "src/db/migrations/222_public_bid_items.js": {
+  "sha256": "f42dd702e8655a16c565acd35dc712a48a4789f4f95e8db3684142faaea9b924"
+ },
+ "src/db/migrations/223_purchase_budget_workflow.js": {
+  "sha256": "78d4002a189b01dd43839550724ecc082222c5d64573ea472f4937e0416d4c56"
+ },
+ "src/db/migrations/224_purchase_orders.js": {
+  "sha256": "c508ce173bb3457888c52827619f7715625698cbcdd240a5afcf8ade89ac8218"
+ },
+ "src/db/migrations/225_purchase_quotation_items.js": {
+  "sha256": "913cd945ff863620748bf998a94a37e3655abca954469c5b3f6626e3d9eb0e39"
+ },
+ "src/db/migrations/226_purchase_quotations.js": {
+  "sha256": "cf33fbf8883a0fcde96b6ce69892bee8e8844d22be6cdd4a967b643c1fd6c883"
+ },
+ "src/db/migrations/227_pharmacy_store_incoming.js": {
+  "sha256": "0a09223e821425ed929b6d9799dc734c3f8a1d6d88f5756cf9791f053ef60f63"
+ },
+ "src/db/migrations/228_pharmacy_store_incoming_items.js": {
+  "sha256": "a9671dbb485d13ecea8fdb138500f626f279555e7b07db49f260d8777518ac70"
+ },
+ "src/db/migrations/229_purchase_requests.js": {
+  "sha256": "ec5029cad5a097862be13aedb82ba8290f1535147f60c794397fea01f855845a"
+ },
+ "src/db/migrations/230_market_tasks.js": {
+  "sha256": "a7e5c9df6835ad7699c81847535aaf14287d7fdcaa51bb6c17ee9d6b4c367838"
+ },
+ "src/db/migrations/231_purchase_returns.js": {
+  "sha256": "a46650e07ee5c7489d67d91bf5efa821185ba873cb8176f091acc4420db194e9"
+ },
+ "src/db/migrations/232_push_subscriptions.js": {
+  "sha256": "5d41fc22191d79dd1ebc185dd23ca7868675238079adfcf8c0662caa7e919be2"
+ },
+ "src/db/migrations/233_quotation_finance.js": {
+  "sha256": "4c988113e1df0131ef6382a354fc170f750470c8270c662af15c58a1c0235c89"
+ },
+ "src/db/migrations/234_quotations.js": {
+  "sha256": "b396c24f768f9b1790f5ade5564a8d5cde2aa9008ae89e46df46d1885f9f7691"
+ },
+ "src/db/migrations/235_quotation_items.js": {
+  "sha256": "2bbb024a58176cee194487e8f99d838546d6506d3a6950c505cadbcce628c257"
+ },
+ "src/db/migrations/236_registered_computers.js": {
+  "sha256": "c0446da663227d58ca1f71116a27ce8123c68309ef1d55cbad0e52b45951836c"
+ },
+ "src/db/migrations/237_rental_messages.js": {
+  "sha256": "9626d43c571541086d1ac141c85cb089e051a0f9d0e949d24bfbdd8482f9f511"
+ },
+ "src/db/migrations/238_rental_orders.js": {
+  "sha256": "b66a7ddf9a8040c9917327c73ea54220ad3cf18a153f9238ec075c53f8836f31"
+ },
+ "src/db/migrations/239_rental_settings.js": {
+  "sha256": "b0ecaea8eae1e77ba07453a4e8825cb08032729ce8fbb11bbbf29b228e4ecfe9"
+ },
+ "src/db/migrations/240_requisitions.js": {
+  "sha256": "6815485fcc1d6bf0b5861f62f2e82a7cc7d28b18eb8f942e71288c8189a468e3"
+ },
+ "src/db/migrations/241_retail_audit_trail.js": {
+  "sha256": "880a8616a22c24a3d605e023b13b307b77e22ddade2b8abcfe52854f79d53e9c"
+ },
+ "src/db/migrations/242_retail_branch_products.js": {
+  "sha256": "9ebe442227f23dbad1757c25f93b9fde57a429b9afde67dd784ee1d7d2e76441"
+ },
+ "src/db/migrations/243_retail_branches.js": {
+  "sha256": "f2479515ef1dd62bee0eddb5b0a35b2569d6e2bc7163c77074674dbb6c0f6b82"
+ },
+ "src/db/migrations/244_retail_cart_items.js": {
+  "sha256": "2a1bc7ca1b55543bb806b77f58c2e5e009e5509a782cef754424c93b40ab02a3"
+ },
+ "src/db/migrations/245_retail_categories.js": {
+  "sha256": "ba3f2f371cb8fa2027c18d48859500f9ac3211bad2f437ec34d7acc56401261e"
+ },
+ "src/db/migrations/246_retail_orders.js": {
+  "sha256": "8a739bc993664ef9bb3ad3d55e0c1accf4af1b1af77566d93b47ce9d9b759b15"
+ },
+ "src/db/migrations/247_retail_pos_carts.js": {
+  "sha256": "96bf698527b112930ae88b6b25379f26ac34293ef02505d3abab9846107863cb"
+ },
+ "src/db/migrations/248_retail_products.js": {
+  "sha256": "972e937fc7f231247a5c158b3692dad5cb3147d459eafddc23e5c1f0df98afdb"
+ },
+ "src/db/migrations/249_retail_order_items.js": {
+  "sha256": "4f597e2f200dbcbcdbf93ab0de20e41a154d179c1cc680b35f5bbb4be9d49c18"
+ },
+ "src/db/migrations/250_retail_shifts.js": {
+  "sha256": "4ad964352d8a70b0a7b8868205abe94de1e00bce91758fce7678171f58bd87b7"
+ },
+ "src/db/migrations/251_retail_transaction_items.js": {
+  "sha256": "d1591352fee55c3d1cd52e2113f1801d33a04d1146128c763b72cac868cd3254"
+ },
+ "src/db/migrations/252_retail_transactions.js": {
+  "sha256": "c8aeb63290b90f2afd3b4e3f6421738ddf7076dc7f138e324415ae5e1040517d"
+ },
+ "src/db/migrations/253_retail_update_requests.js": {
+  "sha256": "ed07635f102eec41332ca109ce103a3aad4bf157fa1277d6fe9cd08d03c3db6b"
+ },
+ "src/db/migrations/254_risk_register.js": {
+  "sha256": "6e39837b6d885409fe31f49660d6e41df06d70c1d61e8f1b31f8fb85bdcd34ca"
+ },
+ "src/db/migrations/255_rma_returns.js": {
+  "sha256": "91cec8d9ad78617878d8a1f56a3d5ec40925b3f47abf68e07134844443dab55e"
+ },
+ "src/db/migrations/256_rma_return_items.js": {
+  "sha256": "c7aac3d8b778f6b1fd1cfb3b2309f22947866baac20ace42c1348c65a7110fd7"
+ },
+ "src/db/migrations/257_roles.js": {
+  "sha256": "487f5572569f6ff368ad4efe655fa7479e5570013f9f5dc8bcaaa80265d40bc9"
+ },
+ "src/db/migrations/258_sale_audit_log.js": {
+  "sha256": "23cac34b17447160b1f5a714d136dc11e4edbde75dc8f1f3329f314f03d7b1ec"
+ },
+ "src/db/migrations/259_sale_statuses.js": {
+  "sha256": "604bb63b696d7671c50e7825932a8b502d6b2e3b52106bc91467c889324d041a"
+ },
+ "src/db/migrations/260_sales_invoices.js": {
+  "sha256": "4c7dc7bb932c16d5da06a3fedee48f4710d514105c7d6ce8569c2ccc18ea9939"
+ },
+ "src/db/migrations/261_sales_invoice_items.js": {
+  "sha256": "cb125bc75200e3cf35a7a80f38208bbbafa71827c81f32425d6fbe95f31f3faa"
+ },
+ "src/db/migrations/262_sales_messages.js": {
+  "sha256": "b43a061fca66a3086269115555a55f42ff1e3d1d42800c363c80cc3c053de99c"
+ },
+ "src/db/migrations/263_sales_receipts.js": {
+  "sha256": "46994cfeb8b235fafa005be02bf89a699155451ff1a9ff2026257ce05a60053b"
+ },
+ "src/db/migrations/264_sales_settings.js": {
+  "sha256": "839d191b609c8923e0584843d1fe08a2802ee8f2d9b364d9611136b5051ba536"
+ },
+ "src/db/migrations/265_sales_store_requests.js": {
+  "sha256": "8f82fb2484f892233df69e40a000f8d990454d8ee3684cf70168f69952ffd1fd"
+ },
+ "src/db/migrations/266_sales_targets.js": {
+  "sha256": "5f14d1d0ff4968c5245a96b863edbf1f143b74e7f8a7de999ac87e8b4aeb359e"
+ },
+ "src/db/migrations/267_sales_tender_bids.js": {
+  "sha256": "8b209602e7f7f6f75d5b1226245c12e9dbc8e243e8d3939dd3eb7ca3050a8d64"
+ },
+ "src/db/migrations/268_sales_tenders.js": {
+  "sha256": "21dd037f6b18e567c2c2a0746fb76e531110ed7fd1eee29a1a48d60aa8f61c97"
+ },
+ "src/db/migrations/269_sectors.js": {
+  "sha256": "f4abdfffa783dccd23f05017fdc1b962ec9002a333fc00f46549655b432f1a55"
+ },
+ "src/db/migrations/270_self_registered_suppliers.js": {
+  "sha256": "4e2b86f06b80b957511c51b67e4aa7c72e9bb1c4a5827aeb363e1cd446c99e4e"
+ },
+ "src/db/migrations/271_service_accounts.js": {
+  "sha256": "dbbccca39bdc0cd700153c7b00fb78e1850be1663abbc0a6bce387820eb3d2fb"
+ },
+ "src/db/migrations/272_session_anomalies.js": {
+  "sha256": "754f0ff47aed72adfc5e0732c469d43965ad80b4aedc1443b13d31e2cf093819"
+ },
+ "src/db/migrations/273_sessions.js": {
+  "sha256": "9ffbdfd533d1b95fd48b5b45e00f2f47eab64f56fc832e9780f80a61c896c5cc"
+ },
+ "src/db/migrations/274_settings.js": {
+  "sha256": "e4f140481c994a0e72d3485f98f9c023fa8f25db89341a96194a8d80577731e3"
+ },
+ "src/db/migrations/275_shareholders.js": {
+  "sha256": "6410972792e3a64e2205950545aca34f8e76d3e41eeff7158841954bb6dc08ad"
+ },
+ "src/db/migrations/276_dividends.js": {
+  "sha256": "24f6ee4dec1d336197fc2ea80e92b6aa6c6abde00a8f2e900df72501f851ba64"
+ },
+ "src/db/migrations/277_single_roles.js": {
+  "sha256": "97b7352e110010f03fd20dfd493d56a427d04bf8935f27b09ac214b80faf9c81"
+ },
+ "src/db/migrations/278_social_links.js": {
+  "sha256": "73b0539ad975e21f79cff40b0ca8074c3d2e21dc61b81ea4880bd918f993cbd9"
+ },
+ "src/db/migrations/279_sod_rules.js": {
+  "sha256": "0573341990c39b0daf57ce7aed57fdb96289165ef090681611a3ec5197f9bf5b"
+ },
+ "src/db/migrations/280_sod_violations.js": {
+  "sha256": "0cbf710e9870d10c99ae7bbc69b6d4e79f940d4f4db8fae7430d09da32309156"
+ },
+ "src/db/migrations/281_stamps.js": {
+  "sha256": "540935266c7b9e81ef9fdaa213d68afa29839fd8dbc5a2c405fb8e96ccde8638"
+ },
+ "src/db/migrations/282_stock_adjustments.js": {
+  "sha256": "188d2e55c30a0f1af861df974c0fea8ad72cedcb1facc6f491db2cbf28f68320"
+ },
+ "src/db/migrations/283_stock_counts.js": {
+  "sha256": "aa4f20662aa81502d51b5697ee5b09108dcc185b06ccdf76f06b0ed36f1207ee"
+ },
+ "src/db/migrations/284_stock_count_items.js": {
+  "sha256": "cd9983b8d7b20ce3469343594dad32fbe259c65ae3f8dc502b20b794f8e19dec"
+ },
+ "src/db/migrations/285_stock_issues.js": {
+  "sha256": "9afdeaebf847889b52a5db79face8b6d706268228ddb0823221377d399d173ac"
+ },
+ "src/db/migrations/286_stock_issue_items.js": {
+  "sha256": "b626a56f1f391c8aadf1c011bc25ce59ffc35db727f1a055c7b07060f2f9bb73"
+ },
+ "src/db/migrations/287_stock_receipts.js": {
+  "sha256": "75d6e9163ef29f92586769356cfb316eb2c0a72b3570e95d3b93645bb8cb69df"
+ },
+ "src/db/migrations/288_stock_receipt_items.js": {
+  "sha256": "85cb9c2f43305ca460fa7d953c9d590cfe635c915ab643214043bfb42bd900cf"
+ },
+ "src/db/migrations/289_stock_transfers.js": {
+  "sha256": "18aa15426ac8493a7d5b7463200c78e80bfed4f0323ba80f11f62527eb0fa5ed"
+ },
+ "src/db/migrations/290_stock_transfer_items.js": {
+  "sha256": "d72e0d3c38774f4f55e602abab487fa4a7b9b0db5843210bfc966294c64fd263"
+ },
+ "src/db/migrations/291_stock_update_requests.js": {
+  "sha256": "a2a1517190aa0ecd215e4a3ff9f223bd56ab401111f40bb643e2a4ec7237bfb7"
+ },
+ "src/db/migrations/292_store_deliveries.js": {
+  "sha256": "84d862eb90876440d477c144c0764388d0f5eeadc062aeb85793c27c68551f9b"
+ },
+ "src/db/migrations/293_store_inventory.js": {
+  "sha256": "839a89e4518ae1e74a5d7f5e61b188f87f09b6c35ab796d5ded9fd70e1ed2b99"
+ },
+ "src/db/migrations/294_store_purchase_research.js": {
+  "sha256": "ca34f067c0c6ab05b800da7bc9da96e27e0a5ff48dc368c8880b9f0e47628d3b"
+ },
+ "src/db/migrations/295_store_requisitions.js": {
+  "sha256": "38535f1bd802e3b75bb5f9f7144717f28cc7564a65b217a651a21e04fe8faabd"
+ },
+ "src/db/migrations/296_store_approved_requests.js": {
+  "sha256": "03171fcd3cac91317f8b8d079b2379a07fca66b9d1be1fe4d9fcf1280c9425ab"
+ },
+ "src/db/migrations/297_store_approved_request_items.js": {
+  "sha256": "e0043b84c97a124597a6fc4953483829392a4955d135d63924f4e918502aede2"
+ },
+ "src/db/migrations/298_store_requisition_items.js": {
+  "sha256": "d6ebd9bbbe07628c12122f455e55d84e35641312632088cabe5932e4dd9aa904"
+ },
+ "src/db/migrations/299_store_sales_records.js": {
+  "sha256": "2713672c345ca12893f65e91764fee290c4ff404c97b9eecf3b081dc90c9759e"
+ },
+ "src/db/migrations/300_store_sales_releases.js": {
+  "sha256": "6c6620104c0fe9964dad1adb8401426acc0f5f3350150dc0e94000a73cbf85ca"
+ },
+ "src/db/migrations/301_store_sales_requests.js": {
+  "sha256": "e128046dc98064580263316cf7592eb77f49349b342eee014a7ee685d64847b2"
+ },
+ "src/db/migrations/302_store_staff.js": {
+  "sha256": "05d83767c9b7a22e2b5ecf329e0d6bd25c60b70b9a603ea7fa4bd4345e5277c3"
+ },
+ "src/db/migrations/303_store_attendance.js": {
+  "sha256": "0483229378cedcf7eccc8d4ac71327e88d89b54df6793e50df9c91d04de259db"
+ },
+ "src/db/migrations/304_store_suppliers.js": {
+  "sha256": "dac897709453ef6a385f9a11b661b1234d7ffd9078f25aa7afbdb70af877a078"
+ },
+ "src/db/migrations/305_store_update_approvals.js": {
+  "sha256": "56e53d9ce3720060aaf84e7bedc7c4730331d755f0dd5bec069695bc1f7f35ee"
+ },
+ "src/db/migrations/306_supplier_catalog.js": {
+  "sha256": "0e7818b20085453deb15a790c4102e1e652e47a1e5941edcac4e4217acbe9b85"
+ },
+ "src/db/migrations/307_supplier_documents.js": {
+  "sha256": "7139eb14a96b6815f594b724568b6b9cb6f993d4f05fcc344e658e2a5cf7518d"
+ },
+ "src/db/migrations/308_suppliers.js": {
+  "sha256": "561d046ab2fb01b0f1fc9d8f8a430777ea0b3dc783f7db45880d6611a1c46324"
+ },
+ "src/db/migrations/309_supplier_credit_limits.js": {
+  "sha256": "c3d9ed6521929ce2ed9955040e0e7b026d1c35b400de476aa973a9418aa15a24"
+ },
+ "src/db/migrations/310_support_tickets.js": {
+  "sha256": "452d066aa9c75275384880afbf51fecd01fe124317e76bdbc1db5cde7906f28f"
+ },
+ "src/db/migrations/311_tax_details.js": {
+  "sha256": "2d25a89a2cc3a818bcaebe53192a9b2bdf8bfd5ba7f8b62e541d55a31a7e1d5a"
+ },
+ "src/db/migrations/312_tax_receipts.js": {
+  "sha256": "28cf8fb10590b9c03a9b84cae433f41b57acb217757d4f97cc1f7530f1241aaa"
+ },
+ "src/db/migrations/313_tax_registrations.js": {
+  "sha256": "08283b514650e3f251f599a5c11315e098be0f8aed2367e0f260108c9b7f7e1e"
+ },
+ "src/db/migrations/314_tenders.js": {
+  "sha256": "501fb0157aed3309d50f7b313f118b70eb410ac3cef1d3c682379e5333fd7dda"
+ },
+ "src/db/migrations/315_deliveries.js": {
+  "sha256": "ebcfa77e67eb8df12109fecb1e3352eca77a2443bc8cb058a02baf239ea5af99"
+ },
+ "src/db/migrations/316_fund_request_items.js": {
+  "sha256": "e0bbdc00adadd873eb8f8b88baf43dfc7d6d4a53fefebda8c427ffdd3a4b729c"
+ },
+ "src/db/migrations/317_test1.js": {
+  "sha256": "77ce61bfd1943e980fbfd6591743503936819e59e742aeaf58e3e1b2e21f86cc"
+ },
+ "src/db/migrations/318_test2.js": {
+  "sha256": "5fb6eb70fcb3106f9e78597d1e2fc7cd3f8b9b91260c52dd2cfedb79711df519"
+ },
+ "src/db/migrations/319_tractors.js": {
+  "sha256": "9bfa59cd6e3468072054c2ce08e48c2ad8ae9ae942c5376e9e8e01bc39cf6e9a"
+ },
+ "src/db/migrations/320_transfer_requests.js": {
+  "sha256": "229bc2f286fa5e561776b4d9536a435b56b41f2966fd9eac64bd99f05f015c42"
+ },
+ "src/db/migrations/321_transfer_items.js": {
+  "sha256": "286de1e68c0bd0fe2e51f5c520a3d389602da167d486c960ef72b897fd0db364"
+ },
+ "src/db/migrations/322_units.js": {
+  "sha256": "bb873ee7b9190de432dbd8effcdce3effb93a08ecd0f1acbbabdeb18133d7911"
+ },
+ "src/db/migrations/323_user_roles.js": {
+  "sha256": "9dfce48d99809bc7b491e43fccd197b807bbd03bd6b2a84ef2aaa0457413a2b1"
+ },
+ "src/db/migrations/324_user_statuses.js": {
+  "sha256": "e0648c53a0c6851454081b83d1f433cb82c514c18d0cbd92e802e1ffb57a9224"
+ },
+ "src/db/migrations/325_users.js": {
+  "sha256": "6a3ee08c98648d3212a04b72f9ef50979bacd8ed9a839aad79437b8dfeb0e088"
+ },
+ "src/db/migrations/326_announcements.js": {
+  "sha256": "af72097f05354f3ac36a93731eed3f8bd67a644608b322f1c390d39e476c5fba"
+ },
+ "src/db/migrations/327_audit_logs.js": {
+  "sha256": "f5f36b370e91c361c61928c0286117d037d0d8c07ab4b39f4e04c2c37b350394"
+ },
+ "src/db/migrations/328_central_audit_logs.js": {
+  "sha256": "6b436da6b124c77b6e9b106e79968c3db524b0d90d883bd0521a4997d536803b"
+ },
+ "src/db/migrations/329_customers.js": {
+  "sha256": "254991f7aa86a3993a54f2304bbfd581f9820746d73ea9ed8f5f98538025095a"
+ },
+ "src/db/migrations/330_customer_notifications.js": {
+  "sha256": "ef008b54540f24289030e8d49a234a371a991934983b41a74e5cca4833029a20"
+ },
+ "src/db/migrations/331_employees.js": {
+  "sha256": "3f5533979ed2add822507001e8e4d13cd5812a3883977769f52d6f21ff8a1379"
+ },
+ "src/db/migrations/332_expense_approvers.js": {
+  "sha256": "2d48165ba94c8329f5d0fb46b62ef1fb69a8923a351ded029806fe9a1972612d"
+ },
+ "src/db/migrations/333_expenses.js": {
+  "sha256": "b7850a8c79e13ecf016097dc1dec731216ff416cd30c8e8810aaa950b51d6d85"
+ },
+ "src/db/migrations/334_budget_encumbrances.js": {
+  "sha256": "6497ad607cc41e182bd3e3f803b4fc0feeb90e0d6636187bc94faece3c22b487"
+ },
+ "src/db/migrations/335_expense_approval_requests.js": {
+  "sha256": "6a3ab1e52890df28869d4d275513fb127b83482f5d8d533ee2219dc321681704"
+ },
+ "src/db/migrations/336_expense_audit_trail.js": {
+  "sha256": "c724b9c9994b832c4de1a37e52cb0310910619d27b1d10899594b74c14046cfe"
+ },
+ "src/db/migrations/337_expense_taxes.js": {
+  "sha256": "62bebe4c2dbda48f5c9ecc707cf6c901b19018388e2f2887538bc339c56472da"
+ },
+ "src/db/migrations/338_finance_customer_credit.js": {
+  "sha256": "824388e3395e4185db4241106793d81bc2143af9d421a3e67455a1b9f944bb68"
+ },
+ "src/db/migrations/339_finance_expenses.js": {
+  "sha256": "ee3586f6cdd7e1f919a5c6beb83bcc14331b596ad4811f5d1a2f4f5a93dcc074"
+ },
+ "src/db/migrations/340_finance_expense_payments.js": {
+  "sha256": "1edb4ed04dec15d9647becd5ffdef88be2f22fe5b514930278aad0771838a841"
+ },
+ "src/db/migrations/341_finance_notifications.js": {
+  "sha256": "bac19eccba9b913019111bd790601446f9f8c14c063117eb582c6c3c929f318d"
+ },
+ "src/db/migrations/342_hr_audit_logs.js": {
+  "sha256": "918c8260b17a7bae070861748e75ccfec99aea0c9564ad4304d8d1b4e82755bc"
+ },
+ "src/db/migrations/343_hr_policies.js": {
+  "sha256": "ab845d10e56e21845c5af7bd64d37840cf2b820df0635244149ab6cb3a9851ee"
+ },
+ "src/db/migrations/344_hr_announcements.js": {
+  "sha256": "650837380564d71d6d91d7112a8735e9ce348e064556328ff72ed6a70a9bc9ef"
+ },
+ "src/db/migrations/345_hr_announcement_receipts.js": {
+  "sha256": "2285e13cfb1ebeb0b0090ee5802d9efd655acc6fb1e7ba5c6e18359194fee8b3"
+ },
+ "src/db/migrations/346_hr_policy_acknowledgments.js": {
+  "sha256": "0345e20db5912420e187c15bdf4f828ce9bc0e24a6f0c75c478f0f189c140efb"
+ },
+ "src/db/migrations/347_inventory_counts.js": {
+  "sha256": "26a6c72ce66e104f12fc4d3baa94db501a312adbe15f3fdb6d39a42c7745c73b"
+ },
+ "src/db/migrations/348_leave_requests.js": {
+  "sha256": "3d2c6f7ff4fb4e33baf8c96cbb0235fd8a3860432660e7d5a984e9d193e9f4a1"
+ },
+ "src/db/migrations/349_loyalty_points.js": {
+  "sha256": "12d7feb126ef8bd559114784170ad6c48e538d45f16fd33402257634b59e5475"
+ },
+ "src/db/migrations/350_payroll_items.js": {
+  "sha256": "a75ede59b0e313854da71c158d2606b5ce19bd95861a0f1ed4d4dd38b1249839"
+ },
+ "src/db/migrations/351_payroll_records.js": {
+  "sha256": "04bdb55b8943b5ccfccbc35293482d3baaa86ee03da155a87591d9b3fdbe8f95"
+ },
+ "src/db/migrations/352_petty_cash_funds.js": {
+  "sha256": "1414f9547b07f0ef6c7818244743bbcd80643ebcfc11f8eb20ca15685c6ef6c2"
+ },
+ "src/db/migrations/353_petty_cash_transactions.js": {
+  "sha256": "09e488fbc86abe903e6538572c689ffdc9c729e734cc401ba2e4d9646b6a4ccf"
+ },
+ "src/db/migrations/354_pharmacy_branch_toggle_log.js": {
+  "sha256": "c0ab1a31d6e08e37c719e86d70a0e4758faf08a571f8291867f63ad5b322f6d2"
+ },
+ "src/db/migrations/355_pharmacy_drug_hide_log.js": {
+  "sha256": "c9eacf006b29db6b860bd7d2b0776aff9b6b70460391bf17e665aa2c6241ef48"
+ },
+ "src/db/migrations/356_prescription_requests.js": {
+  "sha256": "fd588cb172edb99057e6575cb64663486324f0e17ed8435d0c74172ad382613d"
+ },
+ "src/db/migrations/357_report_submissions.js": {
+  "sha256": "87838b75d402d7fcbf69787efe908e5b41391f4ac69ee88559a4f6a86fc41694"
+ },
+ "src/db/migrations/358_three_way_matches.js": {
+  "sha256": "b7ca98265428e4a5dd58f9092c0ecb816e2b80ea9979d5fde4819357bf9f2d8d"
+ },
+ "src/db/migrations/359_vat_configurations.js": {
+  "sha256": "31a4e7d14172328aef348cfc5c7e5b031bc2c7581c2a3bbee71e61388f469136"
+ },
+ "src/db/migrations/360_vat_change_history.js": {
+  "sha256": "521aaa8e082a9e1ee0aac0066b8bc0c38ee43eaa2667032ffb7cfe8249314ad5"
+ },
+ "src/db/migrations/361_vat_transactions.js": {
+  "sha256": "5251a082ad30ce7d61e2b62431bed22d853b0de782136b3209d7fd66b55a6ed4"
+ },
+ "src/db/migrations/362_warehouses.js": {
+  "sha256": "be0b18ab31edc751866229db2db792bd36af15fe41bdd5eb843c533b33bb73ca"
+ },
+ "src/migrations/20260723_change_action_type_to_varchar.js": {
+  "sha256": "338fcd292f1ab464cd261dd6ffe49cedd421a33e0aafbb95757e96a3ebbc7580"
+ },
+ "src/repositories/close-period.repository.js": {
+  "sha256": "aec4966e435e341b98d2b14c4b9b2637884d5abbebc8238613b3ac7235c53828"
+ },
+ "src/services/admin.service.js": {
+  "sha256": "e561333acf07bb009f11ed885e354142f596f93b0d29157232554351ca298cd7"
+ },
+ "src/services/alerts.service.js": {
+  "sha256": "49571228d924575917131b1dd2eacd69a8541cf7fc21c203b9cb15d0aaded711"
+ },
+ "src/services/audit.service.js": {
+  "sha256": "f87658554514b41920ec305677648bf415f5380ed6e4958d38c2e38f77734218"
+ },
+ "src/services/auth.service.js": {
+  "sha256": "5aa58cdf0eb41f314e1d409b2f968ea207630933c5a9afec6c50180f3022721a"
+ },
+ "src/services/centralAudit.service.js": {
+  "sha256": "31bea9494933af21e63ca563780fdcdc240908315aee4dcc84cb9f8b658fb7f8"
+ },
+ "src/services/ceo.service.js": {
+  "sha256": "1b5542992beb3753454173623946b52b655cd129c1db8ce17b622c8ce6546f82"
+ },
+ "src/services/dangerZone.service.js": {
+  "sha256": "e2df4b02c0cb4a1aa2218926fbd555d1e8aba83cc15ec1592e3f46f637292c30"
+ },
+ "src/services/finance.service.js": {
+  "sha256": "fbf07abaa8c9cb679cece68d6d9821ac02ceff000a5509eb5cec207a4c3279d0"
+ },
+ "src/services/inventory.service.js": {
+  "sha256": "e85d3a505942a1a008bc217d8c22926ec1d0a93db1e235b81101eb9ab0fdc141"
+ },
+ "src/services/printing.service.js": {
+  "sha256": "81b9a3d3cbb1db1bc66fb43f6df8d8d8f0c2c87ca74293f13c98f1ce3eb79e0a"
+ },
+ "src/services/report.service.js": {
+  "sha256": "98fa0c1c26b41791e6a1cb4dc28ba4f898e4b7e2a205a8423cedf1a929276a72"
+ },
+ "src/services/salesAdmin.service.js": {
+  "sha256": "460b94a348bfc82c2783ab2b20f4781349e4fd3d5291fb6d9bbbf3b17fda3f9c"
+ },
+ "src/services/sms.service.js": {
+  "sha256": "7252f84b921eebbbadfcf56db9424135a00be0f002ee2533b4a1ebb0acaea024"
+ },
+ "src/services/vatConfig.service.js": {
+  "sha256": "3d85d904c966e843ed81582fd03d7b58c893856ba35bd55e8dd27835eb17f143"
+ },
+ "src/api/migrations/add_payment_proof_to_retail_orders.js": {
+  "sha256": "572512ed03856e5f5dd1fb3719e97e75b7b48ede97a9830d75efc1d6fd09d091"
+ },
+ "src/app.js": {
+  "sha256": "03be1aa5c1d691f0c4182ae3f3e1ade552525c0d67c311f9477f3cc805aaca41"
+ },
+ "src/api/controllers/_quotation.pharmacy.block.js": {
+  "sha256": "1162a585f94f169b7883d7b3280d54686338cc39563fe1a0a22dc5f26758ee45"
+ },
+ "src/api/controllers/adminDataImportExport.controller.js": {
+  "sha256": "77458642bb76ca75e3d76799d9718e32bb37f3326164e1705293b0fc3934932a"
+ },
+ "src/api/controllers/adminMaintenance.controller.js": {
+  "sha256": "d0b04d29e9cf5dabec55f0bd6a3af29d781f316553eb11911dbf2d15437ddd1a"
+ },
+ "src/api/controllers/adminSystemJobs.controller.js": {
+  "sha256": "76a5d2864f6bf233bfae5751f9c59f8af93989376dcadc9cdc46435f9306d6c9"
+ },
+ "src/api/controllers/agriRentWaitlist.controller.js": {
+  "sha256": "810de740b908a4aa7b4f852ab108757611da2eefb32ee68e8775123ab3830101"
+ },
+ "src/api/controllers/agrirentOrder.controller.js": {
+  "sha256": "9e264187e3137699ff849fa6963d8f38c5b78f47b79c730c179adad77a7aab42"
+ },
+ "src/api/controllers/alerts.controller.js": {
+  "sha256": "3651eced82424b24f24b683b15c65c54109dd541c9a81f9a048523169722fb34"
+ },
+ "src/api/controllers/announcements.controller.js": {
+  "sha256": "cf96a5d60756f9a69764802a574f6793ffc5199a5e9722c61e68b0f825f7162f"
+ },
+ "src/api/controllers/applications.controller.js": {
+  "sha256": "cd91da166fa419fe6317b1683a9fc06562156aded8f2f7d289a2b6ff32c7b955"
+ },
+ "src/api/controllers/approval.controller.js": {
+  "sha256": "b48adae6fac8e29d3a4b887aa8941a0959bcd1d3d61af124edc0d473d981e597"
+ },
+ "src/api/controllers/assetSummary.controller.js": {
+  "sha256": "f820ef98bd3490ed1253daeb20df50a27862ba4d47611a09225b0a490fa69f5b"
+ },
+ "src/api/controllers/bid.controller.js": {
+  "sha256": "64103eadfd69c9b1316bf82c619f8cac94534daf5ac0df348f7102f7112dbd4b"
+ },
+ "src/api/controllers/board.controller.js": {
+  "sha256": "44d08b76c4d412f5004fdcf1ab0e8daf6bffb70c6831f5a5cac7b685c21087d7"
+ },
+ "src/api/controllers/budget.controller.js": {
+  "sha256": "d14feec1379167c78a2822580525bcce8036310e27f815ad41fd5d13c8024a0c"
+ },
+ "src/api/controllers/car.controller.js": {
+  "sha256": "54976003cb83ca0ebe44767342a648e7f5048724fdeedcaafdb48271ab7506bd"
+ },
+ "src/api/controllers/carWaitlist.controller.js": {
+  "sha256": "bc949d5b7dc8fc592f8e149c53ab0b09e833d8aae3dd9fa00c3be99c49a6a326"
+ },
+ "src/api/controllers/centralAudit.controller.js": {
+  "sha256": "ae29bde30069f327894bb82cb49599a3450f47e69c51006b20b2460b83517e0f"
+ },
+ "src/api/controllers/ceoExtended.controller.js": {
+  "sha256": "1caccbdec03da5115e5540ef7679d28d792feb72ac2fc567411ea03ecaa8ce73"
+ },
+ "src/api/controllers/close-process.controller.js": {
+  "sha256": "0656440394ccf1362417d88a036f72c78efff7879612880b58b2234e6dc7b62d"
+ },
+ "src/api/controllers/coa.controller.js": {
+  "sha256": "fb86b0759e847c168813846348ceb6e98b36facefc91b77644507e5ace6c3a6c"
+ },
+ "src/api/controllers/contact.controller.js": {
+  "sha256": "e47289d424171a5ab4986ae13676af0c01d146b2706c3dc72335a0179f8ea8e9"
+ },
+ "src/api/controllers/crisis.controller.js": {
+  "sha256": "d874eb7e1dce386bf985a9926c637b26310fe3e0aabe3aba6d74fc21c054dda4"
+ },
+ "src/api/controllers/customer.controller.js": {
+  "sha256": "bd44f36a9b68483c34f09ba23998cd41e53752bca5afd75fdc4ccce0e118f16e"
+ },
+ "src/api/controllers/dangerZone.controller.js": {
+  "sha256": "deddb95e265b23140c8a5f226f2b7447e2fa9c30969fa623be53d4fc378d3524"
+ },
+ "src/api/controllers/emailSubscriber.controller.js": {
+  "sha256": "4764c53068aaa6d5a18e8919942b7187b62d9ce6eaaacc908a2b2f5b323ae80a"
+ },
+ "src/api/controllers/employeeReports.controller.js": {
+  "sha256": "7b70779b3264bd00ee07fa4e4b3d1d82e06cde59e1e64ec168024eef5760b6cf"
+ },
+ "src/api/controllers/employeeTasks.controller.js": {
+  "sha256": "6a65c024374f8515eae90687c32f311414e91b42aa96be8b545e7552d4a3009d"
+ },
+ "src/api/controllers/erp.transfer.controller.js": {
+  "sha256": "e01e00995fc83be15bb30203b53b480fe710274b440d4dd4553a25c99929ba9f"
+ },
+ "src/api/controllers/finance.controller.js": {
+  "sha256": "0a65be117eeb07132c352bb29933aa555b13bd0d36a7e9798a62a36a5eed0202"
+ },
+ "src/api/controllers/financeBank.controller.js": {
+  "sha256": "3b23a1f9c12d0e14372bf172f5a8339e62b0f905a8147e7a2bb6a55c7c7c3b91"
+ },
+ "src/api/controllers/financeCash.controller.js": {
+  "sha256": "bd54f5a7c4d7bf6dbccae821b9e81d6449f8142ba0822080a02580cc209e3e69"
+ },
+ "src/api/controllers/financeReceiptsDashboard.controller.js": {
+  "sha256": "3acdcb8f1b69494f05a598efd2439049634ee06c55f59eccd5bcef74763ad657"
+ },
+ "src/api/controllers/gallery.controller.js": {
+  "sha256": "53359145ac1ab02e3198175662ea635b5791c755fb83483eb1d6e11284e29439"
+ },
+ "src/api/controllers/generalProcurement.controller.js": {
+  "sha256": "c8e07bc36b734a87d4bee5fee031d096cd6fb8dc5d3ff036ddd2c08ac90dc5fc"
+ },
+ "src/api/controllers/generalStoreDashboard.controller.js": {
+  "sha256": "c0a780b964fa10fbba25dfb3c12bd52c962c4c31ec39c29dccf46ee1f494db1d"
+ },
+ "src/api/controllers/hr.controller.js": {
+  "sha256": "4d5a72b6510a0e732a81a173a1ffa61bfa7eaa5773d19451b7f6be675c1880d6"
+ },
+ "src/api/controllers/hrSettings.controller.js": {
+  "sha256": "3b04914d67a07a229240e82adad7f6b0ba83318696d0f45c19f926fbf95c514d"
+ },
+ "src/api/controllers/integration.controller.js": {
+  "sha256": "789208e335796488f065efda8ae6c7e360ce14f8676760eb9c7b8ea2aed460f2"
+ },
+ "src/api/controllers/managerChat.controller.js": {
+  "sha256": "11ee55bdec873f5266c0d3ecae7a6a61b6b77acb1d4eb802d7f99827b6fe9fef"
+ },
+ "src/api/controllers/new_pos_endpoints.js": {
+  "sha256": "65ed7719d6d253110a710db2753b90bff9cfdd4ebf72b17f3c62ce90f4d8392a"
+ },
+ "src/api/controllers/notification.controller.js": {
+  "sha256": "dd995133d9c9ed21e9161e8b4e9143d91d730f98e7fd633698802d5088f82ecb"
+ },
+ "src/api/controllers/petty-cash.controller.js": {
+  "sha256": "f831416eb97ed8d79c7cd4d1b022336ac0da225372582f08002abedf4546f905"
+ },
+ "src/api/controllers/pharmacy.controller.js": {
+  "sha256": "4d1f84f6b8503fe64baeaaf55a8f8b9853f04d6dc0083ee1c52718c30668b111"
+ },
+ "src/api/controllers/pharmacy.dispense.controller.js": {
+  "sha256": "7dd82e2a76caf09af40416db9810aaeb960d3ed640a6038ffadbf4b5deff4988"
+ },
+ "src/api/controllers/pharmacy.health.controller.js": {
+  "sha256": "bbe833a9ab2badd70e68fee3e7f83ce2a90d51db18b49782ac329fe25aaa268d"
+ },
+ "src/api/controllers/pharmacy.posts.controller.js": {
+  "sha256": "4c671d4bc9569eb804ec33a00ed3683b3451c4827665cd6182077614dbad3cba"
+ },
+ "src/api/controllers/pharmacy.requests.controller.js": {
+  "sha256": "b538fb82b424b5f8f934e4f08f596fb1552e79c96435113eb2514f9734da9010"
+ },
+ "src/api/controllers/pharmacy.sales.controller.js": {
+  "sha256": "1215eede87082b38ace1e4eb2bebefc4710718c9672217a1b89f7b7cf33e7d99"
+ },
+ "src/api/controllers/pharmacy.transfer.controller.js": {
+  "sha256": "2c1938e2339afda94b7cdeaaf173b1653897228b3e167a9ebd7b75a52122e165"
+ },
+ "src/api/controllers/pharmacyInventory.controller.js": {
+  "sha256": "89c05d90c14047d4a4a3567f9a180ea5f8b7bae85e00653199d8869da3a603e4"
+ },
+ "src/api/controllers/pharmacySettings.controller.js": {
+  "sha256": "15d75ac524365486095b7b7450700995caaf9c8e1780a1703134e356e93c62ea"
+ },
+ "src/api/controllers/printingAssets.controller.js": {
+  "sha256": "c1daf5fe1c64e0e2d02fd59e60ee2e5d7de22791f72c7f64ab478fcdd3908190"
+ },
+ "src/api/controllers/printingSettings.controller.js": {
+  "sha256": "c4250510394deaa3563c24f59245b5c5bb3239bc3a675d42fc20024e91fe3f32"
+ },
+ "src/api/controllers/procurement.controller.js": {
+  "sha256": "5d8c7aba4445686c7736a3fe32dd2235bd75c1bc14b63472ae4deecfced9be5d"
+ },
+ "src/api/controllers/procurementSettings.controller.js": {
+  "sha256": "880acab3ebbf96fe3232998834673a78f943779e6dccc2477c986d0736a3872c"
+ },
+ "src/api/controllers/public.controller.js": {
+  "sha256": "68b8b367962967c4f3e7e55b0107e45405a9f537b30fcd44cbd73359ec4c98e6"
+ },
+ "src/api/controllers/publicProcurementFlow.controller.js": {
+  "sha256": "fb57db8aefa772b8d3d11c4423267e34dd6b3d6bfe33aedd9cda2afd92ea6a58"
+ },
+ "src/api/controllers/publicTender.controller.js": {
+  "sha256": "ab952997b39a35967c41973fb559c05be353bccbdfe9d428cce3e70327a8828b"
+ },
+ "src/api/controllers/purchase.controller.js": {
+  "sha256": "652b8d722142b641dc374fc25433a64bca0ae2eab245e1dab8d16383dc592b6e"
+ },
+ "src/api/controllers/purchaseFlow.controller.js": {
+  "sha256": "737b68dbe5b923a4f8137540b8b688358dbc3149025017730b7235069c389922"
+ },
+ "src/api/controllers/purchaseReturn.controller.js": {
+  "sha256": "08ebd4d7059194aef5dcb9894fb857da34c532b3727b1b797920b2c865eff7b1"
+ },
+ "src/api/controllers/pushSubscription.controller.temp.js": {
+  "sha256": "01afd03e9df206a2b5ba55f0e08caf3550e731eee7d042b4ea848698fd97944d"
+ },
+ "src/api/controllers/quotation.controller.js": {
+  "sha256": "390d1c9620f5b69284bb1f920222c5293ed77b403a78bd20ffbb98f885b4b057"
+ },
+ "src/api/controllers/rentalOrder.controller.js": {
+  "sha256": "5e8460834bd03f02d8c7fb3db022941b06d03836e0e2d6ffcecbb4659f498304"
+ },
+ "src/api/controllers/rentalSettings.controller.js": {
+  "sha256": "d71496927ec498ee330a699cd1bb23cea50ddbb7809e34fa82c04ed4c96ae286"
+ },
+ "src/api/controllers/reportSubmission.controller.js": {
+  "sha256": "8b62917cb4a7a93c2b978bf96d72a1f9ef11c6c486175f7b3aae7a6c7559fecb"
+ },
+ "src/api/controllers/retail.reports.controller.js": {
+  "sha256": "1d06587d37a2371789176bac69801fa3791a0d5ab84de12700843c29713895bc"
+ },
+ "src/api/controllers/risk.controller.js": {
+  "sha256": "f53db6d6c634175bb7893fc49e9a622cffb2bafa0a352da07367425afdbd3382"
+ },
+ "src/api/controllers/salesAdmin.controller.js": {
+  "sha256": "cd118a9498cb1e2e94257d07e5f288144bcbb1a07cc7806ee3921ce740a0fd09"
+ },
+ "src/api/controllers/salesSettings.controller.js": {
+  "sha256": "d72b296af748b5543434a1bce7bf1b048f9059f71925aecd5dd40e6d399d40e5"
+ },
+ "src/api/controllers/search.controller.js": {
+  "sha256": "6f22403244953df8722aac4c11c65aa327b4e3ee5e0f95a7a36733421b1d5478"
+ },
+ "src/api/controllers/selfSupplier.controller.js": {
+  "sha256": "f1c0959e142f985e9f7e5d7e4d92de69b7eaa81c1af157564303182283c29733"
+ },
+ "src/api/controllers/storeSalesRequest.controller.js": {
+  "sha256": "0192f2134c1f24e86a3c2cdc8099df452a61773cc6711ed13c7b127c40791b02"
+ },
+ "src/api/controllers/tender.controller.js": {
+  "sha256": "6214b090cc13cae7ccfc778894e317d4dd4d7e5a1de93c04d6921e1bab82347a"
+ },
+ "src/api/controllers/tractor.controller.js": {
+  "sha256": "16540678e378d37e9a33beac51dfb35bbcc4c95ec904d3d214d3df9348214606"
+ },
+ "src/api/controllers/transferRequest.controller.js": {
+  "sha256": "71cd4b373ca0ac30e366ccea55c4385fc16803bc993e3117b94dd596d0ea6c3b"
+ },
+ "src/api/controllers/user.controller.js": {
+  "sha256": "2235421f79e4f2ca2026d41ee947c9391cccc79d4f3e61b6fc5572293fac8217"
+ },
+ "src/api/controllers/vatConfig.controller.js": {
+  "sha256": "e0248d4702d2c4d2c71132f07648c89bc7a0bdf940874b0b6c1780b1b3d72631"
+ },
+ "src/api/controllers/warehouse.controller.js": {
+  "sha256": "89e0ec74536bc3c69e7471b4646d5a2f0926fd6380e466b8ed2d698c69ce4ebe"
+ },
+ "src/api/middleware/audit.middleware.js": {
+  "sha256": "e820b3d9444dd65901888dd55b41f72689b44ae7539f89f8288e030f933a679d"
+ },
+ "src/api/middleware/compression.middleware.js": {
+  "sha256": "4162c75b1e804d3a022a3047cf858f01edceace0178135b264c51bd62154e9ee"
+ },
+ "src/api/middleware/cors.middleware.js": {
+  "sha256": "dab1c231dd1f0d1f4276e926447cb8441ed5d84d99152c2e48db7a6633909a03"
+ },
+ "src/api/middleware/errorHandler.middleware.js": {
+  "sha256": "ae3b254425644ee00eb15d057d31b3ac6a459ac61dd4bee2057afb5180b317ce"
+ },
+ "src/api/middleware/helmet.middleware.js": {
+  "sha256": "b03fb33b658185d5c5038bd78b9778e41f4623ad711f4af9b79ab6a76f98099d"
+ },
+ "src/api/middleware/index.js": {
+  "sha256": "304982cea62500e27485897275751ad24c24abbbab1e27a74edfdc94bc98e3f9"
+ },
+ "src/api/middleware/logging.middleware.js": {
+  "sha256": "43a25f650f4049c089886b01a75c4e7219768fb5dc9568d1e656b778c2568de1"
+ },
+ "src/api/middleware/rateLimit.middleware.js": {
+  "sha256": "fd46a74d750f214a78fc215b85979daaa6c1ac56f4916223ba6ea92f230c280f"
+ },
+ "src/api/middleware/security.middleware.js": {
+  "sha256": "3379a0d43ceb1f3aff15af992715a1d34a5e820c0b10f94720a4915a96454073"
+ },
+ "src/api/middleware/upload.middleware.js": {
+  "sha256": "f09093c8408c7baea8a579aa5fb90c14741f9935d14ec3771de48448476aeebb"
+ },
+ "src/api/middleware/validate.middleware.js": {
+  "sha256": "ee26fa174e2906aa7436201602308b6ef25aa2de477e7d26288fd137e153baaf"
+ },
+ "src/api/migrations/create_product_tax_mappings.js": {
+  "sha256": "bbd1fae35e575abae942d19a4642a902ecccf6e3752b90f21bba877e367d6776"
+ },
+ "src/api/migrations/create_vat_configurations.js": {
+  "sha256": "c13a4ca09afc9630e60fa563e8db4b296ac58b67ac7ebbc8be896c03086c8540"
+ },
+ "src/api/migrations/ensure_vat_change_history.js": {
+  "sha256": "35ecb7ac8e2d25fe850300eb7a704069fc4b98c6038eec995dc624dd44189de5"
+ },
+ "src/api/routes/admin.routes.js": {
+  "sha256": "e7e3cd0c629a3398fc793ddbf1d2c871d700f883e16555684cacb1686e336d09"
+ },
+ "src/api/routes/adminExtended.routes.js": {
+  "sha256": "37581a97ad9a6adbd668d4d533cd8685045246cc1e5bf6de713df5102c1b73b2"
+ },
+ "src/api/routes/agriRentWaitlist.routes.js": {
+  "sha256": "bde42a9cb646e288ac758ffeda6db7195a01b426c62086057c28f87dbe666514"
+ },
+ "src/api/routes/agrirentOrder.routes.js": {
+  "sha256": "6a4b951213cdbf0a74b84476a73a505f20920d6be82e2fa76258c0ae430d9370"
+ },
+ "src/api/routes/announcements.routes.js": {
+  "sha256": "5eff5686cf317b6356f370bf31147395ed9fdb6197a25f85b241d1554224aa69"
+ },
+ "src/api/routes/applications.routes.js": {
+  "sha256": "88950127f2e7499bcfa626e6fa81593f12e8240df7684092ceb9ef8c0d6a7ae2"
+ },
+ "src/api/routes/assetSummary.routes.js": {
+  "sha256": "7ec3189be3265624730371d84f34979643e293a9c2455ebfddbb076e2777d19f"
+ },
+ "src/api/routes/auth.routes.js": {
+  "sha256": "312b72ca688db2273b4080a1995df9eee03a40ecdc648267c6e1c3000f159b72"
+ },
+ "src/api/routes/board.routes.js": {
+  "sha256": "867c2690fb48be914cde8d76bdcc9e6d9ca317fecc6549f2501c921875f64dae"
+ },
+ "src/api/routes/car.routes.js": {
+  "sha256": "6ee5e58d53d2f11bd106e6c994db4053a9f140aeeec8f6dd0f2952f74a6fdaa0"
+ },
+ "src/api/routes/carRenting.routes.js": {
+  "sha256": "2ae5c9420ec237e5671440710c2929713618a6421cefc524cf073ea72a48d04b"
+ },
+ "src/api/routes/carWaitlist.routes.js": {
+  "sha256": "484ac10892d6a0ed6809fd83d01984f45b8ea0a45c65e49cb2c1bf156abd96fe"
+ },
+ "src/api/routes/centralAudit.routes.js": {
+  "sha256": "1ab9f305343b998b4f3a8699680a6320080d6a8a193c7cbab4bae5e92e29d48b"
+ },
+ "src/api/routes/ceo.routes.js": {
+  "sha256": "7d3f7c7749311422e39010fd7fb2ddeedea8a6145d737e7e493588c594020d4f"
+ },
+ "src/api/routes/ceoExtended.routes.js": {
+  "sha256": "278c7ac31b6a3d79f314c25837918197002a47149c40050663d946ac333a9c3c"
+ },
+ "src/api/routes/contact.routes.js": {
+  "sha256": "ca368d6694bfdee84b3750de7d83f710e1c50670341734ff2aba53fee0251131"
+ },
+ "src/api/routes/customer.routes.js": {
+  "sha256": "5b5bb54dbb9af329dbe0a8604212870dc763d14aa16b906369a1a67d6f5ae512"
+ },
+ "src/api/routes/emailSubscriber.routes.js": {
+  "sha256": "ec358c3de0797ac5dad528dab84b8a0748897c9e83f6e5935fe5c8cbbd174034"
+ },
+ "src/api/routes/employeeReports.routes.js": {
+  "sha256": "a8921d2290b202fb2525d83ef17522dbf305bf018790367f3abaf4cbf59238c5"
+ },
+ "src/api/routes/employeeTasks.routes.js": {
+  "sha256": "ed45d527890b4b2f12fef8c89aa4186bb1103a8d54dcb3078219d4ecfbf7e367"
+ },
+ "src/api/routes/erp.routes.js": {
+  "sha256": "f085be98dbc2e1faa2577556d64ee4dc6f6384b6bd87723c02c0a6de2bc3b8c4"
+ },
+ "src/api/routes/erpReceivables.routes.js": {
+  "sha256": "431dbf047d437e573e6398bfc7265a46eba43651baf4b601a8f9d84e61fccd5a"
+ },
+ "src/api/routes/farming.routes.js": {
+  "sha256": "d753c75547d73c3aa23509af2e7ff51dda48924897a90fa5615241aefa80e47d"
+ },
+ "src/api/routes/finance.routes.js": {
+  "sha256": "dcca31f1491a784dd5ea879d6a9181476bb29cbe07411a5dc61d664c6f9128e7"
+ },
+ "src/api/routes/financeBank.routes.js": {
+  "sha256": "23c145f0004e3e9b0d21b653ca6d24bcf94c73e60eef1a78c652398fb9b381df"
+ },
+ "src/api/routes/financeCash.routes.js": {
+  "sha256": "5bef1423a85ede649702e58a19162ba63aad8f8a39e44908d0b3d8c02eb82f2a"
+ },
+ "src/api/routes/financeEquity.routes.js": {
+  "sha256": "449794a7a7b048839dadb03af4348743998384741e72fd316dbe2b9b748b597f"
+ },
+ "src/api/routes/financePayables.routes.js": {
+  "sha256": "9993e5979204ef2b5e1e6445e49ed780f64415c39fcdfab05f31aceb6eafaac0"
+ },
+ "src/api/routes/financeReceivables.routes.js": {
+  "sha256": "9c7b7baa2b10184c074934c1a709042fd926e049a7c3ebbba98e6b380f626385"
+ },
+ "src/api/routes/financeReports.routes.js": {
+  "sha256": "33c99c051ca82839c1697370b66b93a26e5e97a5b0421327dce8bf46fb71d1e6"
+ },
+ "src/api/routes/financeSupplier.routes.js": {
+  "sha256": "2f2fae61e19bbefe0e802877f27be8e63201f49ad215a6fe15d6e7a1f7ffafb5"
+ },
+ "src/api/routes/gallery.routes.js": {
+  "sha256": "0a92ed5d63b04935759d5363fbdf2110a97dd03ec915866984b7c22f49f85135"
+ },
+ "src/api/routes/generalProcurement.routes.js": {
+  "sha256": "39bf63c9d938afa6db0b00b7d5c9869108d26247fe391cebcdd6c6ed7e913627"
+ },
+ "src/api/routes/hr.routes.js": {
+  "sha256": "2c7fa6d696737a7172fac38220f56d9b85954fb67f8f1f4fa9db7c0b946e8813"
+ },
+ "src/api/routes/hrSettings.routes.js": {
+  "sha256": "5305d50b132c4fd5e4646b8b6ed226bd302af92091cb578b215ff9bd3d54effe"
+ },
+ "src/api/routes/hr_etp.routes.js": {
+  "sha256": "411a512d1c9ed5063aba4e4dd44ecfdc96f7bc26e8ebf270fff592774728bc8e"
+ },
+ "src/api/routes/index.js": {
+  "sha256": "1e3a71ad3552031bdb5dc0066e067a74889b22891269f52b2b6a43b776af0f09"
+ },
+ "src/api/routes/inventory.routes.js": {
+  "sha256": "985b0030fc84e230e954f4af9dadd9dd64f90533901616a560643f68eb44c622"
+ },
+ "src/api/routes/liabilitiesV2.routes.js": {
+  "sha256": "0be30e8d8be3e5a1b045763000633818b04c30294a708221e412c90156967db2"
+ },
+ "src/api/routes/managerChat.routes.js": {
+  "sha256": "ca59eab5f0f9396888ad3e0c8967ac884c8bf486c180eb3d865a458c36a632e8"
+ },
+ "src/api/routes/news.routes.js": {
+  "sha256": "39cff2d13e8e4a70139a97b8dec8475a4ca5f5dd6bc3cce5902d6b62f9dd07e0"
+ },
+ "src/api/routes/notification.routes.js": {
+  "sha256": "c6abd9255dc9fb383b3695669000b09efb9acfedf0c496d6083ad9db0e35a48e"
+ },
+ "src/api/routes/pharmacy.reports.routes.js": {
+  "sha256": "8485af15a543c025b13a0f63f8a4ac962092d8a837e329ef6b87c21bd0a034c1"
+ },
+ "src/api/routes/pharmacy.routes.js": {
+  "sha256": "c342a83c4e09581e4ec28a580529308124b7f0f5e8920cb1c94eb5c714330fcd"
+ },
+ "src/api/routes/pharmacy.sales.routes.js": {
+  "sha256": "0e51a43a91cd74e92455148c464cc4419f68cec78b10608a96eb43e2723feda0"
+ },
+ "src/api/routes/pharmacyInventory.routes.js": {
+  "sha256": "dcee1438fa9076e36e5e458718bf92fb05a37d68082ab49f74910af4cada39ee"
+ },
+ "src/api/routes/pharmacySales.routes.js": {
+  "sha256": "f1a26477f6975a023952a30677f79c04d31a80e24759e52ccedcd8bd74566d93"
+ },
+ "src/api/routes/pharmacySettings.routes.js": {
+  "sha256": "5b482e0a7feb8904be4a4197c79a77b1e06eaab506e34dcb04a83184da3bd8dd"
+ },
+ "src/api/routes/pos.routes.js": {
+  "sha256": "81b28198fdcffbf3b171b2d658a13dd5a43b2f032a7e70d613e7a6e5d3620fa1"
+ },
+ "src/api/routes/printing.routes.js": {
+  "sha256": "39b7eda2ef492e0d655beee3564b818c55ff4d215f4289e2a524e14de70cfc50"
+ },
+ "src/api/routes/printingAssets.routes.js": {
+  "sha256": "64a45d5014428cf2355ed843f0f879bc010e49551d066b62d34c74ac801ef34b"
+ },
+ "src/api/routes/printingSettings.routes.js": {
+  "sha256": "52d570d8f651adc08bf1e16f5882d16c5f9ea76b20d6088af86a38e11c013d8a"
+ },
+ "src/api/routes/procurement.routes.js": {
+  "sha256": "226882e0a05c92c8ac7e9b195e7844fee8784ab73c03392711c6678ca7e8f8a0"
+ },
+ "src/api/routes/procurementSettings.routes.js": {
+  "sha256": "8179a2f1898a326f0fe85b84a210bd61d01eac08ec0c42fe36aa683c46da765d"
+ },
+ "src/api/routes/public.routes.js": {
+  "sha256": "736f3155b351ff7a8e6509d4a1e48d180e4768a7e8e8542d97945646bcf9cc32"
+ },
+ "src/api/routes/publicProcurementFlow.routes.js": {
+  "sha256": "3a850641d16ee99b56a47eb7bd50b4f9ab14135c186f8ba7ae918fb2944f662e"
+ },
+ "src/api/routes/publicTender.routes.js": {
+  "sha256": "7d058d1fa1902b491d784aee21b511a15b60ab82f753e861a367cd2673bf9618"
+ },
+ "src/api/routes/purchase.routes.js": {
+  "sha256": "a21396cd06dd325bde4c92aa2fb7f7b9e413170658f5c0756423702015850f52"
+ },
+ "src/api/routes/purchaseFlow.routes.js": {
+  "sha256": "02e3c51ecba758878a3bfd7b8784171223d3a045d9430338569c1daa3f1dd63c"
+ },
+ "src/api/routes/purchaseReturn.routes.js": {
+  "sha256": "1f6687c472efafb26d9a32d32c954a4c030d0ec885cec117ca81cfe7640ac110"
+ },
+ "src/api/routes/rentalOrder.routes.js": {
+  "sha256": "6b0cf7fda31273583a25bd77f58caa692480de8e90f0dc7de7279e21a6d1d18f"
+ },
+ "src/api/routes/rentalSettings.routes.js": {
+  "sha256": "60fbc261193bc4479dc9066aecb8768baf38ec51e0554dd218e7f981c6968df2"
+ },
+ "src/api/routes/report.routes.js": {
+  "sha256": "3c0238853d58d409ac2c35eeac71a0bf580a5d03174420d607e1170cb3ae82ee"
+ },
+ "src/api/routes/retail.reports.routes.js": {
+  "sha256": "d815bdafe932947c8ce69923db2649652ec728de8a20eefd09b99a34a65962e9"
+ },
+ "src/api/routes/retail.routes.js": {
+  "sha256": "19aafd1a913ea48e3c494baef7d9972f2f10d6d9bab5d0cb7e46dff558631bc7"
+ },
+ "src/api/routes/salesAdmin.routes.js": {
+  "sha256": "bcf37ea7a83485704f9af29a9ade19ca19efadc9a35ab7ab5dab50b175f6f142"
+ },
+ "src/api/routes/salesSettings.routes.js": {
+  "sha256": "b3829b19cb4274bf27595d929dd02f2c551958deb9720142fb546d623616666a"
+ },
+ "src/api/routes/selfSupplier.routes.js": {
+  "sha256": "bd4669252c7ba4e21941fb26140d3ad90501533544622bdeba717f60ee2067ae"
+ },
+ "src/api/routes/store.inventory.routes.js": {
+  "sha256": "92e26ba09155d03ffd5a81bc345b941814c098a5e1306fb48ba7d371540c50e1"
+ },
+ "src/api/routes/store.routes.js": {
+  "sha256": "e478d661b8493245532f7c1570fb853001c6364e490ce0915de27fe79cf9c185"
+ },
+ "src/api/routes/storeSalesRequest.routes.js": {
+  "sha256": "75d492b4666c3071ef4734527ea4a9afb7defb81747da1421e50f4a2e0589992"
+ },
+ "src/api/routes/tender.routes.js": {
+  "sha256": "3b0b4c691d2746850f108b820b9cf50ca61034a9cc7f323dcba142f7f9ce811b"
+ },
+ "src/api/routes/tractor.routes.js": {
+  "sha256": "48ffc657ec739f4b5960f03a32cc19838e43ca280e8f7bf39380bd37a4737094"
+ },
+ "src/api/routes/transferRequest.routes.js": {
+  "sha256": "d400d8eef00cc72f1e78290f0c113dc977d595856522fde9ccd78896fc54a516"
+ },
+ "src/api/routes/user.routes.js": {
+  "sha256": "66163232027bd698548ecf0868c1b1bd979af305ec91b3638eda4a035897c0e5"
+ },
+ "src/api/routes/vatConfig.routes.js": {
+  "sha256": "aeea9e493dfa3628614b7e3f3b28a5a9b77a0d57e55c3f74edc2a06cdb1f10fb"
+ },
+ "src/api/routes/warehouse.routes.js": {
+  "sha256": "8c89f8de83e97bc0eaaca7eb4ec9433c57818962ff57ad31f2f7c9c9f52faff3"
+ },
+ "src/api/validators/admin.validator.js": {
+  "sha256": "bc206d3c3e8e527054761c9cb29490b08f64cdcfe0fd53fcc532b6526edd2763"
+ },
+ "src/api/validators/auth.validator.js": {
+  "sha256": "395bcf839134434eed82e91c5e2571c80836287e4af634b4026bb247af1cefb0"
+ },
+ "src/api/validators/ceo.validator.js": {
+  "sha256": "773e96dc66e098d959e628543e9b474a7f8c9264abc3b4b8628317965702d629"
+ },
+ "src/api/validators/customer.validator.js": {
+  "sha256": "a1555043d51a0b2aa67e65b475bfa8c81098bf1b914d9a16bdb97c813e8f59c0"
+ },
+ "src/api/validators/external.validator.js": {
+  "sha256": "ecee71fcb180483e92e146c7f99807ede8f70e81d79c554e257fd4e8d45b6a80"
+ },
+ "src/api/validators/finance.validator.js": {
+  "sha256": "fa1d0fd8be5342b32ef39f7194f476aec1a67f29fcddd5cfd59bb6d402b22c55"
+ },
+ "src/api/validators/index.js": {
+  "sha256": "917079b030eaf512f3878c8c1a2f75751473888919f97f93a723c4daf907ad18"
+ },
+ "src/api/validators/inventory.validator.js": {
+  "sha256": "2a0aecc21f2bd6c6e9deb9c0e5cb7dad1231fd86768a7a6ed3e48e3885f339fa"
+ },
+ "src/api/validators/pos.validator.js": {
+  "sha256": "a1c5e759bba1b20019202f6500f60476438df1525b3134fae587077d0f1b6448"
+ },
+ "src/api/validators/printing.validator.js": {
+  "sha256": "13887294b4fd4dd9e0df123e4d3ecb8cc4eb5adfe1322779e4988bfddbc598f8"
+ },
+ "src/api/validators/purchase.validator.js": {
+  "sha256": "40edf59a605403f2afa64e9bd1a1e1086bdacbf5a74952367e782b13370b88f8"
+ },
+ "src/api/validators/report.validator.js": {
+  "sha256": "6e9b137beb0bbc3d117714ff62aedf8e32dffb65e5bc950d7f1343904c57ccb2"
+ },
+ "src/api/validators/user.validator.js": {
+  "sha256": "3b61cbcca4e494fcb46fec8e20a0d582c052879f6049bcdf7c8ee03597d198e8"
+ },
+ "src/config/auth.js": {
+  "sha256": "1cdb9810e40f9b9ff6e166d5279478975b5b26e6817265d43477f84229f437f4"
+ },
+ "src/config/env.js": {
+  "sha256": "3a9a331184880704ebeed7fc7354d960cd641a43e1e60161799a5ec6c080d456"
+ },
+ "src/config/logger.js": {
+  "sha256": "b81dd9340c1419c6f5b2fdff79c18383730b717e21fa136deb6fbb7a2790de24"
+ },
+ "src/config/multer.js": {
+  "sha256": "e4302dd8482bb82ebe7811e51d52be6a80e8afa62676eca288ad5bfad8b221bc"
+ },
+ "src/config/rateLimit.js": {
+  "sha256": "a30a2698c2c0444a6063752e685f6341f46e830cfad9da7c94900e27e25112cf"
+ },
+ "src/config/roleHierarchy.js": {
+  "sha256": "c2f1c93913d668b92baa04a24bd42c57f3ad58fcd5728ef0b145749592a97259"
+ },
+ "src/db/migrations/001_access_certifications.js": {
+  "sha256": "979bedf95d987667a5a84c474d221d4484949a656318da1a96fc8b56fa138d98"
+ },
+ "src/db/migrations/002_admin_data_scopes.js": {
+  "sha256": "a4969e5edeb4369e37cd82872d815f42b36c7a0fce3f6ef55a2e62a036511d2a"
+ },
+ "src/db/migrations/003_admin_elevations.js": {
+  "sha256": "7f2c81368086a2ed6fe198935d9d0f6c4b32f3b3a76e557f0018209dfd2379b8"
+ },
+ "src/db/migrations/019_break_glass_events.js": {
+  "sha256": "1cbf226fb230cd68acca58981cf449df7e603692705b7be1011dcf2cdcecc313"
+ },
+ "src/db/migrations/028_certification_reviews.js": {
+  "sha256": "7d9128b0e4e209efeed6e4b59d16390f74bed8dfb024e5d8f119c5f434f8a94e"
+ },
+ "src/db/migrations/031_compliance_evidence.js": {
+  "sha256": "dd6d5698e65d23f08931414b679bd6070f28a5729e51e6e034c21d1004fd0c4d"
+ },
+ "src/db/migrations/033_composite_role_mappings.js": {
+  "sha256": "b106bfc2bc359c283770db47fd13fe1bf0ab8ebf548d818f0ca25c7f727008e3"
+ },
+ "src/db/migrations/034_composite_roles.js": {
+  "sha256": "2143922ef5cb835f7621fc051fd9e058899db8f1a323e124879059578e5cecdc"
+ },
+ "src/db/migrations/097_hr_departments.js": {
+  "sha256": "621475c34bab46faed04f8d8c36b1df3c96b589db666950a15d3e5dfa2c05f1a"
+ },
+ "src/db/migrations/107_hr_notification_rules.js": {
+  "sha256": "b86a3351239c55e1d06904b1eac90c5f8c14dede1bc1db657382b57ea19ff3b4"
+ },
+ "src/db/migrations/114_inventory.js": {
+  "sha256": "3036371462e6e6650ecc076aa01f73116bde6fce5d764717d770675eb4f5c70d"
+ },
+ "src/db/migrations/363_updated_at_triggers.js": {
+  "sha256": "9864dd1b3646fc7e64ce87fa4200c16669f313de265f8567d39f69bc7ad64f53"
+ },
+ "src/db/seeds/003_hr_etp_seed.js": {
+  "sha256": "c01df773c4b9c00374cd9c399968c980a82ff99a603a3064931af2ab4d055b5e"
+ },
+ "src/db/seeds/004_store_seed.js": {
+  "sha256": "970baf34fed0492ca8a8b8a5aac9d987ab7fdcbbdb8e124d48d6431d0eac0b3b"
+ },
+ "src/db/seeds/005_pharmacy_seed.js": {
+  "sha256": "68441fa7f638a7f2a59f19f6abf6302f88fba774bbd10538034a7b1be61153d4"
+ },
+ "src/fix_orders.js": {
+  "sha256": "3e1dec366478fef898136f3505cfe0a510570e39c97240f04a7e42a13655ddce"
+ },
+ "src/jobs/backup.job.js": {
+  "sha256": "0751e6a2afeedd2a2e3672e8983bc215850d938d937a6b5e6a959add677b4a5d"
+ },
+ "src/jobs/cacheWarmup.job.js": {
+  "sha256": "d1652e3d8761be62fe64aa07ace9375a87a58dfb55e4177836ca08ea5e76ae04"
+ },
+ "src/jobs/cleanup.job.js": {
+  "sha256": "673ff30ecec7353560771d0ef1ff715c3015803791d50c6098706fd06b661375"
+ },
+ "src/jobs/healthCheck.job.js": {
+  "sha256": "4bbeab24166582501179e64f45c42562323fbd4c871a9a43c4bae4ab72ddfb98"
+ },
+ "src/jobs/index.js": {
+  "sha256": "f64cd56d19040aaa442a1ee790413354c5dc49e07ed3914fb0c0a8ab4de75b59"
+ },
+ "src/jobs/reminder.job.js": {
+  "sha256": "c1796ab4c84dff0e56bd264b7c7afc08d77aa39f7815a1bbb1e7cbaa9e453e32"
+ },
+ "src/jobs/report.job.js": {
+  "sha256": "ef905ca5308d347c8a1ccfc0fddd18a22dc9f8043379ebafc0810a0639ea45ae"
+ },
+ "src/migrations/20260721_printing_store_module.js": {
+  "sha256": "268692e63a2347a6303c3b730c92ce27505d709d40b86f0cf7c7fe1536bf40ef"
+ },
+ "src/migrations/20260721_store_department_field.js": {
+  "sha256": "810f32c2b3d4c39e8f9de1b1200651bb499f74483364698349877651fb976dfd"
+ },
+ "src/migrations/20260722_rename_store_tables.js": {
+  "sha256": "3d7edca3738b54c0bb426139134fa2a06d9b9245ad1ab660fcf26c4dcfab1967"
+ },
+ "src/migrations/20260723_create_agrirent_orders.js": {
+  "sha256": "783c6c3877009c489890a553c395d555d984217f9370e6aec917ebecbb303803"
+ },
+ "src/migrations/20260726_retail_orders_customer_fields.js": {
+  "sha256": "4655cb9406c966a80d5ef0bc0f6445f1eb8690f1d9652ed477748c7fa0f86613"
+ },
+ "src/migrations/20260916_bids_payment_reference.js": {
+  "sha256": "45cdbcb12f99303de6772c114345f384f169b10c1be1bf31035bceaefdae8cc6"
+ },
+ "src/migrations/20260917_tenders_cpo_amount.js": {
+  "sha256": "27a3f0bae3a6b9064b75405e6b06dc09206099e9fb36384a33c69cddb7917da4"
+ },
+ "src/models/Bid.model.js": {
+  "sha256": "b8ece676d42693e34c3538b068bee1dccd0b0e13c9d8028d6983261c9d166aea"
+ },
+ "src/models/BudgetPeriod.model.js": {
+  "sha256": "dace09d978932dfcf0bc950846da41e65fc9e2e3957a2b97f88f627d88dcde7c"
+ },
+ "src/models/Car.model.js": {
+  "sha256": "9a8cc69fcee16619b5b28bea1e8ccb264b087b4e8c19c5800968d34a7f63b43f"
+ },
+ "src/models/ChartOfAccounts.model.js": {
+  "sha256": "526db9374df553962aa94a8e3036b768cf9684ab1488ff5ffb9a921d135d6b69"
+ },
+ "src/models/ClosePeriod.model.js": {
+  "sha256": "9920603a6aea397d1be3b8f212e28af6d6b4788026a8bb7fed885bf865f88b18"
+ },
+ "src/models/Customer.model.js": {
+  "sha256": "d1d89e572dde4a80f0d4fff4d586f69c06af4adb2f776f262f39ac11b2c89632"
+ },
+ "src/models/Expense.model.js": {
+  "sha256": "6427f2e7304089d8b5df81db3339ba4be4563866e4c2e157c1ab37d08b8517be"
+ },
+ "src/models/ExpenseApproval.model.js": {
+  "sha256": "7c86f51b1fc53dc6b10668cbac1b037b0be58bd83af27a1a0b4d09e03a122993"
+ },
+ "src/models/FuelService.model.js": {
+  "sha256": "9e70191ed070c513d67d16c07b33bf48108556ce5903d46f0b1800358fe9c018"
+ },
+ "src/models/Inventory.model.js": {
+  "sha256": "6450dec248be3adc6f6c00fb07d439786fb9e80a0defd5c647a8e75a3e756970"
+ },
+ "src/models/Maintenance.model.js": {
+  "sha256": "3dc47c25e81369faef3b69e44c2a27f9e1ae8a85f7823c2142a09f7d4cd5a193"
+ },
+ "src/models/Notification.model.js": {
+  "sha256": "10a8f25a645ca6f6b2599ab3ce848965c5210b85b18ebccaf25ea7b380d31b7b"
+ },
+ "src/models/Order.model.js": {
+  "sha256": "3bb4a1850ffcb389c9b3b883d7cdc9a2f64d722bf416a18ab5a3e1fc88f6b166"
+ },
+ "src/models/PettyCash.model.js": {
+  "sha256": "1966b9ead0b9ca9ddc30370db07c69b43c4b8644cf2c128ca5d9b2bee2e1a095"
+ },
+ "src/models/PosSale.model.js": {
+  "sha256": "d3e6e8ecbf1bedc5ef1df0af5bdb89f9e1eef1e3f5af9232b4725758821d8faa"
+ },
+ "src/models/Product.model.js": {
+  "sha256": "da973a14ff1a1369782401fd2ca947e88b1ec9a0745314ee9892f3afd15ea78b"
+ },
+ "src/models/PurchaseOrder.model.js": {
+  "sha256": "524f534c8b6b911bda36c09dc5f020a153047cdf416aee9a5f041498dd24d2bc"
+ },
+ "src/models/RentalOrder.model.js": {
+  "sha256": "e9150d1a719b122500e069a06b080f49df56569d1d09b3eea880d499c55fb9c0"
+ },
+ "src/models/Role.model.js": {
+  "sha256": "dbbb7f2864516f7b1e1090580725e640cf2cc9d0158204c39ff6b49dcfadcf5b"
+ },
+ "src/models/Supplier.model.js": {
+  "sha256": "d6cae4b231144de9f1b7498cec0b915db152445e320e3e39552fd2ec0b668602"
+ },
+ "src/models/Tender.model.js": {
+  "sha256": "7fef32ac70db80b4266615a312ba49ffefd7ec476fc9fd6ff08be94c4fb6c562"
+ },
+ "src/models/ThreeWayMatch.model.js": {
+  "sha256": "34df294183bd7e506e20db215737bced34f50b2120780d9590bbedb9d24beb2c"
+ },
+ "src/models/Tractor.model.js": {
+  "sha256": "c549d42e8d48f5a39b611f6db170aa1d836253e3d18475b02cd2132b98d4ca5f"
+ },
+ "src/models/User.model.js": {
+  "sha256": "34b894770f6a65e6127df178fb7e273ee13c559ffa0e01981c138a4a9595b2c8"
+ },
+ "src/models/index.js": {
+  "sha256": "0001f00fe8099b1971873cd3a751af1b74f2fe3a1b55bc386fd083a59fd22a73"
+ },
+ "src/repositories/approval.repository.js": {
+  "sha256": "10791adb8fa8c4f632226b03d070c9b58ed2556edd06cb12633d186ea4816eec"
+ },
+ "src/repositories/base.repository.js": {
+  "sha256": "32f9c3bdbc3b834bdc59e6099e57c90ec6bf5387abc9355b60d57be7ab972838"
+ },
+ "src/repositories/budget.repository.js": {
+  "sha256": "0d02da15e244c812b5754491b455fbc21ebf02c01e2573f79738d0f20e301e2c"
+ },
+ "src/repositories/car.repository.js": {
+  "sha256": "99aa44780b04b27fe7a166651f069826fd42801b3e0ccf6806c211faa328b01f"
+ },
+ "src/repositories/coa.repository.js": {
+  "sha256": "88434e6a7e167cc6f07381f73ddec17d538ad8062f3d380b21eee550ff420db0"
+ },
+ "src/repositories/finance.repository.js": {
+  "sha256": "fb746c7951f5d9b297b9aba4557f50efd705f56ac11c7a567663a883931c1d54"
+ },
+ "src/repositories/notification.repository.js": {
+  "sha256": "b41d0ce88a49980eeea2138525fd50c25b3eade2f47d53a5db0502a337658b5e"
+ },
+ "src/repositories/petty-cash.repository.js": {
+  "sha256": "3c9dac728c3cd3e8fdc8ab6df1d3bfe98e1a0dde5fae1b39b71fb6dac035d89a"
+ },
+ "src/repositories/rentalOrder.repository.js": {
+  "sha256": "33c89e1e244f159f2ee39775bf220343326bea243f8b60d6f991f6497bca7636"
+ },
+ "src/repositories/settings.repository.js": {
+  "sha256": "0d7ed38ce915ac586560b8151fbf60f708c10df39f5745b1ae92f2968d7bf062"
+ },
+ "src/repositories/tractor.repository.js": {
+  "sha256": "e131fcc12176af70ef07c08f7ad118fe045298b3e910d3b0d07edd1f3cd3b912"
+ },
+ "src/scripts/backfill_store_audit.js": {
+  "sha256": "a0b7382a1144e854afb215282eb8c536f864768b13d5267b5355bd7ed57d8da0"
+ },
+ "src/services/agriRentWaitlist.service.js": {
+  "sha256": "191fea0b34b77c9adad9fdf0d4113cc9692fb153a561cf780a37b5a7405b0541"
+ },
+ "src/services/approval-workflow.service.js": {
+  "sha256": "139f40f1ee95898bf67e25c8b2e9434abc68b1dd80d0f9101c5dc7783ae5855b"
+ },
+ "src/services/backup.service.js": {
+  "sha256": "57aeac4aeba73662b106fd9f4d436ca83c42bcf86bf72d1af0e556278e6da1d8"
+ },
+ "src/services/bank.service.js": {
+  "sha256": "370d2ea115478266c6dfe6e9fcbf9fb5c5869bbbae2223303d6bc7494079d924"
+ },
+ "src/services/board.service.js": {
+  "sha256": "94f799b92301b62dafc54425177d638606c595dcbc36ff6c50b39d3b6a8b20c0"
+ },
+ "src/services/budget-encumbrance.service.js": {
+  "sha256": "098ac62377aabdb2b2acf92bc26f57edafe943aecdbcd1f4b165f34b2125e710"
+ },
+ "src/services/carRentalAudit.service.js": {
+  "sha256": "c8fa5db8bc536ca46806ef690ed042b2978f854ee343f61cd75c4610a5de75ec"
+ },
+ "src/services/close-process.service.js": {
+  "sha256": "0b7bd26e927ffffd5580683be406d1166ab2c6b5a54d05ca27459cf170ca65db"
+ },
+ "src/services/crisis.service.js": {
+  "sha256": "9e427114589f74124427044c7b9db88afaf07381de3978382a97af84e6490483"
+ },
+ "src/services/cron.js": {
+  "sha256": "d20110c8d0788a2ca43dec25d6fabb2d8463332b1689aa24cb154f4bdff384f9"
+ },
+ "src/services/cronService.js": {
+  "sha256": "652a5c2d0c3e9681e905ebf1a42d6eb3388af4bfe6429f7c7f7e852e3fe33657"
+ },
+ "src/services/customer.service.js": {
+  "sha256": "d185a23aa6d063013417171d26c4b29c88c05ee4ccf9f187cbce04050a8e9122"
+ },
+ "src/services/email.service.js": {
+  "sha256": "10b94691fc7c3c36c43735116a2f4d44e6fb2c0edef1bb2f679761c7e6817dfa"
+ },
+ "src/services/hr.service.js": {
+  "sha256": "fcee02fba389a7e7bca9e0e765f3dcd9bd1d540898f464092b4aa01e95136ced"
+ },
+ "src/services/index.js": {
+  "sha256": "b08f5626ff5b5e81cf793d388bd929cc8d8e307cefe92821233688089b944349"
+ },
+ "src/services/integration.service.js": {
+  "sha256": "05735632bde03c7400e259d5e8647fffeeddd524fb87bbaf93f113fc69ec4d71"
+ },
+ "src/services/invoiceDocument.service.js": {
+  "sha256": "da835362db2bb11d9b086d75ecc21f6e2c03403053f4a78ab9f75b33a02b21ed"
+ },
+ "src/services/notification.service.js": {
+  "sha256": "b1f8c79256dd9fa2c23e1ce46eab76b4e724e66874902c7f41a1456a89ee1a1e"
+ },
+ "src/services/payment-schedule.service.js": {
+  "sha256": "e96a855806986d0270b6eee48e2ffbe5cdfa21e63035569273113333f858aa98"
+ },
+ "src/services/pdf.service.js": {
+  "sha256": "a5ad3c9338f731eae09c397866cb9b4857045b2fb1e9230756a06e527f873ffb"
+ },
+ "src/services/petty-cash.service.js": {
+  "sha256": "99a18397cf51ff1f1aac233e085167a88e6180100e6721414118be970da60273"
+ },
+ "src/services/pos.service.js": {
+  "sha256": "9daa47d8d3823f3b74b17bbaa4fa1036d10a3d93cafd765f893335680a563108"
+ },
+ "src/services/purchase.service.js": {
+  "sha256": "ba5dd7bec09a7e5a0704e2b18c18a956424122a312ab23e4b2c9922231578aa2"
+ },
+ "src/services/reportSubmission.service.js": {
+  "sha256": "733e6c2d37db53bb27979350b6cd6ed4ad62c27f251198862fc8cfab16cdb1fb"
+ },
+ "src/services/risk.service.js": {
+  "sha256": "e705fdea6c39605ec43a83f6a52da33e2ae6b78b2968fef5b13e7de1fcfa0b56"
+ },
+ "src/services/salesAudit.service.js": {
+  "sha256": "48490585f3b5b5673f28f707ce2e62e246ac443d2afcfca0ca41bf652835a633"
+ },
+ "src/services/tax.service.js": {
+  "sha256": "50311cf8f1460b025fa9e5a64cea733145657845752126e545b10fdd50458a88"
+ },
+ "src/services/user.service.js": {
+  "sha256": "226edab8301c8ae96f19ce3547da9585b9ef9de45a6db8e86a826002bd4d9fc8"
+ },
+ "src/types/api.types.js": {
+  "sha256": "8222b8169ee86f25cdccd84d340340060ae3f0cff55e2ea9d344d7c332733b71"
+ },
+ "src/types/order.types.js": {
+  "sha256": "8222b8169ee86f25cdccd84d340340060ae3f0cff55e2ea9d344d7c332733b71"
+ },
+ "src/types/product.types.js": {
+  "sha256": "8222b8169ee86f25cdccd84d340340060ae3f0cff55e2ea9d344d7c332733b71"
+ },
+ "src/types/user.types.js": {
+  "sha256": "8222b8169ee86f25cdccd84d340340060ae3f0cff55e2ea9d344d7c332733b71"
+ },
+ "src/utils/AppError.js": {
+  "sha256": "64a2325921b9a644328a61fd51ff1dc71c2fe707bf2a845e3cf24b433a3b9b46"
+ },
+ "src/utils/apiResponse.js": {
+  "sha256": "245159bd6be99fe85fb87edb1bd931dd03bdf7d69fc1519c4a32cafe1857c25b"
+ },
+ "src/utils/catchAsync.js": {
+  "sha256": "dab1e73de8e35115f6836c1d4046f325951ddb437c5c809707ad1b002f771b3e"
+ },
+ "src/utils/constants.js": {
+  "sha256": "1eb9dcd87931226a53d014364b50424912ca12fadf0264b2b239dbfd0d818ba6"
+ },
+ "src/utils/dateHelper.js": {
+  "sha256": "840495c28160e07939f3561c088b284107aad9c79440ddf7614e075551887104"
+ },
+ "src/utils/encryption.js": {
+  "sha256": "a5f11242bbb2d1f37f46893589a658ff9291ea74f8eb305895f060c67a91604b"
+ },
+ "src/utils/exportHelper.js": {
+  "sha256": "01aa995ac380ce80774ef4f9784be16a321d7adc48493642034e3ba635cfd140"
+ },
+ "src/utils/financeIncome.service.js": {
+  "sha256": "954d722b585dc0ce98120b1a52f6d3c2a1d4fe1f3aa79e4313d2ac7c08bb99f0"
+ },
+ "src/utils/formatters.js": {
+  "sha256": "5e094cce1bd95687c6ead95e959151b69f0fdf83291ecef9a21b9bd66329b7a2"
+ },
+ "src/utils/helpers.js": {
+  "sha256": "37ac5baeb7bba67bc91ad98665a40e253dc93e59049103e00c7191eb68bf86bc"
+ },
+ "src/utils/index.js": {
+  "sha256": "5c35d219baf5c723162035fb9511afbf643d6f089d387146d0b776313f8f97cf"
+ },
+ "src/utils/jwt.js": {
+  "sha256": "698a9c12c6151c06aa6983b0ff7e5e167433ac979b9f1df7289f27af6ce73530"
+ },
+ "src/utils/logger.js": {
+  "sha256": "9c3d5d71d42c42e46eb136b01f73e0f0e38e3292478ddfdb47e7095307f13ca9"
+ },
+ "src/utils/orderNumber.js": {
+  "sha256": "66f4bd338c9836b88d8efb397a6e7dd3f700eef488c7ce0c1154907466281215"
+ },
+ "src/utils/paginate.js": {
+  "sha256": "a83112adcc490e3a7558100d5c337b9161d0d1d2f1a438ec95548a22ec9b839f"
+ },
+ "src/utils/password.js": {
+  "sha256": "7c4a1d4f063f9bc92b517100d8030daf4e2bf1fb868bc3e77added5668981b5c"
+ },
+ "src/utils/pharmacyAuditLogger.js": {
+  "sha256": "12456fdc3f3d8c6d0330cc2698052c37bcb06a5baa02c4e25c8cb507a22066df"
+ },
+ "src/utils/pricing.js": {
+  "sha256": "f4271a37bdbf7a87f681b5360d50a991433bb11413d5457ecff40a66e4091f27"
+ },
+ "src/utils/sanitize.js": {
+  "sha256": "7ed24484684f367c760ded175dcca1def4eef58fe7c0e6dc841204cb2bce173e"
+ },
+ "src/utils/tenderIncome.service.js": {
+  "sha256": "b02459f89a01fc5a18d29b923d91a6551a9edcc4cab5acc0a8ee88be4ada6d64"
+ },
+ "src/utils/validation.js": {
+  "sha256": "3364dd8e70a2b4c8f0ab40d9de81713600a7a3c532a53108fe0c7eb82f20589a"
+ },
+ "src/api/controllers/news.controller.js": {
+  "sha256": "ba10a9a31510c16644ceb1a58ef47ac0d8ae9bc1c111aa4c5aeb240440aef329"
+ }
+}

@@ -542,7 +542,7 @@ exports.checkout = catchAsync(async (req, res) => {
       title: 'New Sale',
       message: `Sale ${invoiceNumber}: ${totalAmount} ETB (${paymentMethod}) by ${cashier ? cashier.full_name : 'Cashier'}`,
       type: 'pos',
-      is_read: 0,
+      is_read: false,
       created_at: db.fn.now()
     }).catch(() => {});
   }
@@ -887,7 +887,7 @@ exports.getSaleById = catchAsync(async (req, res) => {
   }
   const items = await db('pos_items as pi')
     .leftJoin('retail_products as p', 'pi.product_id', 'p.id')
-    .select('pi.*', db.raw('COALESCE(p.name, pi.source, CONCAT("Product #", pi.product_id)) as product_name'), 'p.sku')
+    .select('pi.*', db.raw('COALESCE(p.name, pi.source, (\'Product #\' || pi.product_id::text)) as product_name'), 'p.sku')
     .where('pi.sale_id', sale.id);
   res.json({
     status: 'success',
@@ -918,7 +918,7 @@ exports.getReceipt = catchAsync(async (req, res) => {
   }
   const items = await db('pos_items as pi')
     .leftJoin('retail_products as p', 'pi.product_id', 'p.id')
-    .select('pi.*', db.raw('COALESCE(p.name, pi.source, CONCAT("Product #", pi.product_id)) as product_name'))
+    .select('pi.*', db.raw('COALESCE(p.name, pi.source, (\'Product #\' || pi.product_id::text)) as product_name'))
     .where('pi.sale_id', sale.id);
   const paymentMethod = await db('payment_methods').where('id', sale.payment_method_id).select('name').first();
   res.json({
@@ -1006,7 +1006,7 @@ exports.getDailyStatistics = catchAsync(async (req, res) => {
   const { date = new Date().toISOString().split('T')[0] } = req.query;
   const stats = await db('pos_sales')
     .leftJoin('sale_statuses', 'pos_sales.status_id', 'sale_statuses.id')
-    .whereRaw('DATE(pos_sales.sale_date) = ?', [date])
+    .whereRaw('(pos_sales.sale_date)::date = ?', [date])
     .where('sale_statuses.status_code', 'completed')
     .select(
       db.raw('COUNT(pos_sales.id) as total_transactions'),
@@ -1020,7 +1020,7 @@ exports.getDailyStatistics = catchAsync(async (req, res) => {
   const paymentBreakdown = await db('pos_sales')
     .leftJoin('payment_methods', 'pos_sales.payment_method_id', 'payment_methods.id')
     .leftJoin('sale_statuses', 'pos_sales.status_id', 'sale_statuses.id')
-    .whereRaw('DATE(pos_sales.sale_date) = ?', [date])
+    .whereRaw('(pos_sales.sale_date)::date = ?', [date])
     .where('sale_statuses.status_code', 'completed')
     .select('payment_methods.name as method', db.raw('COUNT(pos_sales.id) as count'), db.raw('SUM(pos_sales.total_amount) as amount'))
     .groupBy('pos_sales.payment_method_id', 'payment_methods.name');
@@ -1207,10 +1207,10 @@ exports.processReturn = catchAsync(async (req, res) => {
 
       // ── 4. Cancel the original sale ────────────────────────────────────────
       // Mark as refunded (status_id=4), soft-delete (deleted_at), and block
-      // from finance submission (is_submitted=0) so it never appears in finance.
+      // from finance submission (is_submitted=false) so it never appears in finance.
       await trx('pos_sales').where('id', saleId).update({
         status_id: 4,          // refunded
-        is_submitted: 0,       // block finance submission
+        is_submitted: false,   // block finance submission
         deleted_at: trx.fn.now(),  // soft-delete → disappears from active transactions
         void_reason: `Cancelled: ${notes || 'Returned by operator'} — Ref: ${returnNumber}`,
         voided_by: userId
@@ -1294,7 +1294,7 @@ exports.getZReport = catchAsync(async (req, res) => {
   const completedStatus = await db('sale_statuses').where('status_code', 'completed').first();
   const statusId = completedStatus ? completedStatus.id : 1;
   const sales = await db('pos_sales')
-    .whereRaw('DATE(sale_date) = ?', [date])
+    .whereRaw('(sale_date)::date = ?', [date])
     .where('status_id', statusId);
   const totalSales = sales.length;
   const totalRevenue = sales.reduce((s, r) => s + parseFloat(r.total_amount || 0), 0);
@@ -1305,17 +1305,17 @@ exports.getZReport = catchAsync(async (req, res) => {
   const totalTransfer = sales.filter(r => r.payment_method_id === 3).reduce((s, r) => s + parseFloat(r.total_amount || 0), 0);
   const totalTelebirr = sales.filter(r => r.payment_method_id === 4).reduce((s, r) => s + parseFloat(r.total_amount || 0), 0);
   const voidedSales = await db('pos_sales')
-    .whereRaw('DATE(sale_date) = ?', [date])
+    .whereRaw('(sale_date)::date = ?', [date])
     .where('status_id', 2)
     .count('id as count').first();
   const refunds = await db('pos_returns')
-    .whereRaw('DATE(created_at) = ?', [date])
+    .whereRaw('(created_at)::date = ?', [date])
     .select(
       db.raw('COUNT(*) as return_count'),
       db.raw('COALESCE(SUM(total_refund), 0) as total_refund_amount')
     ).first();
   const cashierStats = await db('pos_sales')
-    .whereRaw('DATE(sale_date) = ?', [date])
+    .whereRaw('(sale_date)::date = ?', [date])
     .where('status_id', statusId)
     .select(
       'cashier_id',
@@ -1334,7 +1334,7 @@ exports.getZReport = catchAsync(async (req, res) => {
   }));
   const paymentBreakdown = await db('pos_sales')
     .leftJoin('payment_methods', 'pos_sales.payment_method_id', 'payment_methods.id')
-    .whereRaw('DATE(sale_date) = ?', [date])
+    .whereRaw('(sale_date)::date = ?', [date])
     .where('pos_sales.status_id', statusId)
     .select(
       'payment_methods.name as method',
@@ -1380,14 +1380,14 @@ async function getBusinessUnitStats({ date }) {
     const has = await db.schema.hasTable(u.table);
     if (!has) { units.push({ name: u.name, todaySales: 0, transactions: 0 }); continue; }
     const row = await db(u.table)
-      .whereRaw(`DATE(${u.dateCol}) = ?`, [date])
+      .whereRaw(`(${u.dateCol})::date = ?`, [date])
       .select(db.raw('COUNT(*) as count'), db.raw(`COALESCE(SUM(${u.amountCol}),0) as total`))
       .first();
     units.push({ name: u.name, todaySales: parseFloat(row.total || 0), transactions: parseInt(row.count || 0) });
   }
   /* POS sales already in stats */
   const posRow = await db('pos_sales')
-    .whereRaw('DATE(sale_date) = ?', [date])
+    .whereRaw('(sale_date)::date = ?', [date])
     .where('status_id', 1)
     .select(db.raw('COUNT(*) as count'), db.raw('COALESCE(SUM(total_amount),0) as total'))
     .first();
@@ -1449,12 +1449,12 @@ exports.openShift = catchAsync(async (req, res) => {
     if (user) {
       const newEmpId = `EMP${String(req.user.id).padStart(4, '0')}`;
       const dept = user.department || 'Retail';
-      await db.raw(`INSERT IGNORE INTO employees (employee_id, user_id, full_name, email, phone, department, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'Active', NOW())`, [newEmpId, req.user.id, user.full_name || user.username || user.email, user.email || '', user.phone || '', dept]);
+      await db.raw(`INSERT INTO employees (employee_id, user_id, full_name, email, phone, department, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'Active', LOCALTIMESTAMP) ON CONFLICT DO NOTHING`, [newEmpId, req.user.id, user.full_name || user.username || user.email, user.email || '', user.phone || '', dept]);
       empId = newEmpId;
     }
   }
   if (empId) {
-    await db.raw(`INSERT IGNORE INTO attendance_records (employee_id, computer_id, action, status, timestamp, ip_address, work_date, recorded_by, created_at) VALUES (?, 'WEB', 'CLOCK_IN', 'Present', ?, ?, ?, ?, NOW())`, [empId, ts, req.ip || '127.0.0.1', workDate, req.user.id]);
+    await db.raw(`INSERT INTO attendance_records (employee_id, computer_id, action, status, timestamp, ip_address, work_date, recorded_by, created_at) VALUES (?, 'WEB', 'CLOCK_IN', 'Present', ?, ?, ?, ?, LOCALTIMESTAMP) ON CONFLICT DO NOTHING`, [empId, ts, req.ip || '127.0.0.1', workDate, req.user.id]);
   }
 
   res.status(201).json({ status: 'success', data: shift });
@@ -1495,7 +1495,7 @@ exports.closeShift = catchAsync(async (req, res) => {
         title: 'Auto Cash Handover',
         message: `Cashier #${req.user.id} closed their shift. Auto-handover of ${counted} ETB physical cash requires your review.`,
         type: 'pos',
-        is_read: 0,
+        is_read: false,
         created_at: db.fn.now()
       }).catch(() => null);
     }
@@ -1516,12 +1516,12 @@ exports.closeShift = catchAsync(async (req, res) => {
     if (user) {
       const newEmpId = `EMP${String(req.user.id).padStart(4, '0')}`;
       const dept = user.department || 'Retail';
-      await db.raw(`INSERT IGNORE INTO employees (employee_id, user_id, full_name, email, phone, department, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'Active', NOW())`, [newEmpId, req.user.id, user.full_name || user.username || user.email, user.email || '', user.phone || '', dept]);
+      await db.raw(`INSERT INTO employees (employee_id, user_id, full_name, email, phone, department, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'Active', LOCALTIMESTAMP) ON CONFLICT DO NOTHING`, [newEmpId, req.user.id, user.full_name || user.username || user.email, user.email || '', user.phone || '', dept]);
       empId = newEmpId;
     }
   }
   if (empId) {
-    await db.raw(`INSERT IGNORE INTO attendance_records (employee_id, computer_id, action, status, timestamp, ip_address, work_date, recorded_by, created_at) VALUES (?, 'WEB', 'CLOCK_OUT', 'Present', ?, ?, ?, ?, NOW())`, [empId, ts, req.ip || '127.0.0.1', workDate, req.user.id]);
+    await db.raw(`INSERT INTO attendance_records (employee_id, computer_id, action, status, timestamp, ip_address, work_date, recorded_by, created_at) VALUES (?, 'WEB', 'CLOCK_OUT', 'Present', ?, ?, ?, ?, LOCALTIMESTAMP) ON CONFLICT DO NOTHING`, [empId, ts, req.ip || '127.0.0.1', workDate, req.user.id]);
   }
 
   res.json({ status: 'success', message: 'Shift closed and auto-handover initiated', data: {
@@ -1726,7 +1726,7 @@ exports.collectOnlineOrder = catchAsync(async (req, res) => {
       title: 'Online Order Collected',
       message: `Online order ${invoiceNumber} (${orderSource}) collected — ${totalAmount} ETB by ${cashier ? cashier.full_name : 'Cashier'}`,
       type: 'pos',
-      is_read: 0,
+      is_read: false,
       created_at: db.fn.now()
     }).catch(() => {});
   }
@@ -1858,7 +1858,7 @@ exports.getCombinedDailyReport = catchAsync(async (req, res) => {
 
   /* Walk-in POS sales */
   const walkInStats = await db('pos_sales')
-    .whereRaw('DATE(sale_date) = ?', [date])
+    .whereRaw('(sale_date)::date = ?', [date])
     .where('sale_type', 'walk_in')
     .select(
       db.raw('COUNT(*) as total_transactions'),
@@ -1871,7 +1871,7 @@ exports.getCombinedDailyReport = catchAsync(async (req, res) => {
 
   const walkInPaymentBreakdown = await db('pos_sales')
     .leftJoin('payment_methods', 'pos_sales.payment_method_id', 'payment_methods.id')
-    .whereRaw('DATE(pos_sales.sale_date) = ?', [date])
+    .whereRaw('(pos_sales.sale_date)::date = ?', [date])
     .where('pos_sales.sale_type', 'walk_in')
     .select('payment_methods.name as method',
       db.raw('COUNT(*) as count'),
@@ -1900,7 +1900,7 @@ exports.getCombinedDailyReport = catchAsync(async (req, res) => {
     const has = await db.schema.hasTable(src.table);
     if (!has) continue;
     const row = await db(src.table)
-      .whereRaw(`DATE(${src.dateCol}) = ?`, [date])
+      .whereRaw(`(${src.dateCol})::date = ?`, [date])
       .where('status', 'COMPLETED')
       .select(db.raw('COUNT(*) as count'), db.raw('COALESCE(SUM(total_amount),0) as total'))
       .first();
@@ -2006,7 +2006,7 @@ exports.getTodaySummary = catchAsync(async (req, res) => {
     .whereNull('ps.deleted_at')
     .whereBetween('ps.sale_date', [startISO, endISO])
     .select(
-      db.raw('COALESCE(rp.name, pi.source, CONCAT("Product #", pi.product_id)) as name'),
+      db.raw('COALESCE(rp.name, pi.source, (\'Product #\' || pi.product_id::text)) as name'),
       db.raw('SUM(pi.quantity) as units_sold'),
       db.raw('SUM(pi.quantity * pi.unit_price) as revenue')
     )
@@ -2375,7 +2375,7 @@ exports.getAuditTrail = catchAsync(async (req, res) => {
     if (t.sale_id) {
       items = await db('pos_items as pi')
         .leftJoin('retail_products as p', 'pi.product_id', 'p.id')
-        .select('pi.*', db.raw('COALESCE(p.name, pi.source, CONCAT("Product #", pi.product_id)) as product_name'))
+        .select('pi.*', db.raw('COALESCE(p.name, pi.source, (\'Product #\' || pi.product_id::text)) as product_name'))
         .where('pi.sale_id', t.sale_id);
     }
     return { ...t, items };

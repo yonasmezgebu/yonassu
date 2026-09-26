@@ -399,11 +399,11 @@ function groupByModule(tables) {
 async function listTables(conn) {
   const dbName = process.env.DB_NAME || 'sutana_ems_dev';
   const rows = await conn.raw(
-    `SELECT table_name, table_rows FROM information_schema.tables
+    `SELECT table_name, CASE WHEN table_schema = current_schema() THEN (SELECT reltuples::bigint FROM pg_class WHERE relname = table_name) ELSE NULL END FROM information_schema.tables
      WHERE table_schema = ? AND table_type = 'BASE TABLE' ORDER BY table_name`,
     [dbName]
   );
-  return rows[0].map(r => ({ name: r.table_name, approxRows: Number(r.table_rows) || 0 }));
+  return rows.rows.map(r => ({ name: r.table_name, approxRows: Number(r.table_rows) || 0 }));
 }
 
 function classify(tables) {
@@ -562,8 +562,9 @@ async function clearTableData(tableName) {
 
   // Verify the table actually exists in the DB before attempting delete
   const dbName = process.env.DB_NAME || 'sutana_ems_dev';
-  const [tableCheck] = await db.raw(
-    `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = 'BASE TABLE'`,
+  // node-postgres returns { rows }; mysql2 returned [rows, fields].
+  const { rows: tableCheck } = await db.raw(
+    `SELECT COUNT(*)::int as cnt FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = 'BASE TABLE'`,
     [dbName, name]
   );
   if (!tableCheck[0] || tableCheck[0].cnt === 0) {
@@ -572,18 +573,32 @@ async function clearTableData(tableName) {
     throw err;
   }
 
-  // Disable FK checks globally (outside transaction so it persists through rollback)
-  await db.raw('SET FOREIGN_KEY_CHECKS = 0');
-  try {
-    const rowsDeleted = await db(name).del();
-    await db.raw('SET FOREIGN_KEY_CHECKS = 1');
-    return { table: name, rowsDeleted: Number(rowsDeleted) || 0 };
-  } catch (error) {
-    await db.raw('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
-    const err = new Error(`Failed to clear "${name}": ${error.message}`);
-    err.statusCode = 500;
-    throw err;
-  }
+  // Disable FK/trigger enforcement so rows can be removed in any order.
+  // PostgreSQL's equivalent of MySQL's SET FOREIGN_KEY_CHECKS=0 is
+  // session_replication_role.  Two details matter:
+  //
+  //   - It must be applied on the *same connection* as the DELETE.  Running
+  //     `db.raw(...)` and then `db(name).del()` on the pool is not safe: the
+  //     pool may hand out two different connections, in which case the DELETE
+  //     runs with enforcement still on and fails on a foreign key.  Wrapping
+  //     both in one transaction pins them to a single connection.
+  //   - It must be SET LOCAL, not SET.  A plain SET persists on the connection
+  //     after the transaction ends, and that connection goes back into the
+  //     pool, silently disabling referential integrity for unrelated queries.
+  //     SET LOCAL is reverted automatically at commit or rollback.
+  //
+  // This requires a superuser, or a role granted SET on that parameter.
+  return db.transaction(async (trx) => {
+    await trx.raw("SET LOCAL session_replication_role = 'replica'");
+    try {
+      const rowsDeleted = await trx(name).del();
+      return { table: name, rowsDeleted: Number(rowsDeleted) || 0 };
+    } catch (error) {
+      const err = new Error(`Failed to clear "${name}": ${error.message}`);
+      err.statusCode = 500;
+      throw err;
+    }
+  });
 }
 
 async function executeReset() {
@@ -593,8 +608,13 @@ async function executeReset() {
     const tables = await listTables(trx);
     const { wipeable } = classify(tables);
 
-    // Disable FK checks so tables can be cleared in any order.
-    await trx.raw('SET FOREIGN_KEY_CHECKS = 0');
+    // Disable FK/trigger enforcement so tables can be cleared in any order.
+    // SET LOCAL is reverted automatically when this transaction commits or
+    // rolls back, so the setting cannot survive on a pooled connection.  A
+    // plain SET would not be: session settings are not undone by ROLLBACK,
+    // which would leave referential integrity disabled for later queries.
+    // See clearTable() for the full explanation.
+    await trx.raw("SET LOCAL session_replication_role = 'replica'");
 
     for (const table of wipeable) {
       // SAFETY: only accept valid MySQL identifiers — a raw DELETE can NEVER drop a table.
@@ -614,7 +634,8 @@ async function executeReset() {
       }
     }
 
-    await trx.raw('SET FOREIGN_KEY_CHECKS = 1');
+    // No need to restore session_replication_role by hand: SET LOCAL reverts
+    // itself at COMMIT below.
 
     // VERIFY: every table must still exist after the reset (only their data was removed).
     const afterTables = await listTables(trx);
@@ -625,7 +646,6 @@ async function executeReset() {
     summary.finishedAt = new Date().toISOString();
     return summary;
   } catch (error) {
-    try { await trx.raw('SET FOREIGN_KEY_CHECKS = 1'); } catch (_) {}
     try { await trx.rollback(); } catch (_) {}
     summary.error = error.message;
     throw error;

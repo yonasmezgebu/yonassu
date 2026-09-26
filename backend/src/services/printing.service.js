@@ -68,8 +68,8 @@ const getPendingOrders = async () => {
       'po.status_id',
       'os.status_name as status_name',
       'os.color_hex as status_color',
-      db.raw('DATEDIFF(po.due_date, CURDATE()) as days_remaining'),
-      db.raw('DATEDIFF(CURDATE(), po.created_at) as days_pending')
+      db.raw('((po.due_date)::date - (CURRENT_DATE)::date) as days_remaining'),
+      db.raw('((CURRENT_DATE)::date - (po.created_at)::date) as days_pending')
     )
     .whereNot('po.status_id', deliveredStatus?.id)
     .whereNull('po.deleted_at')
@@ -537,12 +537,12 @@ const getPrintingStatistics = async () => {
     .groupBy('po.status_id', 'os.status_name', 'os.status_code', 'os.color_hex');
   const monthlyRevenue = await db('printing_orders')
     .select(
-      db.raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+      db.raw('to_char(created_at, \'YYYY-MM\') as month'),
       db.raw('SUM(total_price) as revenue'),
       db.raw('COUNT(*) as order_count')
     )
     .whereNull('deleted_at')
-    .groupBy(db.raw('DATE_FORMAT(created_at, "%Y-%m")'))
+    .groupBy(db.raw('to_char(created_at, \'YYYY-MM\')'))
     .orderBy('month', 'desc')
     .limit(6);
   const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();

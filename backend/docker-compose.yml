@@ -1,37 +1,35 @@
 # =====================================================
 # SUTANA EMS - DOCKER COMPOSE
-# Complete stack: Backend + MySQL + Redis
+# Complete stack: Backend + PostgreSQL + Redis
 # =====================================================
 
 version: '3.8'
 
 services:
   # =====================================================
-  # MySQL Database
+  # PostgreSQL Database
   # =====================================================
-  mysql:
-    image: mysql:8.0
-    container_name: sutana-mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: sutana-postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: sutana_ems_dev
-      MYSQL_USER: sutana_user
-      MYSQL_PASSWORD: sutana_pass
+      POSTGRES_USER: sutana_user
+      POSTGRES_PASSWORD: sutana_pass
+      POSTGRES_DB: sutana_ems_dev
+      # The application stores timezone-naive `timestamp` columns and pins the
+      # session to Africa/Addis_Ababa (see src/config/database.js), so the
+      # server default has to agree or ad-hoc psql sessions disagree with the app.
       TZ: Africa/Addis_Ababa
+      PGTZ: Africa/Addis_Ababa
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./database/schema:/docker-entrypoint-initdb.d
-    command: 
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --default-authentication-plugin=mysql_native_password
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - sutana-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U sutana_user -d sutana_ems_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,11 +66,12 @@ services:
     environment:
       NODE_ENV: development
       PORT: 5000
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_USER: sutana_user
       DB_PASSWORD: sutana_pass
       DB_NAME: sutana_ems_dev
+      DB_TIMEZONE: Africa/Addis_Ababa
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: redis_pass
@@ -84,7 +83,7 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -98,21 +97,19 @@ services:
     command: npm run dev
 
   # =====================================================
-  # PHPMyAdmin (Database Management - Development Only)
+  # pgAdmin (Database Management - Development Only)
   # =====================================================
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: sutana-phpmyadmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: sutana-pgadmin
     restart: unless-stopped
     environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      PMA_ARBITRARY: 1
-      UPLOAD_LIMIT: 100M
+      PGADMIN_DEFAULT_EMAIL: admin@sutana.local
+      PGADMIN_DEFAULT_PASSWORD: sutana_pass
     ports:
       - "8080:80"
     depends_on:
-      - mysql
+      - postgres
     networks:
       - sutana-network
     profiles:
@@ -140,7 +137,7 @@ services:
 # Volumes
 # =====================================================
 volumes:
-  mysql_data:
+  postgres_data:
     driver: local
   redis_data:
     driver: local

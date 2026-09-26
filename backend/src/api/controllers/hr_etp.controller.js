@@ -221,8 +221,8 @@ exports.getAttendanceRegistrationCandidates = catchAsync(async (req, res) => {
     .whereNotIn(db.raw('LOWER(u.email)'), linkedEmails)
     .select(
       'u.id', 'u.full_name', 'u.email', 'u.phone',
-      db.raw('DATE(u.created_at) as created_at'),
-      db.raw('GROUP_CONCAT(DISTINCT r.name ORDER BY r.name SEPARATOR ", ") as roles')
+      db.raw('(u.created_at)::date as created_at'),
+      db.raw('string_agg(DISTINCT r.name::text, \', \' ORDER BY r.name::text) as roles')
     )
     .groupBy('u.id')
     .orderBy('u.created_at', 'desc');
@@ -1340,7 +1340,7 @@ exports.markPayrollPaid = catchAsync(async (req, res) => {
     // Find or create a 'Payroll' expense category
     let cat = await db('expense_categories').where('name', 'Payroll').first();
     if (!cat) {
-      const [catId] = await db('expense_categories').insert({ name: 'Payroll', description: 'Monthly payroll payments', requires_approval: 0 });
+      const [catId] = await db('expense_categories').insert({ name: 'Payroll', description: 'Monthly payroll payments', requires_approval: false });
       cat = { id: catId };
     }
     // Find default payment method (Bank Transfer)
@@ -1422,7 +1422,7 @@ exports.markEmployeePaid = catchAsync(async (req, res) => {
     try {
       let cat = await db('expense_categories').where('name', 'Payroll').first();
       if (!cat) {
-        const [catId] = await db('expense_categories').insert({ name: 'Payroll', description: 'Monthly payroll payments', requires_approval: 0 });
+        const [catId] = await db('expense_categories').insert({ name: 'Payroll', description: 'Monthly payroll payments', requires_approval: false });
         cat = { id: catId };
       }
       const pm = await db('payment_methods').where('name', 'like', '%Bank%').first();
@@ -2074,7 +2074,7 @@ exports.calculateDailyAttendance = catchAsync(async (req, res) => {
 
   // Get heartbeats for the target date
   const heartbeats = await db('etp_heartbeat_logs')
-    .where(db.raw('DATE(heartbeat_time)'), targetDate)
+    .where(db.raw('(heartbeat_time)::date'), targetDate)
     .orderBy('employee_id')
     .orderBy('heartbeat_time', 'asc');
 
@@ -2345,7 +2345,7 @@ exports.getMyAttendancePortal = catchAsync(async (req, res) => {
     .where('employee_id', emp.employee_id)
     .orderBy('attendance_date', 'desc')
     .limit(40)
-    .select('record_id', 'employee_id', db.raw('DATE_FORMAT(attendance_date, "%Y-%m-%d") as attendance_date'), 'actual_start_time', 'actual_end_time',
+    .select('record_id', 'employee_id', db.raw('to_char(attendance_date, \'YYYY-MM-DD\') as attendance_date'), 'actual_start_time', 'actual_end_time',
       'net_work_hours', 'late_minutes', 'overtime_hours', 'attendance_status',
       'auth_method', 'terminal_ip', 'is_manual_override', 'override_reason', 'month_number', 'year_number');
 
@@ -2353,7 +2353,7 @@ exports.getMyAttendancePortal = catchAsync(async (req, res) => {
   const todayRec = log.find(r => toDateOnly(r.attendance_date) === today)
     || await db('etp_daily_attendance')
       .where({ employee_id: emp.employee_id, year_number: now.getFullYear(), month_number: now.getMonth() + 1 })
-      .select('record_id', db.raw('DATE_FORMAT(attendance_date, "%Y-%m-%d") as attendance_date'), 'actual_start_time', 'actual_end_time', 'net_work_hours',
+      .select('record_id', db.raw('to_char(attendance_date, \'YYYY-MM-DD\') as attendance_date'), 'actual_start_time', 'actual_end_time', 'net_work_hours',
         'attendance_status', 'auth_method', 'terminal_ip', 'is_manual_override')
       .orderBy('attendance_date', 'desc').first();
 

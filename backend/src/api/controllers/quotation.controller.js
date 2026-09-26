@@ -67,8 +67,9 @@ db.schema.hasColumn('general_store_incoming_items', 'status').then(exists => {
     table.integer('received_by').unsigned().nullable();
     table.timestamp('received_at').nullable();
   }).then(() => db.raw(`UPDATE general_store_incoming_items it
-      JOIN general_store_incoming g ON g.id = it.incoming_id AND g.status = 'received'
-      SET it.status = 'received', it.received_by = g.received_by, it.received_at = g.received_at`));
+      SET status = 'received', received_by = g.received_by, received_at = g.received_at
+      FROM general_store_incoming g
+      WHERE g.id = it.incoming_id AND g.status = 'received'`));
 }).catch(console.error);
 
 // Ensure quotation_finance table exists (finance approval gate before conversion)
@@ -674,7 +675,7 @@ exports.convertQuotation = catchAsync(async (req, res) => {
     po_number: `PO-${quote.quotation_no}`,
     supplier_id: supplierId,
     order_date: quote.date_agreed || db.fn.now(),
-    expected_delivery_date: quote.expected_delivery_date || db.raw('DATE_ADD(CURDATE(), INTERVAL 30 DAY)'),
+    expected_delivery_date: quote.expected_delivery_date || db.raw('(CURRENT_DATE) + INTERVAL \'30 days\''),
     sector_id: quote.sector_id || 1,
     status_id: statusId || 1,
     total_amount: quote.total_amount,
@@ -965,10 +966,10 @@ exports.listPharmacyIncoming = catchAsync(async (req, res) => {
       'psi.purchase_order_id', 'psi.supplier_name', 'psi.status', 'psi.total_amount',
       'psi.vat_amount', 'psi.created_at',
       db.raw('COUNT(psii.id) as total_lines'),
-      db.raw('SUM(CASE WHEN psii.status = "received" THEN 1 ELSE 0 END) as received_lines'),
-      db.raw('SUM(CASE WHEN psii.status = "pending" THEN 1 ELSE 0 END) as pending_lines'),
+      db.raw('SUM(CASE WHEN psii.status = \'received\' THEN 1 ELSE 0 END) as received_lines'),
+      db.raw('SUM(CASE WHEN psii.status = \'pending\' THEN 1 ELSE 0 END) as pending_lines'),
       db.raw('COALESCE(SUM(psii.quantity), 0) as total_quantity'),
-      db.raw('COALESCE(SUM(CASE WHEN psii.status = "received" THEN psii.quantity ELSE 0 END), 0) as received_quantity')
+      db.raw('COALESCE(SUM(CASE WHEN psii.status = \'received\' THEN psii.quantity ELSE 0 END), 0) as received_quantity')
     );
   if (status && status !== 'All') query = query.having('psi.status', status);
   const rows = await query;

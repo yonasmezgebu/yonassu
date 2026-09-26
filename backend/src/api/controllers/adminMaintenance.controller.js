@@ -6,8 +6,8 @@ const fs = require('fs');
 const path = require('path');
 
 exports.runDatabaseMaintenance = catchAsync(async (req, res) => {
-  const tables = await db.raw("SHOW TABLES");
-  const tableNames = (tables[0] || Object.values(tables)[0] || []).map(r => Object.values(r)[0]);
+  const tables = await db.raw('SELECT tablename AS table_name FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename');
+  const tableNames = (tables.rows || Object.values(tables)[0] || []).map(r => Object.values(r)[0]);
   const tableInfo = [];
   for (const t of tableNames.slice(0, 20)) {
     try {

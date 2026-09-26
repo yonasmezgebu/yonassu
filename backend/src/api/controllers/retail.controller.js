@@ -653,7 +653,7 @@ exports.deleteProduct = catchAsync(async (req, res) => {
 
 exports.getManagerDashboard = catchAsync(async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
-  const transactions = await db('retail_transactions').whereRaw(`DATE(created_at) = ?`, [today]);
+  const transactions = await db('retail_transactions').whereRaw(`(created_at)::date = ?`, [today]);
   const total = transactions.reduce((s, t) => s + parseFloat(t.total_amount), 0);
   const byMethod = { cash: 0, bank_transfer: 0, telebirr: 0, credit: 0 };
   transactions.forEach(t => { byMethod[t.payment_method] = (byMethod[t.payment_method] || 0) + parseFloat(t.total_amount); });
@@ -672,9 +672,9 @@ exports.getManagerDashboard = catchAsync(async (req, res) => {
 exports.getSalesTrends = catchAsync(async (req, res) => {
   const { period = 'daily' } = req.query;
   let groupBy, dateFormat;
-  if (period === 'weekly') { groupBy = db.raw("DATE_FORMAT(created_at, '%x-W%v')"); dateFormat = 'YYYY-WW'; }
-  else if (period === 'monthly') { groupBy = db.raw("DATE_FORMAT(created_at, '%Y-%m')"); dateFormat = 'YYYY-MM'; }
-  else { groupBy = db.raw("DATE(created_at)"); dateFormat = 'YYYY-MM-DD'; }
+  if (period === 'weekly') { groupBy = db.raw('to_char(created_at, \'IYYY-WIYYY\')'); dateFormat = 'YYYY-WW'; }
+  else if (period === 'monthly') { groupBy = db.raw('to_char(created_at, \'YYYY-MM\')'); dateFormat = 'YYYY-MM'; }
+  else { groupBy = db.raw('(created_at)::date'); dateFormat = 'YYYY-MM-DD'; }
 
   const trends = await db('retail_transactions')
     .select(groupBy, db.raw('SUM(total_amount) as revenue'), db.raw('COUNT(*) as count'))
@@ -686,7 +686,7 @@ exports.getCashierActivity = catchAsync(async (req, res) => {
   const cashiers = await db('retail_shifts as rs')
     .select('rs.*', 'u.full_name as cashier_name')
     .leftJoin('users as u', 'rs.cashier_id', 'u.id')
-    .whereRaw('DATE(rs.created_at) = CURDATE()')
+    .whereRaw('(rs.created_at)::date = CURRENT_DATE')
     .orderBy('rs.created_at', 'desc');
   res.json({ status: 'success', data: cashiers });
 });
@@ -723,8 +723,8 @@ exports.verifyShift = catchAsync(async (req, res) => {
 exports.getReconciliation = catchAsync(async (req, res) => {
   const { date } = req.query;
   const targetDate = date || new Date().toISOString().split('T')[0];
-  const shifts = await db('retail_shifts').whereRaw(`DATE(created_at) = ?`, [targetDate]).where('status', '!=', 'OPEN');
-  const transactions = await db('retail_transactions').whereRaw(`DATE(created_at) = ?`, [targetDate]);
+  const shifts = await db('retail_shifts').whereRaw(`(created_at)::date = ?`, [targetDate]).where('status', '!=', 'OPEN');
+  const transactions = await db('retail_transactions').whereRaw(`(created_at)::date = ?`, [targetDate]);
   const totalSystem = transactions.reduce((s, t) => s + parseFloat(t.total_amount), 0);
   const byMethod = { cash: 0, bank_transfer: 0, telebirr: 0, credit: 0 };
   transactions.forEach(t => { byMethod[t.payment_method] = (byMethod[t.payment_method] || 0) + parseFloat(t.total_amount); });

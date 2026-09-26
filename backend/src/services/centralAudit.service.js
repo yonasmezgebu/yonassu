@@ -124,7 +124,7 @@ const captureLegacy = async (action, userId, details = {}) => {
         .leftJoin('departments', 'users.department_id', 'departments.id')
         .select(
           'users.full_name',
-          db.raw('GROUP_CONCAT(DISTINCT roles.name) as role_names'),
+          db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'),
           'departments.name as department_name'
         )
         .where('users.id', userId)

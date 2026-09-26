@@ -296,8 +296,8 @@ class FinanceRepository extends BaseRepository {
   }
   async getFinancialDashboardStats() {
     try {
-      const startOfMonth = db.raw('DATE_FORMAT(NOW(), "%Y-%m-01")');
-      const startOfYear = db.raw('DATE_FORMAT(NOW(), "%Y-01-01")');
+      const startOfMonth = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-MM-01\')');
+      const startOfYear = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-01-01\')');
       const monthlyExpenses = await this.query()
         .where('created_at', '>=', startOfMonth)
         .whereNotNull('approved_at')
@@ -319,8 +319,8 @@ class FinanceRepository extends BaseRepository {
         .sum('amount as total')
         .first();
       const expenseByCategory = await this.getExpenseSummaryByCategory(
-        db.raw('DATE_SUB(NOW(), INTERVAL 30 DAY)'),
-        db.raw('NOW()')
+        db.raw('(LOCALTIMESTAMP) - INTERVAL \'30 days\''),
+        db.raw('LOCALTIMESTAMP')
       );
       return {
         monthlyExpenses: parseFloat(monthlyExpenses?.total || 0),

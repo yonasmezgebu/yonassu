@@ -247,7 +247,7 @@ const generateExecutiveSummary = async () => {
 };
 const cleanupReportLogs = async () => {
   try {
-    const cutoffDate = db.raw(`DATE_SUB(NOW(), INTERVAL 90 DAY)`);
+    const cutoffDate = db.raw(`(LOCALTIMESTAMP) - INTERVAL '90 days'`);
     const deleted = await db('report_delivery_logs')
       .where('delivered_at', '<', cutoffDate)
       .delete();

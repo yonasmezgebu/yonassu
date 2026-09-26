@@ -1,30 +1,29 @@
 const knex = require('knex');
-const mysql = require('mysql2/promise');
 const config = require('./env');
 
-// Monkey-patch whereDate for MySQL compatibility
+// MySQL's DATETIME/TIMESTAMP were pinned to a fixed +03:00 offset, and every
+// converted column is a timezone-naive `timestamp`.  Reproducing that exact
+// behaviour on PostgreSQL means fixing the session time zone rather than
+// converting the columns, so local wall-clock values keep round-tripping
+// unchanged.
+const DB_TIMEZONE = process.env.DB_TIMEZONE || 'Africa/Addis_Ababa';
+
+// Monkey-patch whereDate, which the builder has no native equivalent for.
 knex.QueryBuilder.extend('whereDate', function(column, operator, value) {
   if (value === undefined) {
     value = operator;
     operator = '=';
   }
-  return this.whereRaw(`DATE(??) ${operator} DATE(?)`, [column, value]);
+  return this.whereRaw(`(??)::date ${operator} (?)::date`, [column, value]);
 });
 const knexConfig = {
-  client: 'mysql2',
+  client: 'pg',
   connection: {
     host: config.database.host,
     port: config.database.port,
     user: config.database.user,
     password: config.database.password,
     database: config.database.database,
-    timezone: '+03:00', 
-    typeCast: function(field, next) {
-      if (field.type === 'TINY' && field.length === 1) {
-        return field.string() === '1';
-      }
-      return next();
-    }
   },
   pool: {
     min: config.database.pool.min,
@@ -32,7 +31,12 @@ const knexConfig = {
     acquireTimeoutMillis: 30000,
     idleTimeoutMillis: 60000,
     reapIntervalMillis: 1000,
-    createRetryIntervalMillis: 100
+    createRetryIntervalMillis: 100,
+    afterCreate(conn, done) {
+      // Applied per physical connection, so it survives pool recycling and
+      // reconnects. `done(err, conn)` must always be called exactly once.
+      conn.query(`SET TIME ZONE '${DB_TIMEZONE}'`, (err) => done(err, conn));
+    }
   },
   acquireConnectionTimeout: 30000,
   debug: config.logging.logSqlQueries || false,
@@ -58,33 +62,17 @@ const knexConfig = {
   }
 };
 const db = knex(knexConfig);
-let pool = null;
-const getRawPool = async () => {
-  if (!pool) {
-    pool = mysql.createPool({
-      host: config.database.host,
-      port: config.database.port,
-      user: config.database.user,
-      password: config.database.password,
-      database: config.database.database,
-      waitForConnections: true,
-      connectionLimit: config.database.connectionLimit || config.database.pool.max,
-      queueLimit: 0,
-      enableKeepAlive: true,
-      keepAliveInitialDelay: 0
-    });
-  }
-  return pool;
-};
 const testConnection = async () => {
   try {
     const startTime = Date.now();
+    // node-postgres returns { rows }, where MySQL2 returned [rows, fields].
     const result = await db.raw('SELECT 1 + 1 AS result');
     const duration = Date.now() - startTime;
-    if (result[0][0].result === 2) {
+    if (result.rows[0].result === 2) {
       console.log('✅ Database connected successfully');
       console.log(`   Host: ${config.database.host}:${config.database.port}`);
       console.log(`   Database: ${config.database.database}`);
+      console.log(`   Time zone: ${DB_TIMEZONE}`);
       console.log(`   Connection time: ${duration}ms`);
       if (config.isDevelopment && config.development.debug) {
         console.log(`   Pool: Min=${config.database.pool.min}, Max=${config.database.pool.max}`);
@@ -104,9 +92,6 @@ const testConnection = async () => {
 const closeConnection = async () => {
   try {
     await db.destroy();
-    if (pool) {
-      await pool.end();
-    }
     console.log('✅ Database connection closed');
   } catch (error) {
     console.error('❌ Error closing database connection:', error.message);
@@ -155,7 +140,6 @@ if (config.logging.logSqlQueries) {
 }
 module.exports = {
   db,
-  getRawPool,
   testConnection,
   closeConnection,
   transaction,

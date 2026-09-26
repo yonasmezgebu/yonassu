@@ -658,8 +658,8 @@ const registerReceiving = async (poId, items, receivingNote, userId) => {
   return true;
 };
 const getPurchaseStatistics = async () => {
-  const startOfMonth = db.raw('DATE_FORMAT(NOW(), "%Y-%m-01")');
-  const startOfYear = db.raw('DATE_FORMAT(NOW(), "%Y-01-01")');
+  const startOfMonth = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-MM-01\')');
+  const startOfYear = db.raw('to_char(LOCALTIMESTAMP, \'YYYY-01-01\')');
   const monthlyPOs = await db('purchase_orders')
     .where('created_at', '>=', startOfMonth)
     .count('id as count')

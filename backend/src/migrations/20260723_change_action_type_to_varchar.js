@@ -1,19 +1,14 @@
+// Converted from MySQL to PostgreSQL.
+//
+// This previously only did anything when the client was `mysql`/`mysql2`, and
+// silently no-opped otherwise.  Under PostgreSQL that no-op branch is the one
+// that would have run, so the conversion is now unconditional.  The statement
+// itself is already PostgreSQL syntax (`ALTER COLUMN ... TYPE`), which is what
+// the original MySQL `MODIFY COLUMN` was translated into.
 exports.up = async function (knex) {
-  // Check if we are using MySQL or SQLite
-  const client = knex.client.config.client;
-  
-  if (client === 'mysql' || client === 'mysql2') {
-    await knex.raw("ALTER TABLE general_movement_log MODIFY COLUMN action_type VARCHAR(50) DEFAULT 'Move to Production'");
-  } else {
-    // For SQLite or others where ALTER COLUMN is not directly supported,
-    // we can skip or recreate. Since SUTANA uses MySQL according to previous errors, this is fine.
-    // We'll just leave it as raw for mysql.
-  }
+  await knex.raw('ALTER TABLE general_movement_log ALTER COLUMN action_type TYPE varchar(50);');
 };
 
 exports.down = async function (knex) {
-  const client = knex.client.config.client;
-  if (client === 'mysql' || client === 'mysql2') {
-    await knex.raw("ALTER TABLE general_movement_log MODIFY COLUMN action_type ENUM('Move to Production', 'Return to Store', 'Consume', 'Register', 'Value Update') DEFAULT 'Move to Production'");
-  }
+  await knex.raw('ALTER TABLE general_movement_log ALTER COLUMN action_type TYPE citext;');
 };
