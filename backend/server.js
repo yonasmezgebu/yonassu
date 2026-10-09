@@ -60,8 +60,26 @@ const startServer = async () => {
     // Attach io to app so routes/controllers can access it
     app.set('io', io);
 
+    // Socket.io auth: token is optional — decode if present, allow through either way.
+    // Blocking unauthenticated connections causes 400 errors for pages that open a
+    // socket before the user context is fully available.
+    const jwt = require('jsonwebtoken');
+    io.use((socket, next) => {
+      const token = socket.handshake.auth?.token || socket.handshake.headers['authorization']?.replace('Bearer ', '');
+      if (token) {
+        try {
+          socket.user = jwt.verify(token, config.jwt.secret);
+        } catch (_) {
+          // Invalid token — still allow connection but without user context
+          logger.warn(`⚠️  Socket connection with invalid token: ${socket.id}`);
+        }
+      }
+      // Always allow the connection through
+      next();
+    });
+
     io.on('connection', (socket) => {
-      logger.info(`🔌 Socket client connected: ${socket.id}`);
+      logger.info(`🔌 Socket client connected: ${socket.id} (User: ${socket.user?.id || 'Unknown'})`);
       socket.on('disconnect', () => {
         logger.info(`🔌 Socket client disconnected: ${socket.id}`);
       });
@@ -134,18 +152,13 @@ process.on('uncaughtException', (error) => {
 });
 
 // Handle unhandled promise rejections
+// FIX: do NOT crash the server on unhandled rejections — a single bad async
+// call should not kill every active user's session. Log it clearly instead,
+// so you can see and fix the root cause without taking the server down.
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise);
-  logger.error('Reason:', reason);
-  
-  // Unhandled rejections are serious - exit gracefully
-  if (server) {
-    server.close(() => {
-      process.exit(1);
-    });
-  } else {
-    process.exit(1);
-  }
+  logger.error('Unhandled Promise Rejection — this should be fixed:', reason);
+  // In production, optionally notify an alerting system here (e.g. Sentry)
+  // but NEVER exit the process for a rejection — use uncaughtException for that.
 });
 
 // Start the application
