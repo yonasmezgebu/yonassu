@@ -24,6 +24,21 @@ const UPLOAD_DIRS = {
   pharmacyBranches: 'uploads/pharmacy/branches',
   pharmacyHealth: 'uploads/pharmacy/health',
   pharmacyProductPosts: 'uploads/pharmacy/product-posts',
+
+  chat: 'uploads/chat',
+  gallery: 'uploads/gallery',
+  news: 'uploads/news',
+  tenders: 'uploads/tenders',
+  applications: 'uploads/applications',
+  hrDocs: 'uploads/hr-docs',
+  financePayroll: 'uploads/finance-payroll',
+  printingWork: 'uploads/printing-work',
+  printingPosts: 'uploads/printing-posts',
+  contacts: 'uploads/contacts',
+  signatures: 'uploads/signatures',
+  hero: 'uploads/hero',
+  serviceObjects: 'uploads/service-objects',
+  storeResearch: 'uploads/store-research',
   research: 'uploads/research'
 };
 Object.values(UPLOAD_DIRS).forEach(dir => {
@@ -253,6 +268,8 @@ if (!config.isTest) {
   setInterval(cleanupTempFiles, 60 * 60 * 1000);
 }
 module.exports = {
+  createUploader,
+  createMultipleUploader,
   uploads,
   handleUploadError,
   getFileInfo,
@@ -263,3 +280,30 @@ module.exports = {
   UPLOAD_DIRS,
   generateFilename
 };
+
+// ─── BACKWARD COMPATIBILITY ───────────────────────────────────────────────────
+// Routes that still import { uploads } from upload.middleware keep working.
+// They get the same pre-built uploaders from storage.service.js under the hood.
+const storageService = require('../../services/storage.service');
+module.exports.uploads = {
+  ...module.exports.uploads,
+  // Aliases used by pharmacy.routes.js, rentalOrder.routes.js, user.routes.js
+  singleProfilePicture:    storageService.upload.profile,
+  pharmacyDrugImage:       storageService.upload.pharmacyDrug,
+  pharmacyCoverImage:      storageService.upload.pharmacyCover,
+  pharmacyCategoryImage:   storageService.upload.pharmacyCategory,
+  pharmacyBranchImage:     storageService.upload.pharmacyBranch,
+  pharmacyProductPostImage:storageService.upload.pharmacyProductPost,
+  pharmacyHealthUpload:    storageService.upload.pharmacyHealth,
+  singleOrderAttachment:   storageService.upload.orderAttachment,
+  singlePaymentProof:      storageService.upload.paymentProof,
+  singleProductImage:      storageService.upload.productImage,
+  singleTaxDocument:       storageService.upload.taxDocument,
+  singleExpenseReceipt:    storageService.upload.expense,
+  multipleOrderAttachments:storageService.upload.orderAttachment,
+  multipleProductImages:   storageService.upload.productImage,
+  multipleExpenseReceipts: storageService.upload.expense,
+  generic:                 storageService.upload.temp,
+};
+// Also re-export handleUploadError from storage.service for parity
+module.exports.handleUploadError = storageService.handleUploadError;

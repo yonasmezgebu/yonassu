@@ -3,5 +3,7 @@ module.exports = {
     rateLimitMiddleware: limiters.default,
     authLimiter: limiters.auth,
     loginLimiter: limiters.login,
-    apiLimiter: limiters.default
+    apiLimiter: limiters.default,
+    checkoutLimiter: limiters.checkout,
+    reportLimiter: limiters.report
 };

@@ -15,11 +15,15 @@ const errorHandler = (err, req, res, next) => {
     userId: req.user?.id,
     statusCode: err.statusCode || 500
   });
-  if (err.code === 'ER_DUP_ENTRY') {
+  // FIX #1: PostgreSQL specific error codes (Replacing MySQL codes)
+  if (err.code === '23505') { // Unique constraint violation
     err = new AppError('Duplicate entry. This record already exists.', 409);
   }
-  if (err.code === 'ER_NO_REFERENCED_ROW_2') {
-    err = new AppError('Invalid reference. The referenced record does not exist.', 400);
+  if (err.code === '23503') { // Foreign key constraint violation
+    err = new AppError('Invalid reference. The referenced record does not exist or is in use.', 400);
+  }
+  if (err.code === '22P02') { // Invalid text representation (e.g., passing string to integer/uuid column)
+    err = new AppError('Invalid data format provided for a field.', 400);
   }
   if (err.name === 'ValidationError') {
     err = new AppError(err.message, 400, err.errors);

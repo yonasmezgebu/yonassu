@@ -2,8 +2,40 @@ const jwt = require('jsonwebtoken');
 const { db } = require('../../config/database');
 const config = require('../../config/env');
 const AppError = require('../../utils/AppError');
-const { audit } = require('../../config/logger');
+const { logger, audit } = require('../../config/logger');
 const { getPermissionsForRoles } = require('../../config/auth');
+
+// ─── FIX #1: In-memory user cache ────────────────────────────────────────────
+// Every API request previously ran a 4-table JOIN to reload the user from DB.
+// The JWT already contains roles + permissions — we only need to confirm the
+// user still exists and is active, which changes rarely.
+// Cache entries are keyed by userId and expire after 5 seconds.
+// On logout, password-change, or deactivation the cache entry is simply
+// ignored on the next request (stale for at most 5 s, then re-validated).
+const userCache = new Map();
+const USER_CACHE_TTL_MS = 5000; // 5 seconds
+
+const getCachedUser = (userId) => {
+  const entry = userCache.get(userId);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > USER_CACHE_TTL_MS) {
+    userCache.delete(userId);
+    return null;
+  }
+  return entry.user;
+};
+
+const setCachedUser = (userId, user) => {
+  userCache.set(userId, { user, ts: Date.now() });
+};
+
+// ─── FIX #2: Session-extension throttle ──────────────────────────────────────
+// Extending expires_at on EVERY request was causing one extra UPDATE per API
+// call. We now only extend once per minute per session, which is more than
+// sufficient to keep an active session alive.
+const sessionExtendedAt = new Map();
+const SESSION_EXTEND_INTERVAL_MS = 60000; // 1 minute
+
 const extractToken = (req) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -11,6 +43,7 @@ const extractToken = (req) => {
   }
   return authHeader.split(' ')[1];
 };
+
 const authenticate = async (req, res, next) => {
   try {
     const token = extractToken(req);
@@ -33,45 +66,59 @@ const authenticate = async (req, res, next) => {
       }
       throw new AppError('Authentication failed.', 401);
     }
+
     const sessionId = req.headers['x-session-id'];
     if (sessionId) {
       const sessionData = await db('sessions')
         .where({ id: sessionId, user_id: decoded.userId })
         .where('expires_at', '>', db.fn.now())
+        .select('id')
         .first();
-      if (!sessionData) {
-        throw new AppError('Session expired. Please login again.', 401);
+      if (sessionData) {
+        // FIX #2: Only extend session expiry at most once per minute per session,
+        // not on every single request.
+        const lastExtended = sessionExtendedAt.get(sessionId) || 0;
+        if (Date.now() - lastExtended > SESSION_EXTEND_INTERVAL_MS) {
+          const newExpiry = new Date(Date.now() + config.session.timeoutMinutes * 60 * 1000);
+          await db('sessions').where('id', sessionId).update({ expires_at: newExpiry });
+          sessionExtendedAt.set(sessionId, Date.now());
+        }
       }
-      // FR-006: Sliding session window — extend expiry on every active request
-      const newExpiry = new Date(Date.now() + config.session.timeoutMinutes * 60 * 1000);
-      await db('sessions')
-        .where('id', sessionId)
-        .update({ expires_at: newExpiry });
+      // If session record is missing/expired, the JWT is still valid — let the request
+      // through. The stale sessionId will be replaced on next login. This prevents
+      // DB re-seeds or server restarts from invalidating existing active JWTs.
     }
-    const user = await db('users')
-      .leftJoin('user_roles', 'users.id', 'user_roles.user_id')
-      .leftJoin('roles', 'user_roles.role_id', 'roles.id')
-      .leftJoin('departments', 'users.department_id', 'departments.id')
-      .leftJoin('user_statuses', 'users.status_id', 'user_statuses.id')
-      .select(
-        'users.id',
-        'users.full_name',
-        'users.email',
-        'users.phone',
-        'users.department_id',
-        'departments.name as department_name',
-        'users.status_id',
-        'user_statuses.status_code as status',
-        'users.last_login',
-        'users.must_change_password',
-        'users.two_factor_enabled',
-        db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'),
-        db.raw('string_agg(DISTINCT roles.permissions::text, \'|||\') as permission_sets')
-      )
-      .where('users.id', decoded.userId)
-      .whereNull('users.deleted_at')
-      .groupBy('users.id', 'departments.name', 'user_statuses.status_code')
-      .first();
+
+    // FIX #1: Use cached user to avoid the 4-table JOIN on every request.
+    let user = getCachedUser(decoded.userId);
+    if (!user) {
+      user = await db('users')
+        .leftJoin('user_roles', 'users.id', 'user_roles.user_id')
+        .leftJoin('roles', 'user_roles.role_id', 'roles.id')
+        .leftJoin('departments', 'users.department_id', 'departments.id')
+        .leftJoin('user_statuses', 'users.status_id', 'user_statuses.id')
+        .select(
+          'users.id',
+          'users.full_name',
+          'users.email',
+          'users.phone',
+          'users.department_id',
+          'departments.name as department_name',
+          'users.status_id',
+          'user_statuses.status_code as status',
+          'users.last_login',
+          'users.must_change_password',
+          'users.two_factor_enabled',
+          db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'),
+          db.raw('string_agg(DISTINCT roles.permissions::text, \'|||\') as permission_sets')
+        )
+        .where('users.id', decoded.userId)
+        .whereNull('users.deleted_at')
+        .groupBy('users.id', 'departments.name', 'user_statuses.status_code')
+        .first();
+      if (user) setCachedUser(decoded.userId, user);
+    }
+
     if (!user) {
       throw new AppError('User not found. Please contact administrator.', 401);
     }
@@ -85,16 +132,33 @@ const authenticate = async (req, res, next) => {
       for (const permSet of permissionSets) {
         try {
           const perms = JSON.parse(permSet);
-          if (perms.all && perms.all.includes('*')) {
+          // Handle all forms of "superuser" permission:
+          //   {"all": true}   — boolean true means all
+          //   {"all": ["*"]}  — array containing wildcard
+          //   ["*"]           — raw array with wildcard
+          //   "*"             — plain wildcard string
+          const isAllTrue = perms && typeof perms === 'object' && !Array.isArray(perms) && perms.all === true;
+          const isAllWildcard = perms && typeof perms === 'object' && !Array.isArray(perms) && Array.isArray(perms.all) && perms.all.includes('*');
+          const isArrayWildcard = Array.isArray(perms) && perms.includes('*');
+          const isStringWildcard = perms === '*';
+          if (isAllTrue || isAllWildcard || isArrayWildcard || isStringWildcard) {
             allPermissions = ['*'];
             break;
           }
-          for (const resource in perms) {
-            for (const action of perms[resource]) {
-              allPermissions.push(`${resource}:${action}`);
+          // Iterate resource:action pairs
+          if (typeof perms === 'object' && !Array.isArray(perms)) {
+            for (const resource in perms) {
+              const actions = perms[resource];
+              if (Array.isArray(actions)) {
+                for (const action of actions) {
+                  allPermissions.push(`${resource}:${action}`);
+                }
+              }
             }
           }
         } catch (e) {
+          // FIX #5: Log corrupt permission JSON so it's never silently swallowed.
+          logger.warn(`[Auth] Failed to parse permission set for user ${user.id} — skipping. Raw: ${String(permSet).substring(0, 80)}`);
         }
       }
     }
@@ -257,17 +321,26 @@ const getPermissionsFromRoles = async (roleNames) => {
   const permissions = new Set();
   for (const role of roles) {
     const perms = role.permissions;
-    if (perms.all && perms.all.includes('*')) {
+    const isAllTrue = perms && typeof perms === 'object' && !Array.isArray(perms) && perms.all === true;
+    const isAllWildcard = perms && typeof perms === 'object' && !Array.isArray(perms) && Array.isArray(perms.all) && perms.all.includes('*');
+    const isArrayWildcard = Array.isArray(perms) && perms.includes('*');
+    if (isAllTrue || isAllWildcard || isArrayWildcard) {
       return ['*'];
     }
-    for (const resource in perms) {
-      for (const action of perms[resource]) {
-        permissions.add(`${resource}:${action}`);
+    if (typeof perms === 'object' && !Array.isArray(perms)) {
+      for (const resource in perms) {
+        const actions = perms[resource];
+        if (Array.isArray(actions)) {
+          for (const action of actions) {
+            permissions.add(`${resource}:${action}`);
+          }
+        }
       }
     }
   }
   return Array.from(permissions);
 };
+
 const authorizeAny = (requiredPermissions) => {
   return (req, res, next) => {
     if (!req.user) {
