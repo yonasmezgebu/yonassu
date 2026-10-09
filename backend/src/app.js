@@ -54,6 +54,17 @@ app.use(cors(corsOptions));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// FIX #7: Global Pagination Cap Middleware
+app.use((req, res, next) => {
+  if (req.query.limit) {
+    const l = parseInt(req.query.limit);
+    if (!isNaN(l)) {
+      req.query.limit = Math.min(Math.max(l, 1), 500);
+    }
+  }
+  next();
+});
 const morgan = require('morgan');
 app.use(morgan('combined', { stream: morganStream }));
 app.use(requestLogger);
