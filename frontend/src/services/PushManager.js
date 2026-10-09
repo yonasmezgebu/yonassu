@@ -24,7 +24,8 @@ class PushManager {
 
   initSocket() {
     if (this.socket) return;
-    this.socket = io((import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', ''));
+    this.socket = io(window.location.origin, { transports: ['websocket', 'polling'], withCredentials: true, auth: { token: localStorage.getItem('token') || '' } });
+
     
     this.socket.on('connect', () => {
       this.socket.emit('join', { id: this.userId, role: this.userRole });

@@ -59,12 +59,10 @@ const authService = {
   confirmPasswordReset: async (data) => {
     return await apiClient.post('/auth/reset-password/confirm', data);
   },
+  // FIX #3: 2FA was a fake stub that ALWAYS returned success after 1 second.
+  // Replaced with a real API call so the code is actually verified server-side.
   verifyTwoFactor: async (code) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ status: 'success', data: { verified: true } });
-      }, 1000);
-    });
+    return await apiClient.post('/auth/2fa/verify', { code });
   }
 };
 export default authService;

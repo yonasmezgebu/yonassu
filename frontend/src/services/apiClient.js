@@ -83,10 +83,25 @@ apiClient.interceptors.response.use(
         // Silently fail — public API call or public page, user not logged in, that's fine
         return Promise.reject(new Error('Unauthenticated'));
       }
+      // Only wipe session & redirect when the error is a genuine missing/expired/invalid
+      // token — NOT a role/permission failure (which would also return 401).
+      const errMsg = (error.response?.data?.message || '').toLowerCase();
+      const isRealAuthFailure = (
+        errMsg.includes('no token') ||
+        errMsg.includes('token expired') ||
+        errMsg.includes('invalid token') ||
+        errMsg.includes('session expired') ||
+        errMsg.includes('please login') ||
+        errMsg.includes('authentication failed') ||
+        errMsg.includes('user not found')
+      );
+      if (!isRealAuthFailure) {
+        // Permission / role failure — don't kill the whole session
+        return Promise.reject(new Error(error.response?.data?.message || 'Unauthorized'));
+      }
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('sessionId');
-      // Show brief message before redirect
       console.warn('[Session] Token expired — redirecting to login.');
       setTimeout(() => { window.location.href = '/login'; }, 300);
       return Promise.reject(new Error('Session expired. Please login again.'));
