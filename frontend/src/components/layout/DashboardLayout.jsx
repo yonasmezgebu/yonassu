@@ -117,13 +117,13 @@ const NOTIF_ROUTE_ROLES = [
   ['/ceo',              ['ceo']],
   ['/finance',          ['finance', 'finance manager', 'admin']],
   ['/purchase',         ['purchase', 'purchase manager', 'market team', 'admin']],
-  ['/pharmacy-store',   ['pharmacy store keeper', 'ceo']],
-  ['/general-store',    ['general store keeper', 'ceo']],
+  ['/pharmacy-store',   ['pharmacy store keeper', 'pharmacy store', 'ceo']],
+  ['/general-store',    ['general store keeper', 'general store', 'ceo']],
   ['/printing-manager', ['printing supervisor', 'printing manager', 'admin', 'ceo']],
   ['/pharmacy-worker',  ['pharmacy worker', 'sales/cashier', 'admin']],
   ['/pharmacy',         ['pharmacy manager', 'admin']],
-  ['/car-renting',      ['car renting manager', 'admin', 'ceo']],
-  ['/hr',               ['hr manager', 'admin', 'ceo']],
+  ['/car-renting',      ['car renting manager', 'rental manager', 'admin', 'ceo']],
+  ['/hr',               ['hr manager', 'hr', 'admin', 'ceo']],
   ['/board',            ['board member', 'admin', 'ceo']],
   ['/employee',         ['employee', 'admin', 'ceo']],
   ['/sales',            ['admin', 'ceo', 'sales manager']],
@@ -1898,13 +1898,15 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     let connectTimer = null;
     // Delay connection slightly to avoid premature close
     connectTimer = setTimeout(() => {
-      socket = io((import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', ''), {
+      socket = io(window.location.origin, {
         transports: ['polling', 'websocket'],  // polling first, then upgrade
         withCredentials: true,
+        auth: { token: localStorage.getItem('token') || '' },
         reconnectionAttempts: 5,
         reconnectionDelay: 2000,
         timeout: 10000,
       });
+
       socketRef.current = socket;
       // Role gating: only toast notifications that belong to THIS user's dashboard
       let roleFlags = { pharm: false, store: false, fin: false, userId: null };

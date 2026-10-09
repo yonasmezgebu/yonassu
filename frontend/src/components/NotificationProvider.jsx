@@ -14,7 +14,7 @@ export const NotificationProvider = ({ children, showToast }) => {
   }, []);
 
   useEffect(() => {
-    const socket = io((import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', ''), { transports: ['websocket', 'polling'], withCredentials: true });
+    const socket = io(window.location.origin, { transports: ['websocket', 'polling'], withCredentials: true, auth: { token: localStorage.getItem('token') || '' } });
     socketRef.current = socket;
 
     socket.on('pharmacy-transfer', (data) => {
