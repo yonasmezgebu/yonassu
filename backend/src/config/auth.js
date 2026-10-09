@@ -101,19 +101,29 @@ const generateTemporaryPassword = () => {
   const lowercase = 'abcdefghijkmnopqrstuvwxyz';
   const numbers = '23456789';
   const special = '!@#$%&*';
+  // FIX #4: Use crypto.randomInt() instead of Math.random().
+  // Math.random() is NOT cryptographically secure — an attacker who knows
+  // the approximate time a temp password was generated can predict it.
+  // crypto.randomInt(max) uses the OS CSPRNG and is safe for security tokens.
+  const pick = (chars) => chars[crypto.randomInt(chars.length)];
   let password = '';
-  // Ensure at least one of each type
-  password += uppercase[Math.floor(Math.random() * uppercase.length)];
-  password += lowercase[Math.floor(Math.random() * lowercase.length)];
-  password += numbers[Math.floor(Math.random() * numbers.length)];
-  password += special[Math.floor(Math.random() * special.length)];
-  // Fill remaining
+  // Ensure at least one of each required character type
+  password += pick(uppercase);
+  password += pick(lowercase);
+  password += pick(numbers);
+  password += pick(special);
+  // Fill remaining characters
   const allChars = uppercase + lowercase + numbers + special;
   for (let i = password.length; i < length; i++) {
-    password += allChars[Math.floor(Math.random() * allChars.length)];
+    password += pick(allChars);
   }
-  // Shuffle
-  return password.split('').sort(() => Math.random() - 0.5).join('');
+  // Shuffle using Fisher-Yates with crypto.randomInt for unbiased shuffle
+  const arr = password.split('');
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.join('');
 };
 // Generate password reset token
 const generateResetToken = () => {

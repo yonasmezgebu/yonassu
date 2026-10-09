@@ -62,6 +62,53 @@ const knexConfig = {
   }
 };
 const db = knex(knexConfig);
+
+// ─── PostgreSQL compatibility shim ───────────────────────────────────────────
+// Knex on PostgreSQL does NOT auto-return inserted row IDs the way MySQL2 did.
+// MySQL2 .insert() returned [id] so callers wrote `const [id] = await db(...).insert(...)`.
+// PostgreSQL's pg driver returns a non-iterable QueryResult causing:
+//   "TypeError: (intermediate value) is not iterable"
+//
+// Fix: locate the actual Builder class on the QueryBuilder prototype chain and
+// patch its .insert() to auto-append RETURNING id and normalise to [plainNumber].
+// Zero changes needed in any controller.
+(function patchKnexInsert() {
+  const tempQb = db.queryBuilder();
+  let proto = Object.getPrototypeOf(tempQb);
+  while (proto) {
+    if (Object.getOwnPropertyNames(proto).includes('insert')) {
+      const _origInsert = proto.insert;
+      proto.insert = function pgInsertShim(values, returning, options) {
+        // If caller already passed a returning clause, honour it exactly.
+        if (returning) return _origInsert.call(this, values, returning, options);
+
+        // Auto-insert RETURNING * to support tables that might not have an 'id' column.
+        const q = _origInsert.call(this, values, '*', options);
+
+        // Wrap .then() to normalise [{id:N}] → [N] if an ID exists.
+        const _origThen = q.then.bind(q);
+        q.then = function shimThen(onFulfilled, onRejected) {
+          return _origThen(
+            (rows) => {
+              const normalized = Array.isArray(rows)
+                ? rows.map(r => (r && typeof r === 'object' && 'id' in r ? r.id : r))
+                : rows;
+              return onFulfilled ? onFulfilled(normalized) : normalized;
+            },
+            onRejected
+          );
+        };
+        return q;
+      };
+      break;
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 const testConnection = async () => {
   try {
     const startTime = Date.now();

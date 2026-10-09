@@ -102,7 +102,7 @@ const environment = {
   },
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000', 10),
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
   },
   session: {
     timeoutMinutes: parseInt(process.env.SESSION_TIMEOUT_MINUTES || '480', 10),
@@ -149,10 +149,34 @@ const validateConfig = () => {
     if (environment.encryption.key && Buffer.from(environment.encryption.key, 'utf8').length !== 32) {
       throw new Error('ENCRYPTION_KEY must be exactly 32 bytes for AES-256 in production');
     }
-    if (environment.jwt.secret.includes('dev_') || environment.jwt.secret === 'dev_jwt_secret_key_do_not_use_in_production_12345') {
-      throw new Error('❌ CRITICAL: Using development JWT secret in production!');
+    // FIX #2: Block ALL known weak/placeholder JWT secrets in production
+    const weakJwtSecrets = [
+      'dev_jwt_secret_key_do_not_use_in_production_12345',
+      'your_jwt_secret_min_32_chars',
+      'fallback-secret-for-development-only',
+      'secret',
+      'change_me',
+    ];
+    if (
+      weakJwtSecrets.includes(environment.jwt.secret) ||
+      environment.jwt.secret.includes('dev_') ||
+      environment.jwt.secret.length < 32
+    ) {
+      throw new Error('❌ CRITICAL: JWT_SECRET is weak or a placeholder. Set a random 64-character string in production!');
     }
-    if (environment.encryption.key.includes('dev_') || environment.encryption.key === 'dev_32_char_encryption_key_123456') {
+    const weakRefreshSecrets = [
+      'dev_jwt_refresh_secret_key_do_not_use_in_production_12345',
+      'your_refresh_secret_min_32_chars',
+      'fallback-refresh-secret-for-development-only',
+    ];
+    if (
+      weakRefreshSecrets.includes(environment.jwt.refreshSecret) ||
+      environment.jwt.refreshSecret.includes('dev_') ||
+      environment.jwt.refreshSecret.length < 32
+    ) {
+      throw new Error('❌ CRITICAL: JWT_REFRESH_SECRET is weak or a placeholder. Set a random 64-character string in production!');
+    }
+    if (environment.encryption.key && (environment.encryption.key.includes('dev_') || environment.encryption.key === 'dev_32_char_encryption_key_123456')) {
       throw new Error('❌ CRITICAL: Using development encryption key in production!');
     }
   }

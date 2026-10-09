@@ -138,9 +138,10 @@ const audit = async (action, userId, details = {}) => {
     resource: details.resource,
     resourceId: details.resourceId
   });
+  // FIX #2: Await the database inserts so they aren't floating promises.
   try {
     const { db } = require('./database');
-    db('audit_logs').insert({
+    await db('audit_logs').insert({
       user_id: userId || 1, 
       action: action,
       resource: details.resource || action.split('_')[0] || 'SYSTEM',
@@ -151,15 +152,14 @@ const audit = async (action, userId, details = {}) => {
       user_agent: details.userAgent || null,
       status: details.status || 'success',
       error_message: details.reason || null
-    }).catch(err => {
-      logger.error(`Failed to save audit log to DB (background): ${err.message}`);
     });
   } catch (error) {
     logger.error(`Failed to save audit log to DB: ${error.message}`);
   }
   try {
     const centralAuditService = require('../services/centralAudit.service');
-    centralAuditService.captureLegacy(action, userId, details);
+    // Using await here too if captureLegacy is async
+    await centralAuditService.captureLegacy(action, userId, details);
   } catch (error) {
     logger.error(`Failed to mirror audit log to central table: ${error.message}`);
   }
