@@ -1,25 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const path = require('path');
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 const newsController = require('../controllers/news.controller');
 
-const newsStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, './uploads/news'),
-  filename: (req, file, cb) => cb(null, `news-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`),
-});
-
-const newsUpload = multer({
-  storage: newsStorage,
-  limits: { fileSize: 25 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (!['image/jpeg', 'image/png'].includes(file.mimetype)) {
-      return cb(new Error('Only JPG/PNG allowed (max 25MB)'), false);
-    }
-    cb(null, true);
-  },
-});
+const { upload, handleUploadError } = require('../../services/storage.service');
 
 // Public
 router.get('/public', newsController.publicPosts);
@@ -31,11 +16,11 @@ router.put('/notifications/:id/read', authenticate, newsController.markRead);
 router.put('/notifications/read-all', authenticate, newsController.markAllRead);
 
 // Admin + HR Manager
-router.use(authenticate, authorizeRoles(['Admin', 'CEO', 'HR Manager']));
+router.use(authenticate, authorizeRoles(['Admin', 'CEO', 'HR Manager', 'HR']));
 router.get('/', newsController.listPosts);
 router.get('/:id', newsController.getPost);
-router.post('/', newsUpload.array('images', 10), newsController.createPost);
-router.put('/:id', newsUpload.array('images', 10), newsController.updatePost);
+router.post('/', upload.news.array('images', 10), newsController.createPost);
+router.put('/:id', upload.news.array('images', 10), newsController.updatePost);
 router.delete('/:id', newsController.deletePost);
 
 module.exports = router;

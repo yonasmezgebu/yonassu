@@ -18,11 +18,11 @@ router.get('/products', optionalAuthenticate, pharmacyController.getProducts);
 router.get('/products/search', optionalAuthenticate, pharmacyController.searchProducts);
 router.get('/products/category/:id', optionalAuthenticate, pharmacyController.getProductsByCategory);
 // /products/all must be before /products/:id
-router.get('/products/all', authenticate, authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO', 'Pharmacy Worker', 'Sales/Cashier']), pharmacyController.getAllProducts);
+router.get('/products/all', authenticate, authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO', 'Pharmacy Worker']), pharmacyController.getAllProducts);
 router.delete('/products/all', authenticate, authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO']), pharmacyController.deleteAllProducts);
 router.get('/products/:id', optionalAuthenticate, pharmacyController.getProductById);
 router.get('/branches', optionalAuthenticate, pharmacyController.getBranches);
-router.get('/store-inventory', authenticate, authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO', 'Finance Manager', 'Finance Cashier']), pharmacyController.getStoreInventory);
+router.get('/store-inventory', authenticate, authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO', 'Finance Manager']), pharmacyController.getStoreInventory);
 router.get('/dashboard', optionalAuthenticate, pharmacyController.getDashboardStats);
 
 // Public product posts (published only)
@@ -84,7 +84,7 @@ router.post('/dispense', dispenseController.createDispense);
 router.get('/dispenses', dispenseController.listDispenses);
 
 // Pharmacy Manager & Worker endpoints
-router.use(authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO', 'Pharmacy Worker', 'Sales/Cashier']));
+router.use(authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO', 'Pharmacy Worker']));
 
   // Worker Settings
   router.get('/admin/worker-can-add-products', pharmacyController.getWorkerAddProductSetting);

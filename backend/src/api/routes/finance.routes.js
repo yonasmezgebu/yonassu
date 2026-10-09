@@ -235,14 +235,14 @@ router.post('/tax/declare/:expenseId', authenticate, authorize(['tax:declare']),
 // ================================================================
 // INVOICES & RECEIPTS DASHBOARD (all modules + 2 tenders)
 // ================================================================
-router.get('/receipts-dashboard', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Sales/Cashier', 'Cashier']),
+router.get('/receipts-dashboard', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Cashier']),
   query('startDate').optional().isISO8601(), query('endDate').optional().isISO8601(), validate,
   FinanceReceiptsDashboard.getDashboard);
 
 // ================================================================
 // SALES INVOICES & RECEIPTS DOCUMENTS (linked Sale→Invoice→Payment→Receipt)
 // ================================================================
-router.get('/receipts-dashboard/documents', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Sales/Cashier', 'Cashier']), async (req, res, next) => {
+router.get('/receipts-dashboard/documents', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Cashier']), async (req, res, next) => {
   try {
     const { status = 'all', customer = '', source = '' } = req.query;
     const sources = source ? source.split(',').map(s => s.trim()).filter(Boolean) : null;
@@ -264,7 +264,7 @@ router.get('/customer-documents', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.get('/company-info', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Sales/Cashier', 'Cashier']), async (req, res, next) => {
+router.get('/company-info', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Cashier']), async (req, res, next) => {
   try {
     const company = await InvoiceDocumentService.getCompanyInfo();
     res.json({ status: 'success', data: { company } });
@@ -279,11 +279,11 @@ router.put('/company-info', authenticate, authorizeRoles(['Finance Manager', 'Ac
 });
 
 // --- Cash Handovers (Unified) ---
-router.get('/cash-handovers', authenticate, authorizeRoles(['Finance', 'Admin', 'CEO']), FinanceController.getCashHandovers);
+router.get('/cash-handovers', authenticate, authorizeRoles(['Admin', 'CEO']), FinanceController.getCashHandovers);
 router.post('/cash-handovers/:id/approve', authenticate, authorizeRoles(['CEO']), FinanceController.approveCashHandover);
 router.post('/cash-handovers/:id/reject', authenticate, authorizeRoles(['CEO']), FinanceController.rejectCashHandover);
 
 // --- VAT & Profit Report ---
-router.get('/vat-profit-report', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Finance']), FinanceController.getVatProfitReport);
+router.get('/vat-profit-report', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO']), FinanceController.getVatProfitReport);
 
 module.exports = router;

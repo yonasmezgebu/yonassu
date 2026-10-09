@@ -78,7 +78,7 @@ router.get('/finance/daily-summary', ...workerAuth, farmingController.getDailySa
 router.post('/finance/submit-report', ...workerAuth, farmingController.submitFinanceReport);
 
 // ── Product Request (Farming → Store → CEO) ──────────────────
-const storeRoles = ['Pharmacy Store Keeper', 'General Store Keeper', 'CEO', 'Admin'];
+const storeRoles = ['Pharmacy Store Keeper', 'Pharmacy Store', 'General Store Keeper', 'General Store', 'CEO', 'Admin'];
 const ceoRoles = ['CEO', 'Admin'];
 router.post('/store-requests', authenticate, authorizeRoles([...workerRoles, ...storeRoles, ...ceoRoles]), farmingController.createStoreRequest);
 router.get('/store-requests', authenticate, authorizeRoles([...workerRoles, ...storeRoles, ...ceoRoles]), farmingController.getStoreRequests);

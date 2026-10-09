@@ -9,15 +9,15 @@ router.use(authenticate);
 router.post('/fund-requests', authorizeRoles(['Purchase', 'Admin']), flowController.createFundRequest);
 router.get('/fund-requests', flowController.getFundRequests);
 router.put('/fund-requests/:id/approve', authorizeRoles(['CEO', 'Admin']), flowController.approveFundRequest);
-router.put('/fund-requests/:id/verify', authorizeRoles(['Finance', 'Finance Manager', 'Admin']), flowController.verifyFundRequest);
+router.put('/fund-requests/:id/verify', authorizeRoles(['Finance Manager', 'Admin']), flowController.verifyFundRequest);
 
 // ── Deliveries ──
 router.get('/deliveries', flowController.getDeliveries);
-router.put('/deliveries/:tenderId/receive', authorizeRoles(['Pharmacy Store Keeper', 'General Store Keeper', 'Store Keeper', 'Pharmacy Manager', 'Admin']), flowController.receiveDelivery);
+router.put('/deliveries/:tenderId/receive', authorizeRoles(['Pharmacy Store Keeper', 'Pharmacy Store', 'General Store Keeper', 'General Store', 'Store Keeper', 'Pharmacy Manager', 'Admin']), flowController.receiveDelivery);
 
 // ── Payments ──
 router.get('/payments', flowController.getPayments);
-router.post('/payments', authorizeRoles(['Finance', 'Finance Manager', 'Admin']), flowController.createPayment);
+router.post('/payments', authorizeRoles(['Finance Manager', 'Admin']), flowController.createPayment);
 
 // ── Read Actions for Notifications ──
 router.post('/mark-read', flowController.markNotificationRead);

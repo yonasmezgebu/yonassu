@@ -7,12 +7,11 @@ const managerRoles = [
   'CEO', 'Admin',
   'Pharmacy Manager', 'Sales Manager',
   'Printing Supervisor',
-  'Car Rental Manager', 'Car Renting Manager',   // both variants exist in DB
+  'Car Rental Manager', 'Car Renting Manager', 'Rental Manager',   // both variants exist in DB
   'Purchase Manager', 'Purchase',
-  'HR Manager',
+  'HR Manager', 'HR',
   'Finance Manager',
-  'General Store Keeper',
-];
+  'General Store Keeper', 'General Store'];
 
 router.post('/', authenticate, EmployeeReportsController.submitReport);
 router.get('/my', authenticate, EmployeeReportsController.getMyReports);

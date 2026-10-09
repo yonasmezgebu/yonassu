@@ -3,7 +3,7 @@ const router = express.Router();
 const settingsController = require('../controllers/hrSettings.controller');
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 
-const ROLES = ['HR Manager', 'HR Manager', 'Admin', 'CEO'];
+const ROLES = ['HR Manager', 'HR', 'HR Manager', 'HR', 'Admin', 'CEO'];
 
 // Public routes (no auth)
 router.get('/', settingsController.getSettings);

@@ -5,7 +5,7 @@ const { authenticate, authorizeRoles, optionalAuthenticate } = require('../middl
 const { uploads, handleUploadError } = require('../../config/multer');
 
 const managerRoles = ['CEO', 'Admin', 'Sales Manager'];
-const cashierRoles = ['Admin', 'CEO', 'Sales/Cashier', 'Sales Manager'];
+const cashierRoles = ['Admin', 'CEO', 'Sales Manager'];
 
 // ── Public (no login required) ──────────────────────────────────
 router.get('/categories', retailController.getCategories);

@@ -296,9 +296,9 @@ router.get('/contracts', authenticate, authorize(['purchase_orders:read']), Purc
 // ── Fraud Detection ──
 router.get('/fraud/alerts', authenticate, authorize(['purchase_orders:read']), PurchaseController.getFraudAlerts);
 const wfAuth = (roles) => [authenticate, authorizeRoles(roles)];
-const storeRoles = ['Pharmacy Store Keeper', 'General Store Keeper', 'Sales/Cashier', 'CEO', 'Admin'];
+const storeRoles = ['Pharmacy Store Keeper', 'Pharmacy Store', 'General Store Keeper', 'General Store', 'CEO', 'Admin'];
 const poRoles = ['Purchase', 'Admin', 'CEO'];
-const finRoles = ['Finance', 'Admin', 'CEO'];
+const finRoles = ['Admin', 'CEO'];
 const ceoRoles = ['CEO', 'Admin'];
 
 router.get('/workflow', wfAuth([...storeRoles, ...poRoles, ...finRoles, ...ceoRoles]), PurchaseWorkflowController.list);
@@ -309,8 +309,7 @@ router.post('/workflow', wfAuth(storeRoles), [
   body('estimated_cost').optional().isFloat({ min: 0 }),
   body('supplier_name').optional().isString(),
   body('supplier_contact').optional().isString(),
-  body('store_notes').optional().isString(),
-], validate, PurchaseWorkflowController.create);
+  body('store_notes').optional().isString()], validate, PurchaseWorkflowController.create);
 router.patch('/workflow/:id/status', wfAuth([...storeRoles, ...poRoles, ...finRoles, ...ceoRoles]), [
   body('status').isIn(['BUDGET_REQUESTED','BUDGET_FORWARDED_CEO','BUDGET_APPROVED','BUDGET_READY','GOODS_PURCHASED','ADVANCE_PAID','GOODS_RECEIVED','RECEIPT_CONFIRMED','REMAINING_APPROVED','REMAINING_PAID','CANCELLED']),
   body('po_number').optional().isString(),
@@ -325,17 +324,16 @@ router.patch('/workflow/:id/status', wfAuth([...storeRoles, ...poRoles, ...finRo
   body('receipt_notes').optional().isString(),
   body('remaining_notes').optional().isString(),
   body('remaining_payment_ref').optional().isString(),
-  body('finance_payment_notes').optional().isString(),
-], validate, PurchaseWorkflowController.updateStatus);
+  body('finance_payment_notes').optional().isString()], validate, PurchaseWorkflowController.updateStatus);
 
 // ── Quotations (Manual Record-Only) ──
 router.get('/quotations', authenticate, authorize(['purchase_orders:read']), QuotationController.getQuotations);
-router.get('/quotations/expenses', authenticate, authorizeRoles(['Purchase', 'Purchase Manager', 'Market Team', 'Finance', 'Finance Manager', 'Admin']), QuotationController.getFinanceExpenses);
+router.get('/quotations/expenses', authenticate, authorizeRoles(['Purchase', 'Purchase Manager', 'Market Team', 'Finance Manager', 'Admin']), QuotationController.getFinanceExpenses);
 router.get('/quotations/pending-ceo', authenticate, authorize(['purchase_orders:read']), QuotationController.getPendingQuotations);
 router.get('/quotations/:id/items', authenticate, authorize(['purchase_orders:read']), QuotationController.getQuotationItems);
 router.post('/quotations', authenticate, authorize(['purchase_orders:create']), QuotationController.createQuotation);
 router.post('/quotations/:id/ask-finance', authenticate, authorize(['purchase_orders:create']), QuotationController.askFinanceBudget);
-router.post('/quotations/:id/finance-approve', authenticate, authorizeRoles(['Finance', 'Finance Manager', 'Accountant', 'Admin']), QuotationController.financeApproveQuotation);
+router.post('/quotations/:id/finance-approve', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin']), QuotationController.financeApproveQuotation);
 router.post('/quotations/:id/convert', authenticate, authorize(['purchase_orders:create']), QuotationController.convertQuotation);
 router.post('/quotations/:id/ceo-approve', authenticate, authorizeRoles(['CEO', 'Admin']), QuotationController.approveQuotation);
 router.put('/quotations/:id/cancel', authenticate, authorize(['purchase_orders:update']), QuotationController.cancelQuotation);

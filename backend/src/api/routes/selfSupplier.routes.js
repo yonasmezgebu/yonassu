@@ -9,7 +9,7 @@ router.get('/me', authenticate, selfSupplierController.getMySupplierProfile);
 router.delete('/me', authenticate, selfSupplierController.withdrawSupplier);
 
 // Purchase managers and admins can view all registered suppliers
-const managerRoles = ['Admin', 'CEO', 'Purchase Manager', 'Purchase', 'Procurement Manager', 'Finance'];
+const managerRoles = ['Admin', 'CEO', 'Purchase Manager', 'Purchase', 'Procurement Manager'];
 router.get('/', authenticate, authorizeRoles(managerRoles), selfSupplierController.getAllSuppliers);
 router.post('/internal', authenticate, authorizeRoles(managerRoles), selfSupplierController.registerInternalSupplier);
 

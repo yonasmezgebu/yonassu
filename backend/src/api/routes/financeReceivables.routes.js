@@ -43,8 +43,7 @@ const recordLedgerIncome = async (trx, { amount, department, manualDetails, rece
 // sales_receipts at sale time — approving their income must NOT mint a second
 // (duplicate) invoice.
 const SELF_INVOICING_DEPARTMENTS = new Set([
-  'pharmacy', 'retail', 'retail pos', 'printing', 'car rental', 'agrirent',
-]);
+  'pharmacy', 'retail', 'retail pos', 'printing', 'car rental', 'agrirent']);
 
 // Create a sales_invoice + sales_receipt for approved income that has no
 // underlying invoiced order (manual / walk-in / general inflow), so it appears
@@ -68,7 +67,7 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
           amount_paid: amount,
           payment_method: paymentMethod || 'Cash',
           payment_reference: paymentReference || null,
-          received_by_name: receivedBy || 'Finance',
+          received_by_name: receivedBy || 'Finance Dept',
           status: 'active',
         });
       }
@@ -113,7 +112,7 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
       vat_total: vat,
       total_amount: amount,
       status: 'active',
-      created_by_name: receivedBy || 'Finance',
+      created_by_name: receivedBy || 'Finance Dept',
       sale_type: saleType,
     });
 
@@ -138,7 +137,7 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
       amount_paid: amount,
       payment_method: paymentMethod || 'Cash',
       payment_reference: paymentReference || null,
-      received_by_name: receivedBy || 'Finance',
+      received_by_name: receivedBy || 'Finance Dept',
       status: 'active',
     });
 
@@ -208,7 +207,7 @@ const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetai
         vat_total: vat,
         total_amount: amount,
         status: 'active',
-        created_by_name: receivedBy || 'Finance',
+        created_by_name: receivedBy || 'Finance Dept',
         sale_type: saleType,
       });
       await trx('sales_invoice_items').insert({
@@ -239,7 +238,7 @@ const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetai
         amount_paid: parseFloat(amount || 0),
         payment_method: md.paymentMethod || 'Cash',
         payment_reference: md.paymentReference || null,
-        received_by_name: receivedBy || md.financeName || 'Finance',
+        received_by_name: receivedBy || md.financeName || 'Finance Dept',
         status: 'active',
         created_at: trx.fn.now(),
         updated_at: trx.fn.now(),

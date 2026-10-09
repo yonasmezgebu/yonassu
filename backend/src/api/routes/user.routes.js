@@ -112,9 +112,11 @@ router.get(
 );
 
 // Pharmacy Manager: employees not yet assigned as Pharmacy Worker
+// FIX #1: Added authorize guard — previously any logged-in user could list all employees
 router.get(
   '/unassigned-employees',
   authenticate,
+  authorize(['users:read']),
   async (req, res) => {
     const { db } = require('../../config/database');
 
@@ -134,9 +136,9 @@ router.get(
     // Protected roles — users with these should never appear in PM's assignment list
     const protectedRoles = await db('roles')
       .whereIn('name', [
-        'Admin', 'CEO', 'Board', 'HR Manager', 'Finance Manager',
+        'Admin', 'CEO', 'Board', 'HR Manager', 'HR', 'Finance Manager',
         'Accountant', 'Cashier', 'Pharmacy Manager', 'Sales Manager',
-        'Purchase Manager', 'Pharmacy Store Keeper', 'General Store Keeper', 'Car Rental Manager',
+        'Purchase Manager', 'Pharmacy Store Keeper', 'Pharmacy Store', 'General Store Keeper', 'General Store', 'Car Rental Manager',
         'Printing Supervisor', 'Farming Manager', 'Market Manager'
       ])
       .pluck('id');
@@ -178,9 +180,11 @@ router.get(
 );
 
 // Pharmacy Manager: branches scoped to their assignments
+// FIX #1: Added authorize guard — previously any logged-in user could list all branches
 router.get(
   '/my-branches',
   authenticate,
+  authorize(['users:read']),
   async (req, res) => {
     const { db } = require('../../config/database');
     const managerRoles = req.user.roles || [];
@@ -210,9 +214,11 @@ router.get(
 );
 
 // Pharmacy Manager: list all assigned pharmacy workers (with branch & sub_role)
+// FIX #1: Added authorize guard — previously any logged-in user could list pharmacy staff
 router.get(
   '/pharmacy-workers',
   authenticate,
+  authorize(['users:read']),
   async (req, res) => {
     const { db } = require('../../config/database');
     const managerRoles = req.user.roles || [];
@@ -274,7 +280,7 @@ router.post(
     if (!branchId) return res.status(400).json({ status: 'fail', message: 'branchId is required.' });
 
     // Resolve the Sales/Cashier role
-    const swRole = await db('roles').where('name', 'Sales/Cashier').first();
+    const swRole = await db('roles').where('name', ).first();
     if (!swRole) return res.status(404).json({ status: 'fail', message: 'Sales/Cashier role not found in system.' });
 
     // Check target user belongs to Sales dept
@@ -320,7 +326,7 @@ router.delete(
     }
 
     const targetUserId = parseInt(req.params.userId);
-    const swRole = await db('roles').where('name', 'Sales/Cashier').first();
+    const swRole = await db('roles').where('name', ).first();
     if (!swRole) return res.status(404).json({ status: 'fail', message: 'Sales/Cashier role not found.' });
 
     const deleted = await db('user_roles')
@@ -341,7 +347,7 @@ router.get(
   async (req, res) => {
     const { db } = require('../../config/database');
 
-    const salesWorkerRole = await db('roles').where('name', 'Sales/Cashier').first();
+    const salesWorkerRole = await db('roles').where('name', ).first();
     if (!salesWorkerRole) return res.json({ status: 'success', data: [] });
 
     const salesDept = await db('departments').where('name', 'Sales').first();
@@ -385,7 +391,7 @@ router.get(
   async (req, res) => {
     const { db } = require('../../config/database');
     const managerRoles = req.user.roles || [];
-    const swRole = await db('roles').where('name', 'Sales/Cashier').first();
+    const swRole = await db('roles').where('name', ).first();
     if (!swRole) return res.json({ status: 'success', data: [] });
 
     let query = db('user_roles as ur')
@@ -539,9 +545,11 @@ router.post(
   UserController.createCustomRole
 );
 
+// FIX #1: Added authorize guard — previously exposed full role structure to any user
 router.get(
   '/role-hierarchy',
   authenticate,
+  authorize(['users:read']),
   UserController.getRoleHierarchy
 );
 

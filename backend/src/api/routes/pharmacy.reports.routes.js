@@ -37,20 +37,20 @@ router.post(
 // Finance: full | Pharmacy Manager: read-only | CEO: no access
 router.get(
   '/finance',
-  authorizeRoles(['Finance', 'Finance Manager', 'Pharmacy Manager', 'Admin']),
+  authorizeRoles(['Finance Manager', 'Pharmacy Manager', 'Admin']),
   ctrl.getFinanceReview
 );
 
 // Finance actions
 router.patch(
   '/finance/sales-report/:id/decide',
-  authorizeRoles(['Finance', 'Finance Manager', 'Admin']),
+  authorizeRoles(['Finance Manager', 'Admin']),
   ctrl.financeDecideSalesReport
 );
 
 router.patch(
   '/finance/delivery/:id/mark-paid',
-  authorizeRoles(['Finance', 'Finance Manager', 'Admin']),
+  authorizeRoles(['Finance Manager', 'Admin']),
   ctrl.financeMarkDeliveryPaid
 );
 
@@ -58,7 +58,7 @@ router.patch(
 // Pharmacy Manager: full | CEO: read-only summary | Finance: read-only summary
 router.get(
   '/daily-summary',
-  authorizeRoles(['Pharmacy Manager', 'CEO', 'Finance', 'Finance Manager', 'Admin']),
+  authorizeRoles(['Pharmacy Manager', 'CEO', 'Finance Manager', 'Admin']),
   ctrl.getDailySummary
 );
 

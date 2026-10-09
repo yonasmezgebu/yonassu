@@ -21,21 +21,21 @@ router.use(authenticate);
 // READ: Car Manager, Admin, CEO, Finance Manager, and Agri Rental Manager can all view cars
 router.get(
   '/',
-  authorizeRoles(['Car Renting Manager', 'Admin', 'CEO', 'Finance Manager', 'Agri Rental Manager']),
+  authorizeRoles(['Car Renting Manager', 'Rental Manager', 'Admin', 'CEO', 'Finance Manager', 'Agri Rental Manager']),
   carController.getAllCarsManager
 );
 
 // WRITE: Only Car Renting Manager, Admin, CEO can create/update/delete
-router.post('/', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), uploadFields, carController.createCar);
-router.put('/:id', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), uploadFields, carController.updateCar);
-router.delete('/:id', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), carController.deleteCar);
-router.patch('/:id/restore', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), carController.restoreCar);
-router.delete('/:id/permanent', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), carController.hardDeleteCar);
+router.post('/', authorizeRoles(['Car Renting Manager', 'Rental Manager', 'Admin', 'CEO']), uploadFields, carController.createCar);
+router.put('/:id', authorizeRoles(['Car Renting Manager', 'Rental Manager', 'Admin', 'CEO']), uploadFields, carController.updateCar);
+router.delete('/:id', authorizeRoles(['Car Renting Manager', 'Rental Manager', 'Admin', 'CEO']), carController.deleteCar);
+router.patch('/:id/restore', authorizeRoles(['Car Renting Manager', 'Rental Manager', 'Admin', 'CEO']), carController.restoreCar);
+router.delete('/:id/permanent', authorizeRoles(['Car Renting Manager', 'Rental Manager', 'Admin', 'CEO']), carController.hardDeleteCar);
 
 // ASSET VALUE: Finance Manager, Admin, CEO, Car Renting Manager can update asset values
 router.patch(
   '/:id/asset-value',
-  authorizeRoles(['Finance Manager', 'Admin', 'CEO', 'Car Renting Manager']),
+  authorizeRoles(['Finance Manager', 'Admin', 'CEO', 'Car Renting Manager', 'Rental Manager']),
   carController.updateAssetValue
 );
 

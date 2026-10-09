@@ -3,7 +3,7 @@ const router = express.Router();
 const ctrl = require('../controllers/carWaitlist.controller');
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 
-const MANAGER_ROLES = ['Car Renting Manager', 'Admin', 'CEO'];
+const MANAGER_ROLES = ['Car Renting Manager', 'Rental Manager', 'Admin', 'CEO'];
 
 // Public (authenticated customer)
 router.post('/', authenticate, ctrl.joinWaitlist);

@@ -7,7 +7,7 @@ const { authenticate, authorizeRoles } = require('../middleware/auth.middleware'
 router.get(
   '/',
   authenticate,
-  authorizeRoles(['CEO', 'Admin', 'Finance', 'Finance Manager']),
+  authorizeRoles(['CEO', 'Admin', 'Finance Manager']),
   ctrl.getAssetSummary
 );
 

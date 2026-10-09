@@ -1,4 +1,5 @@
 const express = require('express');
+const { upload, handleUploadError } = require('../../services/storage.service');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
@@ -58,56 +59,55 @@ const hrPhotoUpload = multer({
 }).fields([
   { name: 'id_photo_front', maxCount: 1 },
   { name: 'id_photo_back',  maxCount: 1 },
-  { name: 'document_file',  maxCount: 1 },
-]);
+  { name: 'document_file',  maxCount: 1 }]);
 
 const ceoBoard = ['CEO', 'Admin', 'Board Member'];
-const hrCeo    = ['CEO', 'Admin', 'HR Manager'];
+const hrCeo    = ['CEO', 'Admin', 'HR Manager', 'HR'];
 
 router.post('/etp/heartbeat', C.heartbeat);
 
-router.get('/etp/overview', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getHROverview);
+router.get('/etp/overview', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getHROverview);
 
-router.get('/etp/departments',      authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getDepartments);
+router.get('/etp/departments',      authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getDepartments);
 router.post('/etp/departments',     authenticate, authorizeRoles(hrCeo),                       C.createDepartment);
 router.put('/etp/departments/:id',  authenticate, authorizeRoles(hrCeo),                       C.updateDepartment);
 
-router.get('/etp/units',  authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getUnits);
+router.get('/etp/units',  authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getUnits);
 router.post('/etp/units', authenticate, authorizeRoles(hrCeo),                       C.createUnit);
 
-router.get('/etp/positions',  authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getPositions);
+router.get('/etp/positions',  authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getPositions);
 router.post('/etp/positions', authenticate, authorizeRoles(hrCeo),                       C.createPosition);
 
 // SRS Step 1 — one-time employee registration for attendance (setup phase)
-router.get('/etp/attendance/registration',  authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getAttendanceRegistrationCandidates);
+router.get('/etp/attendance/registration',  authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getAttendanceRegistrationCandidates);
 router.post('/etp/attendance/registration', authenticate, authorizeRoles(hrCeo), C.registerAttendanceEmployee);
 router.patch('/etp/attendance/enroll-fingerprint', authenticate, authorizeRoles(hrCeo), C.enrollFingerprint);
 
-router.get('/etp/employees',       authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getETPEmployees);
-router.get('/etp/employees/:id',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getETPEmployee);
+router.get('/etp/employees',       authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getETPEmployees);
+router.get('/etp/employees/:id',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getETPEmployee);
 router.post('/etp/employees',      authenticate, authorizeRoles(hrCeo), hrPhotoUpload, C.createETPEmployee);
 router.put('/etp/employees/:id',   authenticate, authorizeRoles(hrCeo), hrPhotoUpload, C.updateETPEmployee);
 router.delete('/etp/employees/:id',   authenticate, authorizeRoles(hrCeo),  C.deleteETPEmployee);
 router.patch('/etp/employees/:id/terminate', authenticate, authorizeRoles(hrCeo), C.terminateEmployee);
 router.patch('/etp/employees/:id/complete-registration', authenticate, authorizeRoles(hrCeo), C.completeRegistration);
 
-router.get('/etp/attendance/daily',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getDailyAttendance);
-router.get('/etp/attendance/monthly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getMonthlyAttendance);
+router.get('/etp/attendance/daily',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getDailyAttendance);
+router.get('/etp/attendance/monthly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getMonthlyAttendance);
 router.post('/etp/attendance/calculate-daily',   authenticate, authorizeRoles(hrCeo), C.calculateDailyAttendance);
 router.post('/etp/attendance/calculate-weekly',  authenticate, authorizeRoles(hrCeo), C.calculateWeeklySummary);
 router.post('/etp/attendance/calculate-monthly', authenticate, authorizeRoles(hrCeo), C.calculateMonthlySummary);
-router.get('/etp/attendance/weekly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getWeeklySummary);
-router.get('/etp/attendance/yearly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getYearlyAttendance);
+router.get('/etp/attendance/weekly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getWeeklySummary);
+router.get('/etp/attendance/yearly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getYearlyAttendance);
 
 // SRS 5 — self-service clock-in scan (employee) with terminal IP verification
 router.post('/etp/attendance/scan', authenticate, C.registerAttendanceScan);
 
 // SRS 5.1 / 6.1 — allowed computers (IP management panel, HR exclusive)
-router.get('/etp/computers', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getAllowedComputers);
+router.get('/etp/computers', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getAllowedComputers);
 router.post('/etp/computers', authenticate, authorizeRoles(hrCeo), C.registerAllowedComputer);
 router.patch('/etp/computers/:id/toggle', authenticate, authorizeRoles(hrCeo), C.toggleAllowedComputer);
 
-router.post('/etp/manual-entry', authenticate, authorizeRoles([...hrCeo, 'HR Manager']), C.submitManualEntry);
+router.post('/etp/manual-entry', authenticate, authorizeRoles([...hrCeo, 'HR Manager', 'HR']), C.submitManualEntry);
 
 const FINANCE_PAYROLL_DIR = './uploads/finance/payroll';
 if (!fs.existsSync(FINANCE_PAYROLL_DIR)) fs.mkdirSync(FINANCE_PAYROLL_DIR, { recursive: true });
@@ -119,30 +119,30 @@ const financeUpload = multer({ storage: financePayrollStorage });
 
 router.post('/etp/payroll/calculate',          authenticate, authorizeRoles(hrCeo),     C.calculatePayroll);
 router.post('/etp/payroll/submit',             authenticate, authorizeRoles(hrCeo),     C.submitPayroll);
-router.get('/etp/payroll/summary/:month/:year', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'Finance Manager', 'Finance']), C.getPayrollSummary);
+router.get('/etp/payroll/summary/:month/:year', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR', 'Finance Manager']), C.getPayrollSummary);
 router.post('/etp/payroll/approve',            authenticate, authorizeRoles(ceoBoard),                     C.approvePayroll);
-router.post('/etp/payroll/mark-paid',          authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), financeUpload.single('payment_proof'), C.markPayrollPaid);
-router.post('/etp/payroll/mark-paid-employee', authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), financeUpload.single('payment_proof'), C.markEmployeePaid);
-router.get('/etp/payroll/approved-list',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), C.getApprovedPayrolls);
-router.get('/etp/payroll/finance-queue',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), C.getFinancePayrollQueue);
+router.post('/etp/payroll/mark-paid',          authenticate, authorizeRoles([...ceoBoard, 'Finance Manager']), upload.financePayroll.single('payment_proof'), C.markPayrollPaid);
+router.post('/etp/payroll/mark-paid-employee', authenticate, authorizeRoles([...ceoBoard, 'Finance Manager']), upload.financePayroll.single('payment_proof'), C.markEmployeePaid);
+router.get('/etp/payroll/approved-list',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager']), C.getApprovedPayrolls);
+router.get('/etp/payroll/finance-queue',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager']), C.getFinancePayrollQueue);
 
-router.get('/etp/employees/:id/documents',             authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getEmployeeDocuments);
-router.post('/etp/employees/:id/documents',            authenticate, authorizeRoles(hrCeo), hrDocUpload.single('file'), C.uploadEmployeeDocument);
+router.get('/etp/employees/:id/documents',             authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getEmployeeDocuments);
+router.post('/etp/employees/:id/documents',            authenticate, authorizeRoles(hrCeo), upload.hrDoc.single('file'), C.uploadEmployeeDocument);
 router.delete('/etp/employees/:id/documents/:docId',   authenticate, authorizeRoles(hrCeo), C.deleteEmployeeDocument);
 
-router.get('/etp/agents',       authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getAgentInstallations);
-router.get('/etp/agents/:id',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getAgentInstallation);
+router.get('/etp/agents',       authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getAgentInstallations);
+router.get('/etp/agents/:id',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getAgentInstallation);
 router.post('/etp/agents',      authenticate, authorizeRoles(hrCeo),                       C.createAgentInstallation);
 router.put('/etp/agents/:id',   authenticate, authorizeRoles(hrCeo),                       C.updateAgentInstallation);
 router.delete('/etp/agents/:id', authenticate, authorizeRoles(hrCeo),                       C.deleteAgentInstallation);
 
-router.get('/etp/notifications',         authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getHRNotifications);
-router.patch('/etp/notifications/:id',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.acknowledgeHRNotification);
-router.get('/etp/notification-rules',    authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getNotificationRules);
+router.get('/etp/notifications',         authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getHRNotifications);
+router.patch('/etp/notifications/:id',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.acknowledgeHRNotification);
+router.get('/etp/notification-rules',    authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getNotificationRules);
 
 // ETP Leaves
-router.get('/etp/leaves',       authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getETPLeaves);
-router.post('/etp/leaves',      authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'Employee']), C.createETPLeave);
+router.get('/etp/leaves',       authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR']), C.getETPLeaves);
+router.post('/etp/leaves',      authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'HR', 'Employee']), C.createETPLeave);
 router.post('/etp/leaves/:id/review', authenticate, authorizeRoles(ceoBoard), C.reviewETPLeave);
 
 // Employee Self-Service

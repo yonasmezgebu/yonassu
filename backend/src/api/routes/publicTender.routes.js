@@ -55,6 +55,6 @@ router.put('/internal/:id/submit-evaluation', authorizeRoles(['Purchase', 'Admin
 router.put('/internal/:id/approve', authorizeRoles(['CEO', 'Admin']), publicTenderController.approveTender);
 
 // Finance/Purchase: update bid payment_status (confirm/reject)
-router.put('/internal/bids/:bidId/payment-status', authorizeRoles(['Finance', 'Purchase', 'Admin']), publicTenderController.updateBidPaymentStatus);
+router.put('/internal/bids/:bidId/payment-status', authorizeRoles(['Purchase', 'Admin']), publicTenderController.updateBidPaymentStatus);
 
 module.exports = router;

@@ -4,8 +4,8 @@ const ctrl = require('../controllers/agrirentOrder.controller');
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 const { uploads, handleUploadError } = require('../../config/multer');
 
-const MANAGER_ROLES = ['Car Renting Manager', 'Agri Rental Manager', 'Admin', 'CEO'];
-const FINANCE_ROLES = ['Finance', 'Finance Manager', 'Admin', 'CEO'];
+const MANAGER_ROLES = ['Car Renting Manager', 'Rental Manager', 'Agri Rental Manager', 'Admin', 'CEO'];
+const FINANCE_ROLES = ['Finance Manager', 'Admin', 'CEO'];
 
 // Public (authenticated customer) — supports screenshot upload
 router.post('/', authenticate, uploads.generic.single('paymentScreenshot'), handleUploadError, ctrl.createOrder);

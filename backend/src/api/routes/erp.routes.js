@@ -26,8 +26,7 @@ router.post('/requisitions', (req, res, next) => {
   req.body = { ...req.body };
   return Promise.all([
     body('drugId').isInt().withMessage('Drug ID is required').run(req),
-    body('quantityRequested').isInt({ min: 1 }).withMessage('Quantity must be at least 1').run(req),
-  ]).then(() => next());
+    body('quantityRequested').isInt({ min: 1 }).withMessage('Quantity must be at least 1').run(req)]).then(() => next());
 }, validate, erpController.createRequisition);
 
 // ── Model 21: Approvals ──
@@ -35,8 +34,7 @@ router.get('/approvals', erpController.listApprovals);
 router.get('/approvals/:id', erpController.getApproval);
 router.post('/approvals/:id', [
   body('quantityApproved').optional().isInt({ min: 1 }),
-  body('rejectionReason').optional().isString(),
-], validate, erpController.approveRequisition);
+  body('rejectionReason').optional().isString()], validate, erpController.approveRequisition);
 
 // ── Model 22: Issue Vouchers ──
 router.get('/issue-vouchers', erpController.listIssueVouchers);
@@ -45,8 +43,7 @@ router.post('/issue-vouchers/create/:approvalId', erpController.createIssueVouch
 router.patch('/issue-vouchers/:id/issue', [
   body('quantityIssued').isInt({ min: 1 }).withMessage('Issue quantity is required'),
   body('batchNumber').optional().isString(),
-  body('expiryDate').optional().isString(),
-], validate, erpController.issueItems);
+  body('expiryDate').optional().isString()], validate, erpController.issueItems);
 
 // ── Model 19: Goods Receiving Notes ──
 router.get('/grn', erpController.listGRNs);
@@ -54,8 +51,7 @@ router.get('/grn/:id', erpController.getGRN);
 router.patch('/grn/:id/receive', [
   body('quantityReceived').optional().isInt({ min: 0 }),
   body('condition').optional().isIn(['Good', 'Damaged']),
-  body('discrepancyNote').optional().isString(),
-], validate, erpController.confirmReceipt);
+  body('discrepancyNote').optional().isString()], validate, erpController.confirmReceipt);
 
 // ── CEO Pending Items ──
 router.get('/ceo-pending', erpController.getCEOPending);

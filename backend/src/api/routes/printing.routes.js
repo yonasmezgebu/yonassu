@@ -1,4 +1,5 @@
 const express = require('express');
+const { upload, handleUploadError } = require('../../services/storage.service');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
@@ -8,7 +9,7 @@ const { body, query, param } = require('express-validator');
 const PrintingController = require('../controllers/printing.controller');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
-const { uploads, handleUploadError } = require('../../config/multer');
+const { uploads } = require('../../config/multer');
 const { limiters } = require('../../config/rateLimit');
 const { catchAsync } = require('../../utils/catchAsync');
 const { db } = require('../../config/database');
@@ -323,7 +324,7 @@ router.post(
   authenticate,
   authorize(['orders:update']),
   orderIdParamValidation,
-  workUpload.array('files', WORK_MAX_FILES),
+  upload.printingWork.array('files', WORK_MAX_FILES),
   handleWorkUploadError,
   PrintingController.uploadWorks
 );
@@ -333,7 +334,7 @@ router.put(
   authorize(['orders:update']),
   param('workId').isInt().toInt(),
   validate,
-  workUpload.single('file'),
+  upload.printingWork.single('file'),
   handleWorkUploadError,
   PrintingController.updateWork
 );
@@ -467,7 +468,7 @@ router.get('/posts/admin', authenticate, authorize(['orders:read']), async (req,
 });
 
 // Create new post (supervisor)
-router.post('/posts', authenticate, authorize(['orders:create']), postImageUpload.single('image'), async (req, res) => {
+router.post('/posts', authenticate, authorize(['orders:create']), upload.printingPost.single('image'), async (req, res) => {
   try {
     const { db } = require('../../config/database');
     const { code, name, description, badge_label, base_price_per_page, is_visible, sort_order } = req.body;
@@ -494,7 +495,7 @@ router.post('/posts', authenticate, authorize(['orders:create']), postImageUploa
 });
 
 // Update post (supervisor)
-router.put('/posts/:id', authenticate, authorize(['orders:update']), postImageUpload.single('image'), async (req, res) => {
+router.put('/posts/:id', authenticate, authorize(['orders:update']), upload.printingPost.single('image'), async (req, res) => {
   try {
     const { db } = require('../../config/database');
     const { id } = req.params;
