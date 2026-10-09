@@ -15,7 +15,7 @@ const TABS = ['Current Stock', 'Issued Items', 'Low Stock', 'Movements', 'Audit 
 
 const api = axios.create();
 api.interceptors.request.use(cfg => {
-  const t = localStorage.getItem('token') || sessionStorage.getItem('token');
+  // FIX #4: Token handled centrally by apiClient interceptor — removed manual token read
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });

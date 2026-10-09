@@ -385,17 +385,10 @@ export const PublicNav = () => {
 
         {/* ── Right: Auth / User ── */}
         <div className="pub-nav-right-modern">
-          {loggedIn ? (
-            <button className="pub-btn-solid-modern" onClick={() => navigate(homePath)}>
-              <User size={15} style={{ marginRight: 6 }} />
-              <span>Dashboard</span>
-            </button>
-          ) : (
-            <button className="pub-btn-solid-modern" onClick={() => navigate('/login')}>
-              <LogIn size={15} style={{ marginRight: 6 }} />
-              <span>Login</span>
-            </button>
-          )}
+          <button className="pub-btn-solid-modern" onClick={() => navigate('/login')}>
+            <LogIn size={15} style={{ marginRight: 6 }} />
+            <span>Login</span>
+          </button>
         </div>
       </div>
 

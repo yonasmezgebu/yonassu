@@ -54,14 +54,14 @@ const LoginPage = () => {
       else if (hasRole('ceo')) navigate('/ceo');
       else if (hasRole('finance manager', 'finance')) navigate('/finance');
       else if (hasRole('purchase', 'purchase manager', 'market team')) navigate('/purchase');
-      else if (hasRole('pharmacy store keeper')) navigate('/pharmacy-store');
-      else if (hasRole('general store keeper')) navigate('/general-store');
+      else if (hasRole('pharmacy store keeper', 'pharmacy store')) navigate('/pharmacy-store');
+      else if (hasRole('general store keeper', 'general store')) navigate('/general-store');
       else if (hasRole('sales/cashier', 'pharmacy worker')) navigate('/pharmacy-worker');
       else if (hasRole('printing supervisor', 'printing manager')) navigate('/printing-manager');
       else if (hasRole('pharmacy manager')) navigate('/pharmacy');
-      else if (hasRole('car renting manager')) navigate('/car-renting');
+      else if (hasRole('car renting manager', 'rental manager')) navigate('/car-renting');
       else if (hasRole('sales manager')) navigate('/sales/overview');
-      else if (hasRole('hr manager')) navigate('/hr');
+      else if (hasRole('hr manager', 'hr')) navigate('/hr');
       else if (hasRole('board member')) navigate('/board');
       else if (hasRole('employee')) navigate('/employee');
       else if (hasRole('customer')) navigate('/customer');

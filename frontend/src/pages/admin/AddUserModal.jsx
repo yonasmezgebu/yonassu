@@ -268,17 +268,18 @@ const AddUserModal = ({ isOpen, onClose, onSuccess, initialData = null }) => {
                 if (name === 'employee') return true;
                 
                 switch (deptId) {
-                  case 1: return name.includes('admin') || name.includes('hr manager');
-                  case 2: return name.includes('ceo') || name.includes('board');
-                  case 3: return name.includes('finance') || name.includes('accountant') || name === 'cashier'; 
-                  case 4: return name.includes('printing');
-                  case 5: return name.includes('purchase');
-                  case 6: return name.includes('sales');
-                  case 7: return name.includes('store keeper') && !name.includes('pharmacy');
-                  case 8: return name.includes('customer');
-                  case 9: return name.includes('farm');
-                  case 10: return name.includes('pharmacy');
-                  case 11: return name.includes('car rent');
+                  case 1: return name.includes('rental manager');
+                  case 2: return name.includes('printing manager');
+                  case 3: return name === 'ceo';
+                  case 4: return name.includes('hr');
+                  case 5: return name.includes('sales manager');
+                  case 6: return name.includes('purchase manager');
+                  case 7: return name.includes('board');
+                  case 8: return name.includes('finance manager');
+                  case 9: return name.includes('pharmacy manager') || name.includes('pharmacy worker') || name.includes('pharmacy store');
+                  case 10: return name.includes('general store');
+                  case 11: return name === 'customer';
+                  case 12: return name === 'admin';
                   default: return true;
                 }
               });

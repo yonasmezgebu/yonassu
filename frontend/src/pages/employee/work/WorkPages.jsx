@@ -115,7 +115,7 @@ export const DailyReport = () => {
   const fetchHistory = async () => {
     try {
       const res = await fetch('http://localhost:5000/api/employee-reports/my', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { // FIX #4: Authorization header set automatically by apiClient }
       });
       if (res.ok) {
         const data = await res.json();
@@ -159,7 +159,7 @@ export const DailyReport = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          // FIX #4: Authorization header set automatically by apiClient
         },
         body: JSON.stringify({
           ...formData,

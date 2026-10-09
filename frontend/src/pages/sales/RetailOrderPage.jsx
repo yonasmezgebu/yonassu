@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { sanitizePrintHtml } from '../../utils/sanitize';
 import axios from '../../services/apiClient';
 import { loadVatSafe, getVatForItem } from '../../services/vatService';
 import {
@@ -35,7 +36,7 @@ const ReceiptModal = ({ receipt, onClose }) => {
   const handlePrint = () => {
     const w = window.open('', '_blank');
     w.document.write('<html><head><title>Receipt</title><style>body{font-family:monospace;padding:20px;max-width:320px;margin:0 auto}hr{border:1px dashed #999}table{width:100%}td{padding:2px 0}.bold{font-weight:700}.right{text-align:right}.center{text-align:center}.big{font-size:18px}</style></head><body>');
-    w.document.write(printRef.current.innerHTML);
+    w.document.write(sanitizePrintHtml(printRef.current.innerHTML));
     w.document.write('</body></html>');
     w.document.close();
     w.print();

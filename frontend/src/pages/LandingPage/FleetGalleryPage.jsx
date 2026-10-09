@@ -263,102 +263,72 @@ const FleetGalleryPage = () => {
         </div>
       ) : (
         <div className={styles.galleryContainer}>
-          <div className={styles.carouselContainer}>
-            <button className={styles.navBtn} onClick={handlePrev}>
-              <ChevronLeft size={28} />
-            </button>
-
-            <div className={styles.carCard}>
-              {/* Left Section - Images */}
-              <div className={styles.imageSection}>
-                <div className={styles.mainImage}>
-                  {currentCar.image1 ? (
-                    <img src={getImageUrl(currentCar.image1)} alt={currentCar.name} />
+          <div className={styles.productsGrid}>
+            {cars.map((car) => (
+              <div key={car.id} className={styles.productCard}>
+                {/* Image */}
+                <div className={styles.productImageWrapper}>
+                  {car.image1 ? (
+                    <img src={getImageUrl(car.image1)} alt={car.name} className={styles.productImage} />
                   ) : (
-                    <div className={styles.imagePlaceholder}>
-                      <ImageIcon size={48} />
+                    <div className={styles.productPlaceholder}><ImageIcon size={60} /></div>
+                  )}
+                  {car.availability !== 'Available' && (
+                    <span className={styles.outOfStockBadge}>{car.availability}</span>
+                  )}
+                </div>
+
+                {/* Card Body */}
+                <div className={styles.productInfo} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {/* Name */}
+                  <h3 className={styles.productName} style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 17, letterSpacing: '0.01em', lineHeight: 1.3, marginBottom: 8 }}>
+                    {car.name}
+                  </h3>
+
+                  {/* Spec row */}
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+                    {car.fuelType && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5D4037', fontStyle: 'italic', letterSpacing: '0.02em' }}>
+                        <Fuel size={11} /> {car.fuelType}
+                      </span>
+                    )}
+                    {car.transmission && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5D4037', fontStyle: 'italic', letterSpacing: '0.02em' }}>
+                        <Settings2 size={11} /> {car.transmission}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Price and Category Row */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
+                    <div>
+                      <div className={styles.cardPrice} style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 800, letterSpacing: '0.03em' }}>
+                        ETB {Number(car.dailyRate).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#6D4C41', fontStyle: 'italic', letterSpacing: '0.04em', marginTop: 2 }}>per day</div>
                     </div>
-                  )}
-                </div>
-                <div className={styles.thumbnailStrip}>
-                  {[currentCar.image1, currentCar.image2, currentCar.image3].map((img, idx) => (
-                    img ? (
-                      <div key={idx} className={styles.thumbnail}>
-                        <img src={getImageUrl(img)} alt={`${currentCar.name} view ${idx + 1}`} />
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F5F5', padding: '6px 10px', borderRadius: 8 }}>
+                      <Car size={12} color="#2E8B57" />
+                      <span style={{ fontSize: 10, color: '#2E8B57', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        {car.carType || 'Car'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <div className={styles.cardActions} style={{ marginTop: 'auto' }}>
+                    {car.availability === 'Available' ? (
+                      <button className={styles.orderBtn} onClick={() => handleReserve(car)}>
+                        Reserve Machine
+                      </button>
                     ) : (
-                      <div key={idx} className={styles.thumbnail} style={{ background: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ImageIcon size={20} color="#999" />
-                      </div>
-                    )
-                  ))}
+                      <button className={styles.notifyBtn} onClick={() => handleNotify(car)} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                        <Bell size={18} /> Contact When Available
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Right Section - Details */}
-              <div className={styles.detailsSection}>
-                <div className={styles.carTitle}>
-                  <h2>{currentCar.name}</h2>
-                  <span className={`${styles.statusBadge} ${styles[currentCar.availability?.toLowerCase()] || styles.available}`}>
-                    {currentCar.availability || 'Available'}
-                  </span>
-                </div>
-
-                <div className={styles.priceSection}>
-                  <span className={styles.price}>ETB {Number(currentCar.dailyRate).toLocaleString()}</span>
-                  <span className={styles.perDay}>/ day</span>
-                </div>
-
-                <div className={styles.specsGrid}>
-                  <div className={styles.spec}>
-                    <Settings2 size={18} />
-                    <span>{currentCar.transmission}</span>
-                  </div>
-                  <div className={styles.spec}>
-                    <Fuel size={18} />
-                    <span>{currentCar.fuelType}</span>
-                  </div>
-                  <div className={styles.spec}>
-                    <Users size={18} />
-                    <span>{currentCar.seats} Seats</span>
-                  </div>
-                  <div className={styles.spec}>
-                    <Car size={18} />
-                    <span>{currentCar.carType}</span>
-                  </div>
-                </div>
-
-                <div className={styles.description}>
-                  <p>{currentCar.description || 'A comfortable and reliable vehicle perfect for your needs.'}</p>
-                </div>
-
-                <div className={styles.actionButtons}>
-                  {currentCar.availability === 'Available' ? (
-                    <button className={styles.reserveBtn} onClick={() => handleReserve(currentCar)}>
-                      Reserve Car
-                    </button>
-                  ) : (
-                    <button className={styles.notifyBtn} onClick={() => handleNotify(currentCar)}>
-                      <Bell size={18} />
-                      Contact When Available
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button className={styles.navBtn} onClick={handleNext}>
-              <ChevronRight size={28} />
-            </button>
-          </div>
-
-          <div className={styles.dotsContainer}>
-            {cars.map((_, idx) => (
-              <button
-                key={idx}
-                className={`${styles.dot} ${idx === currentIndex ? styles.activeDot : ''}`}
-                onClick={() => setCurrentIndex(idx)}
-              />
             ))}
           </div>
         </div>
