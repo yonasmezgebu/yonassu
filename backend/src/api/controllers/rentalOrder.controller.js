@@ -986,9 +986,9 @@ exports.searchOrders = async (req, res) => {
       .select('ro.*', 'c.name as car_name', 'c.image1 as car_image')
       .whereNull('ro.deleted_at')
       .andWhere(function() {
-        this.where('ro.order_number', 'like', `%${q}%`)
-          .orWhere('ro.customer_name', 'like', `%${q}%`)
-          .orWhere('ro.customer_phone', 'like', `%${q}%`);
+        this.where('ro.order_number', 'ilike', `%${q}%`)
+          .orWhere('ro.customer_name', 'ilike', `%${q}%`)
+          .orWhere('ro.customer_phone', 'ilike', `%${q}%`);
       })
       .orderBy('ro.created_at', 'desc')
       .limit(20);
@@ -1204,7 +1204,7 @@ exports.cancelOrder = async (req, res) => {
     if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
     
     const isManager = req.user.roles && req.user.roles.some(r =>
-      ['Admin', 'CEO', 'Car Rental Manager', 'Car Renting Manager', 'Agri Rental Manager'].includes(r)
+      ['Admin', 'CEO', 'Car Rental Manager', 'Car Renting Manager', 'Agri Rental Manager', 'Rental Manager'].includes(r)
     );
     if (order.customerId !== req.user.id && req.user.departmentId !== 2 && !isManager) {
       return res.status(403).json({ status: 'error', message: 'Not authorized' });

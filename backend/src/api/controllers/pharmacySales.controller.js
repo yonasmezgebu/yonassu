@@ -31,7 +31,7 @@ exports.listDrugs = async (req, res) => {
     // exclude hidden drugs
     query = query.whereNotIn('id', db('drug_visibility').select('drug_id').where('is_hidden', true));
 
-    if (search) query = query.where('name', 'like', `%${search}%`);
+    if (search) query = query.where('name', 'ilike', `%${search}%`);
     if (category) query = query.where('category', category);
     if (requires_prescription !== undefined) {
       query = query.where('requires_prescription', requires_prescription === 'true' ? 1 : 0);

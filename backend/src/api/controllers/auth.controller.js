@@ -37,14 +37,14 @@ exports.login = catchAsync(async (req, res) => {
       'departments.name as department_name',
       'user_statuses.status_code',
       db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'),
-      db.raw('string_agg(DISTINCT roles.permissions::text, \', \') as permission_sets')
+      db.raw('string_agg(DISTINCT roles.permissions::text, \'|||\') as permission_sets')
     )
     .where(function() {
       this.where('users.email', loginIdentifier)
         .orWhere('users.phone', loginIdentifier);
     })
     .whereNull('users.deleted_at')
-    .groupBy('users.id')
+    .groupBy('users.id', 'departments.name', 'user_statuses.status_code')
     .first();
   if (!user) {
     throw new AppError('Invalid credentials', 401);
@@ -275,7 +275,9 @@ exports.refreshToken = catchAsync(async (req, res) => {
     .where('users.id', decoded.userId)
     .groupBy('users.id')
     .first();
-  if (!user || user.status_id !== (await db('user_statuses').where('status_code', 'active').first()).id) {
+    // FIX #3: status sub-query extracted out of if-condition
+  const activeStatus = await db('user_statuses').where('status_code', 'active').select('id').first();
+  if (!user || !activeStatus || user.status_id !== activeStatus.id) {
     throw new AppError('User not found or inactive', 401);
   }
   const roleNames = user.role_names ? user.role_names.split(',') : [];
@@ -365,7 +367,7 @@ exports.getCurrentUser = catchAsync(async (req, res) => {
       db.raw('string_agg(DISTINCT roles.name::text, \', \') as roles')
     )
     .where('users.id', req.user.id)
-    .groupBy('users.id')
+    .groupBy('users.id', 'departments.name')
     .first();
   res.json({
     status: 'success',

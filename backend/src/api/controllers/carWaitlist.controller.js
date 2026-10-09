@@ -135,11 +135,11 @@ exports.listWaitlist = async (req, res) => {
     if (carId) q = q.where('w.car_id', carId);
     if (search) {
       q = q.where((b) => {
-        b.where('w.customer_name', 'like', `%${search}%`)
-          .orWhere('w.customer_phone', 'like', `%${search}%`)
-          .orWhere('w.customer_email', 'like', `%${search}%`)
-          .orWhere('w.message', 'like', `%${search}%`)
-          .orWhere('c.name', 'like', `%${search}%`);
+        b.where('w.customer_name', 'ilike', `%${search}%`)
+          .orWhere('w.customer_phone', 'ilike', `%${search}%`)
+          .orWhere('w.customer_email', 'ilike', `%${search}%`)
+          .orWhere('w.message', 'ilike', `%${search}%`)
+          .orWhere('c.name', 'ilike', `%${search}%`);
       });
     }
 

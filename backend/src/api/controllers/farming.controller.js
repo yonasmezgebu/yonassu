@@ -9,7 +9,7 @@ const imgUrl = (file) => file ? `/uploads/products/${file.filename}` : null;
 const generateInvoiceNumber = async (prefix, trx, table) => {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const lastRecord = await trx(table)
-    .where('invoice_number', 'like', `${prefix}-${dateStr}-%`)
+    .where('invoice_number', 'ilike', `${prefix}-${dateStr}-%`)
     .orderBy('invoice_number', 'desc')
     .first();
   let counter = 1;
@@ -52,8 +52,8 @@ exports.getProducts = catchAsync(async (req, res) => {
   if (category_id) query = query.andWhere('fp.category_id', category_id);
   if (search) {
     query = query.andWhere((q) => {
-      q.where('fp.name', 'like', `%${search}%`)
-       .orWhere('fp.description', 'like', `%${search}%`);
+      q.where('fp.name', 'ilike', `%${search}%`)
+       .orWhere('fp.description', 'ilike', `%${search}%`);
     });
   }
   const products = await query.orderBy('fp.name');
@@ -158,8 +158,8 @@ exports.getAllProductsAdmin = catchAsync(async (req, res) => {
   if (category_id) query = query.andWhere('farming_products.category_id', category_id);
   if (search) {
     query = query.andWhere((q) => {
-      q.where('farming_products.name', 'like', `%${search}%`)
-       .orWhere('farming_products.description', 'like', `%${search}%`);
+      q.where('farming_products.name', 'ilike', `%${search}%`)
+       .orWhere('farming_products.description', 'ilike', `%${search}%`);
     });
   }
   const products = await query.orderBy('farming_products.name');
@@ -367,8 +367,8 @@ exports.getAllOrders = catchAsync(async (req, res) => {
   if (status) query = query.where('farming_orders.status', status);
   if (search) {
     query = query.andWhere((q) => {
-      q.where('farming_orders.invoice_number', 'like', `%${search}%`)
-       .orWhere('users.full_name', 'like', `%${search}%`);
+      q.where('farming_orders.invoice_number', 'ilike', `%${search}%`)
+       .orWhere('users.full_name', 'ilike', `%${search}%`);
     });
   }
 

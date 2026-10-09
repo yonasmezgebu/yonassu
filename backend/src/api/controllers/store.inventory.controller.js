@@ -28,7 +28,7 @@ exports.getInventory = async (req, res) => {
       query = query.where('store_inventory.quantity', '<=', db.raw('COALESCE(store_inventory.min_level, 0)'));
     }
     if (search) {
-      query = query.where('drugs.name', 'like', `%${search}%`);
+      query = query.where('drugs.name', 'ilike', `%${search}%`);
     }
     const rows = await query;
     const total_items = rows.length;
@@ -711,7 +711,7 @@ exports.getNextAdjustmentNo = async (req, res) => {
     const year = new Date().getFullYear();
     const prefix = `ADJ-${year}-`;
     const last = await db('stock_adjustments')
-      .where('adjustment_no', 'like', `${prefix}%`)
+      .where('adjustment_no', 'ilike', `${prefix}%`)
       .orderBy('id', 'desc')
       .first();
     let nextSeq = 1;

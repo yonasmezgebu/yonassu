@@ -50,23 +50,23 @@ exports.getSalesByPeriod = catchAsync(async (req, res) => {
   if (!startDate || !endDate) {
     throw new AppError('Start date and end date are required', 400);
   }
-  let dateFormat;
+  let pgFmt;
   switch (groupBy) {
     case 'day':
-      dateFormat = '%Y-%m-%d';
+      pgFmt = 'YYYY-MM-DD';
       break;
     case 'week':
-      dateFormat = '%Y-%u';
+      pgFmt = 'IYYY-IW';
       break;
     case 'month':
-      dateFormat = '%Y-%m';
+      pgFmt = 'YYYY-MM';
       break;
     default:
-      dateFormat = '%Y-%m-%d';
+      pgFmt = 'YYYY-MM-DD';
   }
   const sales = await db('pos_sales')
     .select(
-      db.raw(`to_char(sale_date, '${dateFormat}') as period`),
+      db.raw('to_char(sale_date::date, ?) as period', [pgFormat]),
       db.raw('COUNT(*) as order_count'),
       db.raw('SUM(total_amount) as total_revenue'),
       db.raw('SUM(tax_amount) as total_tax'),
@@ -75,7 +75,7 @@ exports.getSalesByPeriod = catchAsync(async (req, res) => {
     )
     .whereBetween('sale_date', [startDate, endDate])
     .where('status_id', 1) 
-    .groupByRaw(`DATE_FORMAT(sale_date, '${dateFormat}')`)
+    .groupByRaw('to_char(sale_date::date, ?)', [pgFormat])
     .orderBy('period', 'asc');
   const totals = {
     totalRevenue: sales.reduce((sum, s) => sum + parseFloat(s.total_revenue), 0),

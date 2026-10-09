@@ -1,4 +1,4 @@
-﻿const { db, transaction } = require('../../config/database');
+const { db, transaction } = require('../../config/database');
 const { audit } = require('../../config/logger');
 const { sendEmail } = require('../../services/email.service');
 const { sendCeoNotification } = require('../../services/notification.service');
@@ -392,8 +392,8 @@ exports.getUnpaidInvoices = catchAsync(async (req, res) => {
     .havingRaw('balance_due > 0');
   if (search) {
     query = query.where(function () {
-      this.where('ps.invoice_number', 'like', `%${search}%`)
-        .orWhere('c.name', 'like', `%${search}%`);
+      this.where('ps.invoice_number', 'ilike', `%${search}%`)
+        .orWhere('c.name', 'ilike', `%${search}%`);
     });
   }
   const invoices = await query.orderBy('ps.sale_date', 'desc').limit(50);
@@ -416,8 +416,8 @@ exports.getUnpaidPOs = catchAsync(async (req, res) => {
     .whereNull('po.deleted_at');
   if (search) {
     query = query.where(function () {
-      this.where('po.po_number', 'like', `%${search}%`)
-        .orWhere('s.name', 'like', `%${search}%`);
+      this.where('po.po_number', 'ilike', `%${search}%`)
+        .orWhere('s.name', 'ilike', `%${search}%`);
     });
   }
   const orders = await query.orderBy('po.created_at', 'desc').limit(50);
@@ -597,7 +597,7 @@ exports.processPOMobilePayments = catchAsync(async (req, res) => {
       date: new Date().toISOString().slice(0, 10),
       type: 'EV',
       reference: referenceNumber || `PO-${purchaseOrder.po_number}`,
-      description: `Purchase order payment: ${purchaseOrder.po_number}${notes ? ' â€” ' + notes : ''}`,
+      description: `Purchase order payment: ${purchaseOrder.po_number}${notes ? ' — ' + notes : ''}`,
       receipts: 0,
       payments: Number(amount)
     });
@@ -643,7 +643,7 @@ exports.processPOMobilePayments = catchAsync(async (req, res) => {
       poId,
       poNumber: purchaseOrder.po_number,
       amountPaid: amount,
-      remainingBalance: purchaseOrder.total_amount - (purchaseOrder.paid_amount + amount)
+      remainingBalance: Math.round((purchaseOrder.total_amount - (purchaseOrder.paid_amount + amount)) * 100) / 100
     }
   });
 });
@@ -844,6 +844,7 @@ exports.getAccountsPayable = catchAsync(async (req, res) => {
     let totalOwed = 0;
     for (const po of unpaidPOs) {
       totalOwed += po.total_amount - po.paid_amount;
+      totalOwed = Math.round(totalOwed * 100) / 100; // FIX #4: Prevent floating point dust
     }
     if (totalOwed === 0) continue;
     const oldestPO = unpaidPOs[0];
@@ -1204,7 +1205,7 @@ exports.rejectCashHandover = catchAsync(async (req, res) => {
   res.status(200).json({ status: 'success', message: 'Handover rejected successfully' });
 });
 
-/* â”€â”€ VAT & Profit Report â€” LIVE from ALL source tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── VAT & Profit Report — LIVE from ALL source tables ──────────────────── */
 
 exports.getVatProfitReport = catchAsync(async (req, res) => {
   const { from, to, period } = req.query;
@@ -1225,18 +1226,18 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const fmt2 = (n) => Math.round(parseFloat(n || 0) * 100) / 100;
   const applyRange = (qb, col) => { if (dateFrom) qb.where(col, '>=', dateFrom); if (dateTo) qb.where(col, '<=', dateTo); };
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* ══════════════════════════════════════════════════════════════════════
      REVENUE from ALL source tables (matching receipts dashboard)
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+     ══════════════════════════════════════════════════════════════════════ */
 
   const sources = [
-    { key: 'retail', label: 'Retail & POS', icon: 'ðŸ›’', color: '#2563EB' },
-    { key: 'pharmacy', label: 'Pharmacy', icon: 'ðŸ’Š', color: '#059669' },
-    { key: 'printing', label: 'Printing', icon: 'ðŸ–¨ï¸', color: '#D97706' },
-    { key: 'car_rental', label: 'Car Rental', icon: 'ðŸš—', color: '#7C3AED' },
-    { key: 'agrirent', label: 'AgriRent', icon: 'ðŸšœ', color: '#16A34A' },
-    { key: 'tender_sell', label: 'Tender Sell', icon: 'ðŸ“¤', color: '#0EA5E9' },
-    { key: 'tender_buy', label: 'Tender Buy', icon: 'ðŸ“¥', color: '#EF4444' },
+    { key: 'retail', label: 'Retail & POS', icon: '🛒', color: '#2563EB' },
+    { key: 'pharmacy', label: 'Pharmacy', icon: '💊', color: '#059669' },
+    { key: 'printing', label: 'Printing', icon: '🖨️', color: '#D97706' },
+    { key: 'car_rental', label: 'Car Rental', icon: '🚗', color: '#7C3AED' },
+    { key: 'agrirent', label: 'AgriRent', icon: '🚜', color: '#16A34A' },
+    { key: 'tender_sell', label: 'Tender Sell', icon: '📤', color: '#0EA5E9' },
+    { key: 'tender_buy', label: 'Tender Buy', icon: '📥', color: '#EF4444' },
   ];
 
   const sourceResults = {};
@@ -1325,9 +1326,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     cogs: 0,
   };
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* ══════════════════════════════════════════════════════════════════════
      AGGREGATE TOTALS
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+     ══════════════════════════════════════════════════════════════════════ */
 
   let totalRevenue = 0, totalOutputVat = 0, totalInvoiceCount = 0, totalCogs = 0;
   const bySource = sources.map(s => {
@@ -1343,9 +1344,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     return { ...s, revenue: rev, outputVat: outVat, cost, profit, invoiceCount: d.invoiceCount || 0, margin: rev > 0 ? fmt2((profit / rev) * 100) : 0 };
   });
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* ══════════════════════════════════════════════════════════════════════
      INPUT VAT (purchase orders + expenses)
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+     ══════════════════════════════════════════════════════════════════════ */
 
   const poRow = await db('purchase_orders')
     .modify((q) => { applyRange(q, 'created_at'); })
@@ -1368,9 +1369,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const inputVat = fmt2(inputVatFromPurchases + inputVatFromExpenses);
   const payableVat = fmt2(totalOutputVat - inputVat);
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* ══════════════════════════════════════════════════════════════════════
      HR COSTS (payroll + employees)
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+     ══════════════════════════════════════════════════════════════════════ */
 
   const hrRow = await db('payroll_company_aggregation')
     .modify(function(q) {
@@ -1411,9 +1412,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     monthlySalaryTotal: fmt2(empRow.sal),
   };
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* ══════════════════════════════════════════════════════════════════════
      PROFIT & LOSS
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+     ══════════════════════════════════════════════════════════════════════ */
 
   const grossProfit = fmt2(totalRevenue - totalCogs);
   const operatingProfit = fmt2(grossProfit - totalExpenses);
@@ -1421,16 +1422,16 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const totalCost = fmt2(totalCogs + totalExpenses + hrCosts.netPay);
   const margin = totalRevenue > 0 ? fmt2((netProfit / totalRevenue) * 100) : 0;
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     BY MONTH (from sales_invoices only â€” other sources don't have monthly granularity)
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  /* ══════════════════════════════════════════════════════════════════════
+     BY MONTH (from sales_invoices only — other sources don't have monthly granularity)
+     ══════════════════════════════════════════════════════════════════════ */
 
   const invMonthRows = await db('sales_invoices')
     .andWhereNot('status', 'cancelled')
     .modify((q) => { applyRange(q, 'created_at'); })
     .select(db.raw('to_char(created_at, \'YYYY-MM\') as month'))
     .sum('subtotal as revenue').sum('vat_total as output_vat')
-    .groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+    .groupByRaw("to_char(created_at::date, 'YYYY-MM')")
     .orderBy('month');
 
   const cogsMonthRows = await db('sales_invoice_items as sii')
@@ -1439,7 +1440,7 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     .modify((q) => { applyRange(q, 'si.created_at'); })
     .select(db.raw('to_char(si.created_at, \'YYYY-MM\') as month'))
     .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cogs'))
-    .groupByRaw("DATE_FORMAT(si.created_at, '%Y-%m')");
+    .groupByRaw("to_char(si.created_at::date, 'YYYY-MM')");
 
   const cogsByMonth = {};
   for (const r of cogsMonthRows) cogsByMonth[r.month] = fmt2(r.cogs);
@@ -1452,9 +1453,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     return { month: r.month, revenue: rev, cost, outputVat: outVat, profit, margin: rev > 0 ? fmt2((profit / rev) * 100) : 0 };
   });
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* ══════════════════════════════════════════════════════════════════════
      TOP PRODUCTS (from invoice items)
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+     ══════════════════════════════════════════════════════════════════════ */
 
   const topProdRows = await db('sales_invoice_items as sii')
     .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
@@ -1474,9 +1475,9 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     return { name: p.name, source: p.source, qtySold: parseInt(p.qty || 0), revenue: rev, cost: c, profit: fmt2(rev - c), margin: rev > 0 ? fmt2(((rev - c) / rev) * 100) : 0, vat: fmt2(p.vat) };
   });
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* ══════════════════════════════════════════════════════════════════════
      RESPONSE
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+     ══════════════════════════════════════════════════════════════════════ */
 
   res.json({
     status: 'success',

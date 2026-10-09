@@ -167,7 +167,7 @@ const EmployeeTasksController = {
         .join('users', 'hr_employees.user_id', 'users.id')
         .join('user_roles', 'users.id', 'user_roles.user_id')
         .join('roles', 'user_roles.role_id', 'roles.id')
-        .where('departments.name', 'like', `%${deptName}%`)
+        .where('departments.name', 'ilike', `%${deptName}%`)
         .where('hr_employees.registration_status', 'completed')
         .where('users.is_employee', true)
         .where('roles.name', 'Employee')

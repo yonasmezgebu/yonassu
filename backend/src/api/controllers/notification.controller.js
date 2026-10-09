@@ -17,10 +17,10 @@ const resolveNotificationScope = (roles = []) => {
   if (lowerRoles.includes('admin')) {
     return { roleTarget: 'CEO', allowedTypes: ['general'], requireLink: true };
   }
-  if (lowerRoles.some(r => r.includes('general store keeper'))) {
+  if (lowerRoles.some(r => r.includes('General Store Keeper'))) {
     return { roleTarget: 'General Store Keeper', allowedTypes: null, requireLink: false };
   }
-  if (lowerRoles.some(r => r.includes('pharmacy store keeper'))) {
+  if (lowerRoles.some(r => r.includes('Pharmacy Store Keeper'))) {
     return { roleTarget: 'Pharmacy Store Keeper', allowedTypes: null, requireLink: false };
   }
   if (lowerRoles.some(r => r.includes('pharmacy manager') || r.includes('pharmacy worker'))) {

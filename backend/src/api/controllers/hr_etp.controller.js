@@ -344,8 +344,8 @@ exports.getETPEmployees = catchAsync(async (req, res) => {
   if (dept_id) q = q.where('e.dept_id', dept_id);
   if (status)  q = q.where('e.employment_status', status);
   if (search)  q = q.where(function() {
-    this.where('e.full_name', 'like', `%${search}%`)
-        .orWhere('e.employee_id', 'like', `%${search}%`);
+    this.where('e.full_name', 'ilike', `%${search}%`)
+        .orWhere('e.employee_id', 'ilike', `%${search}%`);
   });
 
   const hrEmployees = await q.select('e.*', 'd.name as dept_name', 'p.name as position_title', 'u.profile_photo as user_photo').orderBy('e.full_name');
@@ -370,8 +370,8 @@ exports.getETPEmployees = catchAsync(async (req, res) => {
     let uq = db('users');
     if (search) {
       uq = uq.where(function() {
-        this.where('full_name', 'like', `%${search}%`)
-            .orWhere('email', 'like', `%${search}%`);
+        this.where('full_name', 'ilike', `%${search}%`)
+            .orWhere('email', 'ilike', `%${search}%`);
       });
     }
     
@@ -814,7 +814,7 @@ exports.getMonthlyAttendance = catchAsync(async (req, res) => {
     .select('e.employee_id', 'e.full_name', 'e.dept_id', 'd.name as dept_name', 'e.position_id')
     .where('e.employment_status', 'Active');
   if (dept_id) empQuery = empQuery.where('e.dept_id', dept_id);
-  if (search) empQuery = empQuery.where('e.full_name', 'like', `%${search.trim()}%`);
+  if (search) empQuery = empQuery.where('e.full_name', 'ilike', `%${search.trim()}%`);
   const employees = await empQuery;
 
   // Live aggregation from the daily log for the selected month
@@ -1344,7 +1344,7 @@ exports.markPayrollPaid = catchAsync(async (req, res) => {
       cat = { id: catId };
     }
     // Find default payment method (Bank Transfer)
-    const pm = await db('payment_methods').where('name', 'like', '%Bank%').first();
+    const pm = await db('payment_methods').where('name', 'ilike', '%Bank%').first();
     await db('expenses').insert({
       date: db.fn.now(),
       amount: existing.company_net_pay,
@@ -1425,7 +1425,7 @@ exports.markEmployeePaid = catchAsync(async (req, res) => {
         const [catId] = await db('expense_categories').insert({ name: 'Payroll', description: 'Monthly payroll payments', requires_approval: false });
         cat = { id: catId };
       }
-      const pm = await db('payment_methods').where('name', 'like', '%Bank%').first();
+      const pm = await db('payment_methods').where('name', 'ilike', '%Bank%').first();
       const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       await db('expenses').insert({
         date: db.fn.now(),
@@ -1690,7 +1690,7 @@ exports.getYearlyAttendance = catchAsync(async (req, res) => {
     .select('e.employee_id', 'e.full_name', 'e.dept_id', 'd.name as dept_name', 'e.position_id')
     .where('e.employment_status', 'Active');
   if (dept_id) empQuery = empQuery.where('e.dept_id', dept_id);
-  if (search) empQuery = empQuery.where('e.full_name', 'like', `%${search.trim()}%`);
+  if (search) empQuery = empQuery.where('e.full_name', 'ilike', `%${search.trim()}%`);
   const employees = await empQuery;
 
   const dailyRows = await db('etp_daily_attendance as da')

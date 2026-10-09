@@ -105,7 +105,7 @@ exports.getAllSuppliers = async (req, res) => {
       .orderBy('self_registered_suppliers.created_at', 'desc');
 
     if (status) query = query.where('self_registered_suppliers.status', status);
-    if (category) query = query.where('self_registered_suppliers.category', 'like', `%${category}%`);
+    if (category) query = query.where('self_registered_suppliers.category', 'ilike', `%${category}%`);
     
     if (source === 'Internal') {
       query = query.whereNull('self_registered_suppliers.user_id');
@@ -115,10 +115,10 @@ exports.getAllSuppliers = async (req, res) => {
 
     if (search) {
       query = query.where(function () {
-        this.where('self_registered_suppliers.full_name', 'like', `%${search}%`)
-          .orWhere('self_registered_suppliers.email', 'like', `%${search}%`)
-          .orWhere('self_registered_suppliers.company_name', 'like', `%${search}%`)
-          .orWhere('self_registered_suppliers.category', 'like', `%${search}%`);
+        this.where('self_registered_suppliers.full_name', 'ilike', `%${search}%`)
+          .orWhere('self_registered_suppliers.email', 'ilike', `%${search}%`)
+          .orWhere('self_registered_suppliers.company_name', 'ilike', `%${search}%`)
+          .orWhere('self_registered_suppliers.category', 'ilike', `%${search}%`);
       });
     }
 

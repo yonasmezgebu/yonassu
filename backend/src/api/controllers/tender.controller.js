@@ -10,7 +10,7 @@ const genRef = async () => {
   const rows = await db('tenders')
     .select('reference_number')
     .whereRaw('EXTRACT(YEAR FROM created_at) = ?', [year])
-    .where('reference_number', 'like', `TND-${year}-%`);
+    .where('reference_number', 'ilike', `TND-${year}-%`);
 
   let maxSeq = 0;
   for (const row of rows) {
@@ -35,7 +35,7 @@ exports.listPublic = catchAsync(async (req, res) => {
   let q = db('tenders').whereIn('status', ['open', 'closed', 'awarded', 'cancelled']).where('is_hidden', false);
   if (status) q = q.where('status', status);
   if (category) q = q.where('category', category);
-  if (search) q = q.where(function() { this.where('title', 'like', `%${search}%`).orWhere('description', 'like', `%${search}%`); });
+  if (search) q = q.where(function() { this.where('title', 'ilike', `%${search}%`).orWhere('description', 'ilike', `%${search}%`); });
   const tenders = await q.orderBy('created_at', 'desc').limit(50);
   res.json({ status: 'success', data: tenders });
 });

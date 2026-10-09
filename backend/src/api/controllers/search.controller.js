@@ -48,7 +48,7 @@ exports.search = catchAsync(async (req, res) => {
   if (category === 'all' || category === 'products') {
     queries.push(
       db('products').where(function() {
-        this.where('name', 'like', keyword).orWhere('sku', 'like', keyword);
+        this.where('name', 'ilike', keyword).orWhere('sku', 'ilike', keyword);
       }).whereNull('deleted_at').where('is_active', true).limit(isLive ? 3 : limit).select(
         'id', 'name', 'sku', 'selling_price as price', 'category_id', db.raw("'product' as entity_type")
       ).then(rows => {
@@ -67,7 +67,7 @@ exports.search = catchAsync(async (req, res) => {
       }),
 
       db('retail_products').where(function() {
-        this.where('name', 'like', keyword).orWhere('sku', 'like', keyword);
+        this.where('name', 'ilike', keyword).orWhere('sku', 'ilike', keyword);
       }).where('is_active', true).limit(isLive ? 3 : limit).select(
         'id', 'name', 'sku', 'price', 'stock_quantity as stock_qty', 'description', db.raw("'retail_product' as entity_type")
       ).then(rows => {
@@ -83,7 +83,7 @@ exports.search = catchAsync(async (req, res) => {
       db.schema.hasTable('farming_products').then(exists => {
         if (!exists) return;
         return db('farming_products').where(function() {
-          this.where('name', 'like', keyword).orWhere('description', 'like', keyword);
+          this.where('name', 'ilike', keyword).orWhere('description', 'ilike', keyword);
         }).where('is_active', true).limit(isLive ? 3 : limit).select(
           'id', 'name', 'description', 'price', 'stock_quantity as stock_qty'
         ).then(rows => {
@@ -117,7 +117,7 @@ exports.search = catchAsync(async (req, res) => {
   if (category === 'all' || category === 'news') {
     queries.push(
       db('news_posts').where('status', 'published').where(function() {
-        this.where('title', 'like', keyword).orWhere('content', 'like', keyword);
+        this.where('title', 'ilike', keyword).orWhere('content', 'ilike', keyword);
       }).orderBy('created_at', 'desc').limit(isLive ? 3 : limit).select(
         'id', 'title', 'content', 'created_at', 'posted_by'
       ).then(rows => {
@@ -134,7 +134,7 @@ exports.search = catchAsync(async (req, res) => {
   if (category === 'all' || category === 'gallery') {
     queries.push(
       db('gallery_images').where('status', 'active').where(function() {
-        this.where('title', 'like', keyword).orWhere('description', 'like', keyword).orWhere('location', 'like', keyword);
+        this.where('title', 'ilike', keyword).orWhere('description', 'ilike', keyword).orWhere('location', 'ilike', keyword);
       }).orderBy('display_order', 'asc').limit(isLive ? 3 : limit).select(
         'id', 'title', 'description', 'image_path', 'category'
       ).then(rows => {

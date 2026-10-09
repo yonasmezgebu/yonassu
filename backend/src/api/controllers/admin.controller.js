@@ -214,9 +214,9 @@ exports.getAuditLogs = catchAsync(async (req, res) => {
   }
   if (search) {
     query = query.where(function() {
-      this.where('audit_logs.action', 'like', `%${search}%`)
-        .orWhere('audit_logs.resource', 'like', `%${search}%`)
-        .orWhere('audit_logs.resource_id', 'like', `%${search}%`);
+      this.where('audit_logs.action', 'ilike', `%${search}%`)
+        .orWhere('audit_logs.resource', 'ilike', `%${search}%`)
+        .orWhere('audit_logs.resource_id', 'ilike', `%${search}%`);
     });
   }
   const total = await query.clone().clearSelect().count('audit_logs.id as total').first();
@@ -639,7 +639,7 @@ exports.getActivityStatistics = catchAsync(async (req, res) => {
       db.raw('COUNT(*) as count')
     )
     .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
-    .groupByRaw('HOUR(created_at)')
+    .groupByRaw('EXTRACT(HOUR FROM created_at)')
     .orderBy('hour', 'asc');
   res.json({
     status: 'success',

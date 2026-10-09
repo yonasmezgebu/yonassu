@@ -366,8 +366,8 @@ const pharmacyController = {
         'pc.name as category_name'
       )
       .where(function () {
-        this.where('pm.name', 'like', `%${q}%`)
-          .orWhere('pm.generic_name', 'like', `%${q}%`);
+        this.where('pm.name', 'ilike', `%${q}%`)
+          .orWhere('pm.generic_name', 'ilike', `%${q}%`);
       })
       .where('pm.is_active', true)
       .orderBy('pm.name', 'asc');
@@ -721,7 +721,7 @@ const pharmacyController = {
       }
 
       // Track in pos_sales for system manager reporting
-      const paymentMethodRecord = await db('payment_methods').where('name', 'like', `%${payment_method}%`).first() || await db('payment_methods').first();
+      const paymentMethodRecord = await db('payment_methods').where('name', 'ilike', `%${payment_method}%`).first() || await db('payment_methods').first();
       if (paymentMethodRecord) {
         const completedStatus = await db('sale_statuses').where('status_code', 'completed').first();
         if (completedStatus) {

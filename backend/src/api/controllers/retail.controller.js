@@ -42,9 +42,9 @@ exports.getProducts = catchAsync(async (req, res) => {
   if (category_id) query = query.andWhere('p.category_id', category_id);
   if (search) {
     query = query.andWhere(q => {
-      q.where('p.name', 'like', `%${search}%`)
-       .orWhere('p.sku', 'like', `%${search}%`)
-       .orWhere('p.description', 'like', `%${search}%`);
+      q.where('p.name', 'ilike', `%${search}%`)
+       .orWhere('p.sku', 'ilike', `%${search}%`)
+       .orWhere('p.description', 'ilike', `%${search}%`);
     });
   }
   const total = await query.clone().clearSelect().count('p.id as count').first();
@@ -507,7 +507,7 @@ exports.getInventory = catchAsync(async (req, res) => {
       'rc.name as category_name'
     )
     .leftJoin('retail_categories as rc', 'rp.category_id', 'rc.id');
-  if (search) query = query.where(q => q.where('rp.name', 'like', `%${search}%`).orWhere('rp.sku', 'like', `%${search}%`));
+  if (search) query = query.where(q => q.where('rp.name', 'ilike', `%${search}%`).orWhere('rp.sku', 'ilike', `%${search}%`));
   if (category_id) query = query.where('rp.category_id', category_id);
   if (low_stock === 'true') query = query.whereRaw('rp.stock_quantity <= rp.reorder_level');
   const products = await query.orderBy('rp.name');
@@ -782,7 +782,7 @@ exports.checkoutDirect = catchAsync(async (req, res) => {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const prefix = 'RET';
   const lastSale = await db('retail_transactions')
-    .where('invoice_number', 'like', `${prefix}-${dateStr}-%`)
+    .where('invoice_number', 'ilike', `${prefix}-${dateStr}-%`)
     .orderBy('invoice_number', 'desc')
     .first();
   let counter = 1;
@@ -1097,8 +1097,8 @@ exports.getStoreInventory = catchAsync(async (req, res) => {
     .orderBy('id', 'desc');
   if (search) {
     query = query.andWhere(q =>
-      q.where('material_name', 'like', `%${search}%`)
-       .orWhere('material_id', 'like', `%${search}%`)
+      q.where('material_name', 'ilike', `%${search}%`)
+       .orWhere('material_id', 'ilike', `%${search}%`)
     );
   }
   const rows = await query;

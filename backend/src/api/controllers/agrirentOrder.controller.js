@@ -594,9 +594,9 @@ exports.getAllOrders = async (req, res) => {
     if (paymentStatus) query = query.where('ao.payment_status', paymentStatus);
     if (search) {
       query = query.where(function() {
-        this.where('ao.order_number', 'like', `%${search}%`)
-          .orWhere('ao.customer_name', 'like', `%${search}%`)
-          .orWhere('ao.customer_phone', 'like', `%${search}%`);
+        this.where('ao.order_number', 'ilike', `%${search}%`)
+          .orWhere('ao.customer_name', 'ilike', `%${search}%`)
+          .orWhere('ao.customer_phone', 'ilike', `%${search}%`);
       });
     }
 

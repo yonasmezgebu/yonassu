@@ -331,7 +331,7 @@ const procController = {
     // Mark specific notification for this PR as read
     try {
       await db('notifications')
-        .where('title', 'like', `%${pr.pr_no}%`)
+        .where('title', 'ilike', `%${pr.pr_no}%`)
         .andWhere('role_target', 'Purchase Manager')
         .update({ is_read: true });
     } catch (e) {

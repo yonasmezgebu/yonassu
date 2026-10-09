@@ -70,7 +70,7 @@ exports.list = catchAsync(async (req, res) => {
   if (status) q = q.where('status', status);
   if (search) {
     const s = `%${search}%`;
-    q = q.where(function() { this.where('full_name', 'like', s).orWhere('email', 'like', s).orWhere('subject', 'like', s); });
+    q = q.where(function() { this.where('full_name', 'ilike', s).orWhere('email', 'ilike', s).orWhere('subject', 'ilike', s); });
   }
   if (startDate) q = q.where('created_at', '>=', new Date(startDate));
   if (endDate) q = q.where('created_at', '<=', new Date(endDate));

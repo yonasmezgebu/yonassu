@@ -729,9 +729,9 @@ const salesController = {
     if (worker_id) q = q.where('at.worker_id', worker_id);
     if (search) {
       q = q.where(function () {
-        this.where('at.action', 'like', `%${search}%`)
-            .orWhere('at.recipient', 'like', `%${search}%`)
-            .orWhere('w.name', 'like', `%${search}%`);
+        this.where('at.action', 'ilike', `%${search}%`)
+            .orWhere('at.recipient', 'ilike', `%${search}%`)
+            .orWhere('w.name', 'ilike', `%${search}%`);
       });
     }
 

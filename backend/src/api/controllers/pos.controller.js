@@ -43,8 +43,8 @@ exports.getProducts = catchAsync(async (req, res) => {
   }
   if (search) {
     query = query.where(function () {
-      this.where('p.name', 'like', `%${search}%`)
-        .orWhere('p.sku', 'like', `%${search}%`);
+      this.where('p.name', 'ilike', `%${search}%`)
+        .orWhere('p.sku', 'ilike', `%${search}%`);
     });
   }
 
@@ -91,9 +91,9 @@ exports.searchProducts = catchAsync(async (req, res) => {
     .where('p.is_active', true)
     .whereNull('p.deleted_at');
   if (type === 'barcode') {
-    query = query.where('p.sku', 'like', `%${q}%`);
+    query = query.where('p.sku', 'ilike', `%${q}%`);
   } else {
-    query = query.where('p.name', 'like', `%${q}%`);
+    query = query.where('p.name', 'ilike', `%${q}%`);
   }
   if (categoryId) {
     query = query.where('p.category_id', categoryId);
@@ -141,6 +141,7 @@ exports.getCart = catchAsync(async (req, res) => {
 exports.addToCart = catchAsync(async (req, res) => {
   let { productId, quantity } = req.body;
   const userId = req.user.id;
+  if (!quantity || quantity <= 0) throw new AppError('Quantity must be greater than zero', 400);
 
   if (typeof productId === 'string' && productId.includes('_')) {
     const parts = productId.split('_');
@@ -198,6 +199,7 @@ exports.updateCartItem = catchAsync(async (req, res) => {
   const { itemId } = req.params;
   const { quantity } = req.body;
   const userId = req.user.id;
+  if (!quantity || quantity <= 0) throw new AppError('Quantity must be greater than zero', 400);
   const cart = carts.get(userId);
   if (!cart) {
     throw new AppError('Cart is empty', 400);
@@ -622,7 +624,7 @@ exports.getSalesHistory = catchAsync(async (req, res) => {
     query = query.where('ps.customer_id', customerId);
   }
   if (search) {
-    query = query.where('ps.invoice_number', 'like', `%${search}%`);
+    query = query.where('ps.invoice_number', 'ilike', `%${search}%`);
   }
   if (source) {
     const validSources = ['retail', 'farming', 'pharmacy'];
@@ -665,9 +667,9 @@ exports.getCustomers = catchAsync(async (req, res) => {
     .whereNull('customers.deleted_at');
   if (search) {
     query = query.where(function() {
-      this.where('customers.name', 'like', `%${search}%`)
-        .orWhere('customers.phone', 'like', `%${search}%`)
-        .orWhere('customers.email', 'like', `%${search}%`);
+      this.where('customers.name', 'ilike', `%${search}%`)
+        .orWhere('customers.phone', 'ilike', `%${search}%`)
+        .orWhere('customers.email', 'ilike', `%${search}%`);
     });
   }
   const total = await query.clone().clearSelect().count('customers.id as total').first();
@@ -1555,7 +1557,7 @@ exports.getAllShiftHistory = catchAsync(async (req, res) => {
     .limit(parseInt(limit));
   if (startDate) query = query.where('ps.opened_at', '>=', startDate);
   if (endDate) query = query.where('ps.opened_at', '<=', endDate);
-  if (search) query = query.where(function () { this.where('u.full_name', 'like', `%${search}%`).orWhere('u.employee_id', 'like', `%${search}%`); });
+  if (search) query = query.where(function () { this.where('u.full_name', 'ilike', `%${search}%`).orWhere('u.employee_id', 'ilike', `%${search}%`); });
   const shifts = await query;
   res.json({ status: 'success', data: shifts });
 });
@@ -2471,10 +2473,34 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
   const { sale_type, items, payment, cart_id, order_request_id } = req.body;
   if (!items || items.length === 0) throw new AppError('Cart is empty', 400);
 
+  // FIX #1 & #2: Validate quantity > 0 and fetch true DB prices for checkoutRetail
+  const productIds = items.map(i => i.product_id).filter(Boolean);
+  let dbProducts = [];
+  if (productIds.length > 0) {
+    dbProducts = await db('products').whereIn('id', productIds).select('id', 'selling_price', 'name');
+  }
+
   let subtotal = 0;
   for (const item of items) {
-    subtotal += (item.quantity || 0) * (item.unit_price || 0);
+    if (!item.quantity || item.quantity <= 0) {
+      throw new AppError('Quantity must be greater than zero', 400);
+    }
+    
+    // Override user-provided unit_price with DB price
+    if (item.product_id) {
+      const dbProd = dbProducts.find(p => p.id === item.product_id);
+      if (!dbProd) throw new AppError(`Product ID ${item.product_id} not found`, 404);
+      item.unit_price = Number(dbProd.selling_price);
+      if (!item.product_name) item.product_name = dbProd.name;
+    } else if (!item.unit_price || item.unit_price < 0) {
+      throw new AppError('Valid unit price is required for custom items', 400);
+    }
+    
+    subtotal += item.quantity * item.unit_price;
   }
+  
+  // FIX #4: Round subtotal to avoid floating-point drift
+  subtotal = Math.round(subtotal * 100) / 100;
 
   // Central VAT — consistent with the cart/order pricing shown in the POS
   // fallbackRate=0: unmapped products get no tax (CEO must configure tax per product)
@@ -2958,7 +2984,7 @@ exports.getPendingCartsByStatus = async (req, res) => {
         const storeReqs = await db('store_sales_requests')
           .where(function() {
             for (const code of cartCodes) {
-              this.orWhere('request_code', 'like', `${code}%`);
+              this.orWhere('request_code', 'ilike', `${code}%`);
             }
           });
 
@@ -3030,7 +3056,7 @@ exports.storeReleaseCart = async (req, res) => {
 
       // 1. Deduct from general_store_materials
       const mat = await trx('general_store_materials')
-        .where('material_name', 'like', `%${prodName}%`).first();
+        .where('material_name', 'ilike', `%${prodName}%`).first();
       if (mat) {
         const newQty = Math.max(0, parseFloat(mat.quantity_in_store || 0) - deduct);
         await trx('general_store_materials').where('id', mat.id).update({ quantity_in_store: newQty, updated_at: new Date() });
@@ -3046,7 +3072,7 @@ exports.storeReleaseCart = async (req, res) => {
 
       // 2. ALSO Deduct from retail_products so POS stock matches exactly
       const retProd = await trx('retail_products')
-        .where('name', 'like', `%${prodName}%`).first();
+        .where('name', 'ilike', `%${prodName}%`).first();
       if (retProd) {
         const newStock = Math.max(0, parseFloat(retProd.stock_quantity || 0) - deduct);
         await trx('retail_products').where('id', retProd.id).update({ stock_quantity: newStock, updated_at: new Date() });
@@ -3119,7 +3145,7 @@ exports.deleteRetailCart = async (req, res) => {
       // 1. Delete all linked store_sales_requests (cleans store queue)
       if (cart.cart_code) {
         await trx('store_sales_requests')
-          .where('request_code', 'like', `${cart.cart_code}%`)
+          .where('request_code', 'ilike', `${cart.cart_code}%`)
           .del();
       }
       // 2. Delete the cart itself (cleans POS queue)
@@ -3139,7 +3165,7 @@ exports.checkCartStoreRequestStatus = async (req, res) => {
     if (!cart) return res.status(404).json({ status: 'error', message: 'Cart not found' });
     
     // Check associated store requests (created with request_code = cart_code + '-i')
-    const requests = await db('store_sales_requests').where('request_code', 'like', `${cart.cart_code}%`);
+    const requests = await db('store_sales_requests').where('request_code', 'ilike', `${cart.cart_code}%`);
     if (requests.length > 0) {
       const rejected = requests.find(r => r.status === 'Rejected');
       if (rejected) {

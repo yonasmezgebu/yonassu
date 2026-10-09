@@ -86,8 +86,8 @@ exports.getAllOrders = catchAsync(async (req, res) => {
   if (status) query = query.where('os.status_code', status);
   if (search) {
     query = query.where(function() {
-      this.where('po.order_number', 'like', `%${search}%`)
-        .orWhere('c.name', 'like', `%${search}%`);
+      this.where('po.order_number', 'ilike', `%${search}%`)
+        .orWhere('c.name', 'ilike', `%${search}%`);
     });
   }
   if (startDate && endDate) {
@@ -327,7 +327,7 @@ exports.createOrder = catchAsync(async (req, res) => {
   // INVENTORY CHECK: warn if paper stock is low for this order
   try {
     const paperProduct = await db('products')
-      .where('name', 'like', `%${paperType || order.paper_type}%`)
+      .where('name', 'ilike', `%${paperType || order.paper_type}%`)
       .where('is_active', true)
       .first();
     if (paperProduct) {
@@ -429,7 +429,7 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
   if (inProgressStatus && newStatusId === inProgressStatus.id) {
     try {
       const paperProduct = await db('products')
-        .where('name', 'like', `%${order.paper_type}%`)
+        .where('name', 'ilike', `%${order.paper_type}%`)
         .where('is_active', true)
         .first();
       if (paperProduct) {
@@ -942,12 +942,12 @@ exports.getAllWorks = catchAsync(async (req, res) => {
       'c.name as customer_name', 'c.email as customer_email', 'c.phone as customer_phone',
       'u.full_name as uploaded_by_name'
     );
-  if (orderNumber) q.where('po.order_number', 'like', `%${orderNumber}%`);
+  if (orderNumber) q.where('po.order_number', 'ilike', `%${orderNumber}%`);
   if (search) {
     q.where(function () {
-      this.where('w.original_name', 'like', `%${search}%`)
-        .orWhere('po.order_number', 'like', `%${search}%`)
-        .orWhere('c.name', 'like', `%${search}%`);
+      this.where('w.original_name', 'ilike', `%${search}%`)
+        .orWhere('po.order_number', 'ilike', `%${search}%`)
+        .orWhere('c.name', 'ilike', `%${search}%`);
     });
   }
   const total = await q.clone().clearSelect().count('w.id as count').first();

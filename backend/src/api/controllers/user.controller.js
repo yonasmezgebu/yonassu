@@ -45,9 +45,9 @@ exports.getAllUsers = catchAsync(async (req, res) => {
     .whereNull('users.deleted_at');
   if (search) {
     query = query.where(function() {
-      this.where('users.full_name', 'like', `%${search}%`)
-        .orWhere('users.email', 'like', `%${search}%`)
-        .orWhere('users.phone', 'like', `%${search}%`);
+      this.where('users.full_name', 'ilike', `%${search}%`)
+        .orWhere('users.email', 'ilike', `%${search}%`)
+        .orWhere('users.phone', 'ilike', `%${search}%`);
     });
   }
   if (departmentId) {
@@ -62,12 +62,26 @@ exports.getAllUsers = catchAsync(async (req, res) => {
     .orderBy('users.created_at', 'desc')
     .limit(limit)
     .offset(offset);
-  for (const user of users) {
-    const roles = await db('user_roles')
+
+  // FIX #3: Replace N+1 loop (1 query per user) with a single bulk query.
+  // Previously: 50 users = 50 separate DB round-trips just for roles.
+  // Now: 1 query fetches all roles for all users on the current page at once.
+  if (users.length > 0) {
+    const userIds = users.map(u => u.id);
+    const allRoles = await db('user_roles')
       .leftJoin('roles', 'user_roles.role_id', 'roles.id')
-      .where('user_roles.user_id', user.id)
-      .select('roles.id', 'roles.name');
-    user.roles = roles;
+      .whereIn('user_roles.user_id', userIds)
+      .select('user_roles.user_id', 'roles.id', 'roles.name');
+
+    // Group roles by user_id in a Map for O(1) lookup
+    const rolesMap = new Map();
+    for (const row of allRoles) {
+      if (!rolesMap.has(row.user_id)) rolesMap.set(row.user_id, []);
+      rolesMap.get(row.user_id).push({ id: row.id, name: row.name });
+    }
+    for (const user of users) {
+      user.roles = rolesMap.get(user.id) || [];
+    }
   }
   res.json({
     status: 'success',
@@ -707,8 +721,7 @@ exports.createCustomRole = catchAsync(async (req, res) => {
     is_custom: true,
     branch_scoped: !!branchScoped,
     created_by: adminId,
-    created_at: db.fn.now(),
-    updated_at: db.fn.now()
+    created_at: db.fn.now()
   });
 
   await audit('CUSTOM_ROLE_CREATED', null, {

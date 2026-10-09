@@ -23,10 +23,10 @@ exports.getSuppliers = catchAsync(async (req, res) => {
     .whereNull('suppliers.deleted_at');
   if (search) {
     query = query.where(function() {
-      this.where('suppliers.name', 'like', `%${search}%`)
-        .orWhere('suppliers.contact_person', 'like', `%${search}%`)
-        .orWhere('suppliers.email', 'like', `%${search}%`)
-        .orWhere('suppliers.phone', 'like', `%${search}%`);
+      this.where('suppliers.name', 'ilike', `%${search}%`)
+        .orWhere('suppliers.contact_person', 'ilike', `%${search}%`)
+        .orWhere('suppliers.email', 'ilike', `%${search}%`)
+        .orWhere('suppliers.phone', 'ilike', `%${search}%`);
     });
   }
   if (isActive !== undefined) {
@@ -324,12 +324,12 @@ exports.getPurchaseOrders = catchAsync(async (req, res) => {
     // SKU is on products joined via po_items — use a subquery to avoid row duplication
     const poIdsWithMatchingSku = db('po_items as pi')
       .join('products as p', 'pi.product_id', 'p.id')
-      .where('p.sku', 'like', `%${search}%`)
+      .where('p.sku', 'ilike', `%${search}%`)
       .select('pi.po_id');
 
     query = query.where(function () {
-      this.where('po.po_number', 'like', `%${search}%`)
-        .orWhere('s.name', 'like', `%${search}%`)
+      this.where('po.po_number', 'ilike', `%${search}%`)
+        .orWhere('s.name', 'ilike', `%${search}%`)
         .orWhereIn('po.id', poIdsWithMatchingSku);
     });
   }
@@ -496,8 +496,8 @@ exports.createPurchaseOrder = catchAsync(async (req, res) => {
         const targetUsers = await trx('users')
           .join('user_roles', 'users.id', 'user_roles.user_id')
           .join('roles', 'user_roles.role_id', 'roles.id')
-          .where('roles.name', 'like', '%Purchase%')
-          .orWhere('roles.name', 'like', '%Admin%')
+          .where('roles.name', 'ilike', '%Purchase%')
+          .orWhere('roles.name', 'ilike', '%Admin%')
           .select('users.id')
           .distinct();
 

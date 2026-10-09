@@ -54,7 +54,7 @@ exports.listSubscribers = catchAsync(async (req, res) => {
 
   let query = db('email_subscribers').whereNull('deleted_at');
   if (status !== 'all') query = query.where('status', status);
-  if (search) query = query.where(function () { this.where('email', 'like', `%${search}%`).orWhere('full_name', 'like', `%${search}%`); });
+  if (search) query = query.where(function () { this.where('email', 'ilike', `%${search}%`).orWhere('full_name', 'ilike', `%${search}%`); });
 
   const [{ total }] = await query.clone().count('* as total');
   const subscribers = await query.orderBy('created_at', 'desc').limit(limit).offset(offset);

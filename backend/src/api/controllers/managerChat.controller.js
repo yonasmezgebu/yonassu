@@ -15,7 +15,7 @@ function normalizeAvatar(raw) {
 
 // All users who can participate in manager chat
 const ALLOWED_ROLES = [
-  'CEO', 'Admin', 'HR Manager', 'Car Rental Manager', 'Car Renting Manager',
+  'CEO', 'Admin', 'HR Manager', 'Car Rental Manager', 'Car Renting Manager', 'Rental Manager',
   'Printing Supervisor', 'Printing Manager',
   'Pharmacy Manager', 'Sales Manager', 'Purchase Manager', 'Purchase',
   'Board Member', 'Board', 'General Store Manager', 'General Store Keeper', 'Pharmacy Store Manager',

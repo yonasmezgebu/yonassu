@@ -37,8 +37,8 @@ exports.getProducts = catchAsync(async (req, res) => {
   }
   if (search) {
     query = query.where(function() {
-      this.where('p.name', 'like', `%${search}%`)
-        .orWhere('p.sku', 'like', `%${search}%`);
+      this.where('p.name', 'ilike', `%${search}%`)
+        .orWhere('p.sku', 'ilike', `%${search}%`);
     });
   }
   if (isActive !== undefined) {
@@ -386,7 +386,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
     if (!currentStock) {
       throw new AppError('Product not found', 404);
     }
-    const newQuantity = currentStock.quantity + quantityChange;
+    const newQuantity = Number(currentStock.quantity) + Number(quantityChange);
     if (newQuantity < 0) {
       throw new AppError('Insufficient stock. Cannot reduce below zero.', 400);
     }

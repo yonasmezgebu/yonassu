@@ -393,7 +393,7 @@ exports.listPendingMoves = async (req, res) => {
   try {
     const rows = await db('general_movement_log')
       .where('action_type', 'Move to Production')
-      .where('notes', 'like', '%PENDING_APPROVAL%')
+      .where('notes', 'ilike', '%PENDING_APPROVAL%')
       .whereNull('approved_by')
       .orderBy('date_time', 'desc');
     ok(res, rows);
@@ -602,7 +602,7 @@ exports.getStats = async (req, res) => {
     const machineValue     = await db('printing_assets_machines').sum('internal_value as v').first();
     const [pendingMoves]   = await db('general_movement_log')
       .where('action_type', 'Move to Production')
-      .where('notes', 'like', '%PENDING_APPROVAL%')
+      .where('notes', 'ilike', '%PENDING_APPROVAL%')
       .whereNull('approved_by')
       .count('id as c');
     const [pendingTransfers] = await db('printing_material_requests').where('status', 'PENDING').count('id as c').catch(() => [{ c: 0 }]);

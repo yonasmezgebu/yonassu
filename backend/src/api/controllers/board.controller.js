@@ -158,13 +158,13 @@ exports.getFinancials = catchAsync(async (req, res) => {
 
   const trend = await db('pos_transactions')
     .select(
-      db.raw('to_char(created_at, \'YYYY-MM\') as month'),
+      db.raw("to_char(created_at::date, 'YYYY-MM') as month"),
       db.raw('SUM(total_amount) as revenue'),
       db.raw('COUNT(*) as transactions'),
     )
     .where('status', 'completed')
     .where('created_at', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'6 months\''))
-    .groupByRaw('DATE_FORMAT(created_at, "%Y-%m")')
+    .groupByRaw("to_char(created_at::date, 'YYYY-MM')")
     .orderBy('month', 'asc')
     .catch(() => []);
 
