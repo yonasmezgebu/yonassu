@@ -216,7 +216,7 @@ const refreshToken = async (refreshToken, ip) => {
     .leftJoin('roles', 'user_roles.role_id', 'roles.id')
     .select('users.*', db.raw('string_agg(DISTINCT roles.name::text, \', \') as role_names'))
     .where('users.id', userId)
-    .groupBy('users.id')
+    .groupBy('users.id', 'departments.name', 'user_statuses.status_code')
     .first();
   if (!user || user.status !== 'active') {
     throw new AppError('User not found or inactive', 401);

@@ -36,23 +36,23 @@ const getDailySalesReport = async (date) => {
   return { date: targetDate, sales, summary };
 };
 const getSalesByPeriod = async (startDate, endDate, groupBy = 'day') => {
-  let dateFormat;
+  let pgFmt;
   switch (groupBy) {
     case 'day':
-      dateFormat = '%Y-%m-%d';
+      pgFmt = 'YYYY-MM-DD';
       break;
     case 'week':
-      dateFormat = '%Y-%u';
+      pgFmt = 'IYYY-IW';
       break;
     case 'month':
-      dateFormat = '%Y-%m';
+      pgFmt = 'YYYY-MM';
       break;
     default:
-      dateFormat = '%Y-%m-%d';
+      pgFmt = 'YYYY-MM-DD';
   }
   const sales = await db('pos_sales')
     .select(
-      db.raw(`to_char(sale_date, '${dateFormat}') as period`),
+      db.raw('to_char(sale_date::date, ?) as period', [pgFmt]),
       db.raw('COUNT(*) as order_count'),
       db.raw('SUM(total_amount) as total_revenue'),
       db.raw('SUM(tax_amount) as total_tax'),
@@ -61,7 +61,7 @@ const getSalesByPeriod = async (startDate, endDate, groupBy = 'day') => {
     )
     .whereBetween('sale_date', [startDate, endDate])
     .where('status_id', 1)
-    .groupByRaw(`DATE_FORMAT(sale_date, '${dateFormat}')`)
+    .groupByRaw('to_char(sale_date::date, ?)', [pgFmt])
     .orderBy('period', 'asc');
   const totals = {
     totalRevenue: sales.reduce((sum, s) => sum + parseFloat(s.total_revenue), 0),
@@ -208,27 +208,27 @@ const getPrintingOrdersReport = async (startDate, endDate, status, customerTypeI
   };
 };
 const getPrintingRevenueReport = async (startDate, endDate, groupBy = 'month') => {
-  let dateFormat;
+  let pgFmt;
   switch (groupBy) {
     case 'day':
-      dateFormat = '%Y-%m-%d';
+      pgFmt = 'YYYY-MM-DD';
       break;
     case 'week':
-      dateFormat = '%Y-%u';
+      pgFmt = 'IYYY-IW';
       break;
     default:
-      dateFormat = '%Y-%m';
+      pgFmt = 'YYYY-MM';
   }
   const revenue = await db('printing_orders')
     .select(
-      db.raw(`to_char(created_at, '${dateFormat}') as period`),
+      db.raw('to_char(created_at::date, ?) as period', [pgFmt]),
       db.raw('SUM(total_price) as revenue'),
       db.raw('COUNT(*) as order_count'),
       db.raw('AVG(total_price) as avg_order_value')
     )
     .whereBetween('created_at', [startDate, endDate])
     .whereIn('status_id', db('order_statuses').select('id').where('status_code', 'delivered'))
-    .groupByRaw(`DATE_FORMAT(created_at, '${dateFormat}')`)
+    .groupByRaw('to_char(created_at::date, ?)', [pgFmt])
     .orderBy('period', 'asc');
   const totals = {
     totalRevenue: revenue.reduce((sum, r) => sum + parseFloat(r.revenue), 0),

@@ -325,7 +325,7 @@ const getActivityStatistics = async (days = 30) => {
       db.raw('COUNT(*) as count')
     )
     .where('created_at', '>=', db.raw(`(LOCALTIMESTAMP) - INTERVAL '${days} days'`))
-    .groupByRaw('HOUR(created_at)')
+    .groupByRaw('EXTRACT(HOUR FROM created_at)')
     .orderBy('hour', 'asc');
   return {
     period: `${days} days`,

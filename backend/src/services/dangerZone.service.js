@@ -397,13 +397,13 @@ function groupByModule(tables) {
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 async function listTables(conn) {
-  const dbName = process.env.DB_NAME || 'sutana_ems_dev';
   const rows = await conn.raw(
-    `SELECT table_name, CASE WHEN table_schema = current_schema() THEN (SELECT reltuples::bigint FROM pg_class WHERE relname = table_name) ELSE NULL END FROM information_schema.tables
-     WHERE table_schema = ? AND table_type = 'BASE TABLE' ORDER BY table_name`,
-    [dbName]
+    `SELECT t.table_name, COALESCE(c.reltuples::bigint, 0) AS approx_rows
+     FROM information_schema.tables t
+     LEFT JOIN pg_class c ON c.relname = t.table_name AND c.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = current_schema())
+     WHERE t.table_schema = current_schema() AND t.table_type = 'BASE TABLE' ORDER BY t.table_name`
   );
-  return rows.rows.map(r => ({ name: r.table_name, approxRows: Number(r.table_rows) || 0 }));
+  return rows.rows.map(r => ({ name: r.table_name, approxRows: Number(r.approx_rows) || 0 }));
 }
 
 function classify(tables) {
@@ -561,11 +561,9 @@ async function clearTableData(tableName) {
   }
 
   // Verify the table actually exists in the DB before attempting delete
-  const dbName = process.env.DB_NAME || 'sutana_ems_dev';
-  // node-postgres returns { rows }; mysql2 returned [rows, fields].
   const { rows: tableCheck } = await db.raw(
-    `SELECT COUNT(*)::int as cnt FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = 'BASE TABLE'`,
-    [dbName, name]
+    `SELECT COUNT(*)::int as cnt FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ? AND table_type = 'BASE TABLE'`,
+    [name]
   );
   if (!tableCheck[0] || tableCheck[0].cnt === 0) {
     const err = new Error(`Table "${name}" does not exist in the database`);

@@ -146,12 +146,12 @@ const getRevenueBreakdown = async (period = 'month') => {
 const getRevenueForecast = async (months = 6) => {
   const last12Months = await db('pos_sales')
     .select(
-      db.raw('to_char(sale_date, \'YYYY-MM\') as month'),
+      db.raw("to_char(sale_date::date, 'YYYY-MM') as month"),
       db.raw('SUM(total_amount) as revenue')
     )
     .where('sale_date', '>=', db.raw('(LOCALTIMESTAMP) - INTERVAL \'12 months\''))
     .where('status_id', 1)
-    .groupByRaw('DATE_FORMAT(sale_date, "%Y-%m")')
+    .groupByRaw("to_char(sale_date::date, 'YYYY-MM')")
     .orderBy('month', 'asc');
   const revenues = last12Months.map(m => parseFloat(m.revenue));
   let trend = 0;
@@ -294,37 +294,37 @@ const getProfitMetricsForDateRange = async (startDate, endDate) => {
 const getCashFlowData = async (period = 'weekly', days = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
-  let dateFormat;
+  let pgFmt;
   switch (period) {
     case 'daily':
-      dateFormat = '%Y-%m-%d';
+      pgFmt = 'YYYY-MM-DD';
       break;
     case 'weekly':
-      dateFormat = '%Y-%u';
+      pgFmt = 'IYYY-IW';
       break;
     case 'monthly':
-      dateFormat = '%Y-%m';
+      pgFmt = 'YYYY-MM';
       break;
     default:
-      dateFormat = '%Y-%m-%d';
+      pgFmt = 'YYYY-MM-DD';
   }
   const inflow = await db('pos_sales')
     .select(
-      db.raw(`to_char(sale_date, '${dateFormat}') as period`),
+      db.raw('to_char(sale_date::date, ?) as period', [pgFmt]),
       db.raw('SUM(total_amount) as amount')
     )
     .where('sale_date', '>=', startDate)
     .where('status_id', 1)
-    .groupByRaw(`DATE_FORMAT(sale_date, '${dateFormat}')`)
+    .groupByRaw('to_char(sale_date::date, ?)', [pgFmt])
     .orderBy('period', 'asc');
   const outflow = await db('expenses')
     .select(
-      db.raw(`to_char(date, '${dateFormat}') as period`),
+      db.raw('to_char(date::date, ?) as period', [pgFmt]),
       db.raw('SUM(amount) as amount')
     )
     .where('date', '>=', startDate)
     .whereNotNull('approved_at')
-    .groupByRaw(`DATE_FORMAT(date, '${dateFormat}')`)
+    .groupByRaw('to_char(date::date, ?)', [pgFmt])
     .orderBy('period', 'asc');
   const net = inflow.map((i, idx) => ({
     period: i.period,
@@ -805,22 +805,22 @@ const getFutureMonthName = (monthsFromNow) => {
   return date.toLocaleString('default', { month: 'short', year: 'numeric' });
 };
 const getRevenueHistorical = async (startDate, endDate, period) => {
-  let groupFormat;
+  let pgGroupFmt;
   switch (period) {
     case 'week':
-      groupFormat = '%Y-%m-%d';
+      pgGroupFmt = 'YYYY-MM-DD';
       break;
     default:
-      groupFormat = '%Y-%m-%d';
+      pgGroupFmt = 'YYYY-MM-DD';
   }
   const historical = await db('pos_sales')
     .select(
-      db.raw(`to_char(sale_date, '${groupFormat}') as date`),
+      db.raw('to_char(sale_date::date, ?) as date', [pgGroupFmt]),
       db.raw('SUM(total_amount) as revenue')
     )
     .whereBetween('sale_date', [startDate, endDate])
     .where('status_id', 1)
-    .groupByRaw(`DATE_FORMAT(sale_date, '${groupFormat}')`)
+    .groupByRaw('to_char(sale_date::date, ?)', [pgFmt])
     .orderBy('date', 'asc');
   return historical.map(h => ({
     date: h.date,
@@ -880,12 +880,12 @@ const generateExecutiveReport = async (startDate, endDate) => {
     .limit(5);
   const monthlyTrend = await db('pos_sales')
     .select(
-      db.raw('to_char(sale_date, \'YYYY-MM\') as month'),
+      db.raw("to_char(sale_date::date, 'YYYY-MM') as month"),
       db.raw('SUM(total_amount) as revenue')
     )
     .whereBetween('sale_date', [startDate, endDate])
     .where('status_id', 1)
-    .groupByRaw('DATE_FORMAT(sale_date, "%Y-%m")')
+    .groupByRaw("to_char(sale_date::date, 'YYYY-MM')")
     .orderBy('month', 'asc');
   return {
     period: {

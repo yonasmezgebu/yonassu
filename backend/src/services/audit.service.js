@@ -224,7 +224,7 @@ const getSystemAuditSummary = async (days = 7) => {
       db.raw('EXTRACT(HOUR FROM created_at) as hour'),
       db.raw('COUNT(*) as count')
     )
-    .groupByRaw('HOUR(created_at)')
+    .groupByRaw('EXTRACT(HOUR FROM created_at)')
     .orderBy('hour', 'asc');
   return {
     period: `${days} days`,
