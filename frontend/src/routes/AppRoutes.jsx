@@ -149,12 +149,12 @@ const AppRoutes = () => {
         } />
         {}
         <Route path="/pharmacy-store/*" element={
-          <RoleBasedRoute role={['Pharmacy Store Keeper', 'CEO']}>
+          <RoleBasedRoute role={['Pharmacy Store Keeper', 'Pharmacy Store', 'CEO']}>
             <PharmacyStoreDashboard />
           </RoleBasedRoute>
         } />
         <Route path="/general-store/*" element={
-          <RoleBasedRoute role={['General Store Keeper', 'CEO']}>
+          <RoleBasedRoute role={['General Store Keeper', 'General Store', 'CEO']}>
             <GeneralStoreDashboard />
           </RoleBasedRoute>
         } />
@@ -182,13 +182,13 @@ const AppRoutes = () => {
         } />
         {}
         <Route path="/car-renting/*" element={
-          <RoleBasedRoute role="Car Renting Manager">
+          <RoleBasedRoute role={['Car Renting Manager', 'Rental Manager', 'Admin', 'CEO']}>
             <CarRentingDashboard />
           </RoleBasedRoute>
         } />
         {}
         <Route path="/hr/*" element={
-          <RoleBasedRoute role={['HR Manager', 'Admin', 'CEO']}>
+          <RoleBasedRoute role={['HR Manager', 'HR', 'Admin', 'CEO']}>
             <HRDashboard />
           </RoleBasedRoute>
         } />
