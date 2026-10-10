@@ -23,19 +23,39 @@ const BINDING_TYPES = [
   { code: 'Thermal', name: 'Thermal Binding', price: 300 },
 ];
 
+const resolveAccountMethod = (acc) => {
+  if (!acc) return '';
+  const type = String(acc.account_type || '').toLowerCase();
+  const provider = String(acc.bank_provider || '').trim();
+  const name = String(acc.account_name || '').toLowerCase();
+  if (name.includes('cash') || type === 'cash') return 'Cash';
+  if (type.includes('wallet') || type.includes('mobile') || type.includes('telebirr')) return 'Telebirr';
+  if (type.includes('bank') || type.includes('saving')) return provider ? `${provider} Bank` : 'Bank';
+  return provider ? `${provider} Bank` : (acc.account_name || 'Bank');
+};
+
 const PrintingCreateOrder = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     customerName: '', customerPhone: '', productType: 'Book',
     paperType: 'A4', pagesPerCopy: 1, quantity: 1,
     colorPrinting: false, bindingType: 'None', dueDate: '', specialInstructions: '',
-    paymentMethod: 'Telebirr', paymentReference: ''
+    paymentMethod: 'Telebirr', paymentReference: '',
+    paymentAccountId: '', paymentAccountName: '', paymentAccountNumber: '', paymentProvider: '', paymentAccountType: ''
   });
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [financeAccounts, setFinanceAccounts] = useState([]);
   const [vatCtx, setVatCtx] = useState(null);
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
+
+  useEffect(() => {
+    axios.get('/finance-bank').then(res => {
+      const list = Array.isArray(res) ? res : (res && Array.isArray(res.data) ? res.data : []);
+      setFinanceAccounts(list);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const basePrice = PAPER_TYPES.find(p => p.code === form.paperType)?.price || 0.50;
@@ -49,6 +69,23 @@ const PrintingCreateOrder = () => {
   }, [form.paperType, form.pagesPerCopy, form.quantity, form.colorPrinting, form.bindingType, vatCtx]);
 
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const handleAccountSelect = (id) => {
+    if (id === '__cash__') {
+      setForm(f => ({ ...f, paymentAccountId: id, paymentMethod: 'Cash', paymentAccountName: '', paymentAccountNumber: '', paymentProvider: '', paymentAccountType: '' }));
+      return;
+    }
+    const acc = financeAccounts.find(a => String(a.id) === String(id));
+    setForm(f => ({
+      ...f,
+      paymentAccountId: id,
+      paymentMethod: acc ? resolveAccountMethod(acc) : f.paymentMethod,
+      paymentAccountName: acc?.account_name || '',
+      paymentAccountNumber: acc?.account_number || '',
+      paymentProvider: acc?.bank_provider || '',
+      paymentAccountType: acc?.account_type || ''
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,6 +108,10 @@ const PrintingCreateOrder = () => {
         specialInstructions: form.specialInstructions || undefined,
         paymentMethod: form.paymentMethod,
         paymentReference: form.paymentReference,
+        paymentAccountName: form.paymentAccountName,
+        paymentAccountNumber: form.paymentAccountNumber,
+        paymentProvider: form.paymentProvider,
+        paymentAccountType: form.paymentAccountType,
         customer: { name: form.customerName, phone: form.customerPhone, customerTypeId: 1 }
       });
       if (res.status === 'success') {
@@ -203,22 +244,53 @@ const PrintingCreateOrder = () => {
           <h3 style={{ margin: '0 0 1rem', fontSize: 16, color: '#1B5E20', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 24 }}>💳</span> Payment Verification
           </h3>
-          <p style={{ margin: '0 0 1.5rem', fontSize: 14, color: '#1B5E20', lineHeight: 1.6, fontWeight: 500 }}>
+          <p style={{ margin: '0 0 1rem', fontSize: 14, color: '#1B5E20', lineHeight: 1.6, fontWeight: 500 }}>
             <strong style={{ color: '#dc2626' }}>Full payment is required before we begin printing.</strong><br/>
-            Please pay the total amount of <strong>{pricing ? pricing.totalPrice.toFixed(2) : '0.00'} ETB</strong> to:<br/><br/>
-            🟢 <strong>Telebirr:</strong> 0901407032 (SUTANA WALLET)<br/>
-            🏦 <strong>CBE Bank:</strong> 1000675227776 (SUTANA)<br/><br/>
-            Then, enter your transaction reference number below. Your print job starts once Finance confirms the payment.
+            Please pay the total amount of <strong>{pricing ? pricing.totalPrice.toFixed(2) : '0.00'} ETB</strong> to the account the customer paid into, then enter the transaction reference number below. Your print job starts once Finance confirms the payment.
           </p>
-          
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', fontSize: 13, color: '#1B5E20', marginBottom: 6, fontWeight: 700 }}>Payment Account *</label>
+            {financeAccounts.length === 0 ? (
+              <div style={{ padding: '0.75rem', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: 10, fontSize: 14, color: '#92400e' }}>⏳ Loading payment accounts…</div>
+            ) : (
+              <select required value={form.paymentAccountId} onChange={e => handleAccountSelect(e.target.value)}
+                style={{ width: '100%', padding: '12px 16px', border: '2px solid #8BC34A', borderRadius: 10, fontSize: 14, background: 'white', fontWeight: 600, color: '#1B5E20' }}>
+                <option value="">— Select Payment Account —</option>
+                {['Bank', 'Mobile Wallet'].map(type => {
+                  const group = financeAccounts.filter(a => a.account_type === type && a.status === 'Active');
+                  if (group.length === 0) return null;
+                  return (
+                    <optgroup key={type} label={type}>
+                      {group.map(acc => (
+                        <option key={acc.id} value={acc.id}>
+                          {resolveAccountMethod(acc)}{acc.account_number ? ` — ${acc.account_number}` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
+                <option value="__cash__">💵 Cash</option>
+              </select>
+            )}
+            {(() => {
+              const acc = financeAccounts.find(a => String(a.id) === String(form.paymentAccountId));
+              if (!acc) return null;
+              return (
+                <div style={{ marginTop: 8, fontSize: 13, color: '#1B5E20' }}>
+                  <div><strong>Method:</strong> {resolveAccountMethod(acc)}</div>
+                  {acc.account_number && <div><strong>Account Number:</strong> {acc.account_number}</div>}
+                  {acc.bank_provider && <div><strong>Bank / Provider:</strong> {acc.bank_provider}</div>}
+                </div>
+              );
+            })()}
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: '#1B5E20', marginBottom: 6, fontWeight: 700 }}>Payment Method *</label>
-              <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
-                style={{ width: '100%', padding: '12px 16px', border: '2px solid #8BC34A', borderRadius: 10, fontSize: 14, background: 'white', fontWeight: 600, color: '#1B5E20' }}>
-                <option value="Telebirr">Telebirr</option>
-                <option value="CBE Bank">CBE Bank</option>
-              </select>
+              <input readOnly value={form.paymentMethod || ''} placeholder="Choose an account above"
+                style={{ width: '100%', padding: '12px 16px', border: '2px solid #8BC34A', borderRadius: 10, fontSize: 14, background: '#f1f8e9', fontWeight: 600, color: '#1B5E20' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: '#1B5E20', marginBottom: 6, fontWeight: 700 }}>Transaction Reference / Code *</label>

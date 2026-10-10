@@ -3,6 +3,7 @@ import { ShieldCheck, Banknote, CreditCard, Box, Tag, AlertTriangle, RefreshCw, 
 import authService from '../../services/authService';
 import apiClient from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import ImageViewer from '../../components/ui/ImageViewer';
 
 // ─── CSS ─────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -66,6 +67,7 @@ export default function PrintingFinanceReview() {
   // Inline edit states
   const [editVals, setEditVals] = useState({});
   const [savingId, setSavingId] = useState(null);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -252,7 +254,7 @@ export default function PrintingFinanceReview() {
                     {isFinance && (
                       <td className="pr-td">
                         {o.payment_proof_path ? (
-                          <a href={o.payment_proof_path} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontWeight: 600, fontSize: 12 }}>View Proof</a>
+                          <button type="button" onClick={() => setLightboxSrc(o.payment_proof_path)} style={{ color: '#2563eb', fontWeight: 600, fontSize: 12, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}>View Proof</button>
                         ) : <span style={{ color: '#94a3b8' }}>None</span>}
                       </td>
                     )}
@@ -355,6 +357,9 @@ export default function PrintingFinanceReview() {
         </div>
       )}
 
+      {lightboxSrc && (
+        <ImageViewer file={{ url: lightboxSrc, originalName: 'Payment Proof' }} onClose={() => setLightboxSrc(null)} />
+      )}
     </div>
   );
 }
