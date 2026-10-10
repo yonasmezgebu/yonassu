@@ -329,6 +329,10 @@ const FarmingServicePage = () => {
       const selectedAcc = financeAccounts.find(a => String(a.id) === String(orderForm.paymentMethod));
       fd.append('paymentMethod', selectedAcc ? resolvePaymentMethodName(selectedAcc) : orderForm.paymentMethod);
       fd.append('paymentReference', orderForm.paymentReference);
+      fd.append('paymentAccountName', selectedAcc?.account_name || '');
+      fd.append('paymentAccountNumber', selectedAcc?.account_number || '');
+      fd.append('paymentProvider', selectedAcc?.bank_provider || '');
+      fd.append('paymentAccountType', selectedAcc?.account_type || '');
       if (orderFile) fd.append('paymentScreenshot', orderFile);
 
       const res = await axios.post('/agrirent-orders', fd, { headers: { 'Content-Type': 'multipart/form-data' } });

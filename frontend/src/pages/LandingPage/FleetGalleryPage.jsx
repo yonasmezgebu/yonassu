@@ -247,9 +247,39 @@ const FleetGalleryPage = () => {
         </div>
       )}
       
-      <div className={styles.heroSection} style={{ background: `linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.8)), url(${carHero}) center/cover no-repeat` }}>
-        <div className={styles.heroContent}>
-          <h1>Premium Cars for Every Journey</h1>
+      <div className={styles.heroSection}>
+        {/* ── Left Panel: Text ── */}
+        <div className={styles.heroLeft}>
+          <div className={styles.heroContent}>
+            <div className={styles.heroBadge}>
+              <Car size={13} /> Premium Car Rental
+            </div>
+            <h1>Premium Cars for<br />Every Journey</h1>
+            <p>Reliable, modern vehicles at transparent rates. Browse our full fleet and reserve your car in minutes.</p>
+            <div className={styles.heroStats}>
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatNum}>{cars.length > 0 ? cars.length : '—'}</span>
+                <span className={styles.heroStatLabel}>Vehicles</span>
+              </div>
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatNum}>24/7</span>
+                <span className={styles.heroStatLabel}>Support</span>
+              </div>
+              <div className={styles.heroStat}>
+                <span className={styles.heroStatNum}>100%</span>
+                <span className={styles.heroStatLabel}>Insured</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Thin Center Divider ── */}
+        <div className={styles.heroDivider} />
+
+        {/* ── Right Panel: Photo ── */}
+        <div className={styles.heroRight}>
+          <img src={carHero} alt="Car rental fleet" />
+          <div className={styles.heroOverlay} />
         </div>
       </div>
 

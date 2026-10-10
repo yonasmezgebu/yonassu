@@ -5,7 +5,7 @@ import {
   Search, Hash, CheckCircle, Circle, AlertTriangle,
   HelpCircle, Package, Printer, Sprout, Car, Pill,
   ShoppingCart, X, MapPin, Clock, Calendar, CreditCard,
-  Shield, Zap, FileText, Download
+  Shield, Zap, FileText, Download, Tractor
 } from 'lucide-react';
 import { PublicNav } from './PublicNavFooter';
 import FileViewer from '../../components/ui/FileViewer';
@@ -19,6 +19,7 @@ const MODULE_ICONS = {
   PHARMACY:   <Pill size={18} />,
   FARMING:    <Sprout size={18} />,
   RETAIL:     <ShoppingCart size={18} />,
+  AGRI_RENT:  <Tractor size={18} />,
 };
 
 const FAQS = [
@@ -153,12 +154,16 @@ export default function TrackOrderPage() {
         setShowResult(true);
       } else setError(res.message || 'Order not found.');
     } catch (err) {
-      if (err.response?.status === 429)
+      const status = err.response?.status ?? err.status;
+      const serverMsg = err.response?.data?.message ?? err.data?.message;
+      if (status === 429)
         setError('Too many requests. Please wait a moment before trying again.');
-      else if (err.response?.status === 404)
-        setError(err.response?.data?.message || 'We could not find an order matching the provided details. Please double-check both fields.');
+      else if (status === 404)
+        setError(serverMsg || 'We could not find an order matching the provided details. Please double-check both fields.');
+      else if (status === 400)
+        setError(serverMsg || 'Please check the invoice number and phone number and try again.');
       else
-        setError('Tracking service is temporarily unavailable. Please try again shortly.');
+        setError(serverMsg || 'Tracking service is temporarily unavailable. Please try again shortly.');
     } finally { setLoading(false); }
   };
 
@@ -191,7 +196,7 @@ export default function TrackOrderPage() {
               <div className="track-info-grid">
                 <div className="track-info-card">
                   <h3><Zap size={16} /> 1. Enter Details</h3>
-                  <p>Input your exact invoice number (e.g. INV-2026...) and the phone number provided at checkout.</p>
+                  <p>Input your exact invoice number (e.g. AGR-…, INV-…, PRT-…, RET-…) and the phone number provided at checkout.</p>
                 </div>
                 <div className="track-info-card">
                   <h3><Search size={16} /> 2. View Status</h3>
@@ -219,7 +224,7 @@ export default function TrackOrderPage() {
                           type="text"
                           value={invoice}
                           onChange={e => setInvoice(e.target.value)}
-                          placeholder="e.g. INV-20260612-0001"
+                          placeholder="e.g. AGR-MV277UDZ-947G"
                           className="track-form-input"
                           onFocus={() => setFocused('invoice')}
                           onBlur={() => setFocused(null)}
