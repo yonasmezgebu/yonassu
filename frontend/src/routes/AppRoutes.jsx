@@ -154,7 +154,7 @@ const AppRoutes = () => {
           </RoleBasedRoute>
         } />
         <Route path="/general-store/*" element={
-          <RoleBasedRoute role={['General Store Keeper', 'General Store', 'CEO']}>
+          <RoleBasedRoute role={['General Store Keeper', 'General Store', 'Store Manager', 'CEO', 'Admin']}>
             <GeneralStoreDashboard />
           </RoleBasedRoute>
         } />
