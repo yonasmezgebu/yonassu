@@ -17,10 +17,12 @@ const errorHandler = (err, req, res, next) => {
   });
   // FIX #1: PostgreSQL specific error codes (Replacing MySQL codes)
   if (err.code === '23505') { // Unique constraint violation
-    err = new AppError('Duplicate entry. This record already exists.', 409);
+    const fieldInfo = err.detail ? ` (${err.detail.replace(/^Key /, '').replace(/[)=]+$/, '')})` : '';
+    err = new AppError(`This record already exists${fieldInfo}. Please use a different value or sign in instead.`, 409);
   }
   if (err.code === '23503') { // Foreign key constraint violation
-    err = new AppError('Invalid reference. The referenced record does not exist or is in use.', 400);
+    const constraintInfo = err.constraint ? ` [constraint: ${err.constraint}]` : '';
+    err = new AppError(`A required related record is missing${constraintInfo}. Please contact administrator or try again later.`, 400);
   }
   if (err.code === '22P02') { // Invalid text representation (e.g., passing string to integer/uuid column)
     err = new AppError('Invalid data format provided for a field.', 400);
