@@ -236,6 +236,8 @@ const getLogs = async (user, filters = {}) => {
   const isStore      = !isPharmacy && roleStr.includes('store');
   const isSales      = roleStr.includes('sales') || deptName.includes('sales') || deptName.includes('retail');
   const isPrinting   = roleStr.includes('printing') || deptName.includes('printing');
+  const isCarRental  = roleStr.includes('car rental') || roleStr.includes('car renting') ||
+                       roleStr.includes('rental manager') || deptName.includes('car rental') || deptName.includes('car renting');
 
   if (isSuperAdmin) {
     // Super Admin — full visibility, no WHERE clause
@@ -277,6 +279,13 @@ const getLogs = async (user, filters = {}) => {
         .whereIn('module', ['Pharmacy', 'Pharmacy Store', 'Pharmacy Sales'])
         .whereNotIn('user_name', AUTO_USERS);
     });
+  } else if (isCarRental) {
+    // Car / Agri rental manager — own rental activity only.
+    // Scoped to the Car Rental module so auth/system events (login/logout)
+    // and other departments never leak into the rental dashboard.
+    q = q.where('user_id', user.id)
+          .where('module', 'Car Rental')
+          .whereNotIn('user_name', AUTO_USERS);
   } else if (isManager && deptFullName) {
     // Dept manager sees only their department's logs
     q = q.where('department', deptFullName);
