@@ -9,7 +9,7 @@ import {
   Key, Sprout, Pill, CirclePlus, MessageCircle, ChevronRight, Clock, Book, AlertCircle,
   Sliders, RotateCcw, UserPlus, Upload, Droplet, CheckCircle2, AlertCircle as AlertCircle2, Info, X as XIcon, EyeOff,
   Folder, Image, Wrench, Inbox, UploadCloud, Eye, GitCommit, Cpu, Activity, Scissors, Archive, Star, RotateCcw as RepeatCcw,
-  PenTool, PieChart, DollarSign, FolderOpen, Award, Check, RefreshCw, Camera
+  PenTool, PieChart, DollarSign, FolderOpen, Award, Check, RefreshCw, Camera, Banknote
 } from 'lucide-react';
 import notificationService from '../../services/notificationService';
 import apiClient from '../../services/apiClient';
@@ -129,7 +129,7 @@ const NOTIF_ROUTE_ROLES = [
   ['/sales',            ['admin', 'ceo', 'sales manager']],
 ];
 
-const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, storeApprovalsPending = 0, setStoreApprovalsPending = () => {}, pharmacyPending, setPharmacyPending = () => {}, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, setPurchasePending = () => {}, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, setProcurementMessages = () => {}, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, setCeoFundRequestsPending = () => {}, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false, chatUnread = 0, setChatUnread, showToast = () => {} }) => {
+const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, storeApprovalsPending = 0, setStoreApprovalsPending = () => {}, pharmacyPending, setPharmacyPending = () => {}, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, setPurchasePending = () => {}, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, setProcurementMessages = () => {}, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, setCeoFundRequestsPending = () => {}, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false, chatUnread = 0, setChatUnread, showToast = () => {}, ceoEvPending = 0, setCeoEvPending = () => {} }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const ref = useRef(null);
@@ -365,6 +365,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     (ceoPending?.reduce((s, g) => s + (g.count || 0), 0) || 0) +
     (ceoFundRequestsPending || 0) +
     (storeApprovalsPending || 0) +
+    (ceoEvPending || 0) +
     (isPharmacyManagerRoute ? pharmacyPending : 0) +
     
     purchasePending +
@@ -506,6 +507,28 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                   <p style={{ margin: '0', fontSize: '12px', color: '#EA580C' }}>{storeApprovalsPending} item update{storeApprovalsPending > 1 ? 's' : ''} awaiting your approval</p>
                 </div>
                 <NotifDismissBtn onClick={() => setStoreApprovalsPending(0)} title="Dismiss" />
+              </div>
+            )}
+
+            {isCeoRoute && ceoEvPending > 0 && (
+              <div
+                onClick={() => { setOpen(false); setCeoEvPending(0); navigate('/ceo/finance-approvals'); }}
+                style={{
+                  padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                  cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                  backgroundColor: '#FEF2F2', transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FEE2E2'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#FECACA' }}>
+                  <Banknote size={16} color="#DC2626" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#991B1B' }}>Finance EV Approvals Pending</p>
+                  <p style={{ margin: '0', fontSize: '12px', color: '#DC2626' }}>{ceoEvPending} expense voucher{ceoEvPending > 1 ? 's' : ''} awaiting your approval</p>
+                </div>
+                <NotifDismissBtn onClick={() => setCeoEvPending(0)} title="Dismiss" />
               </div>
             )}
 
@@ -804,6 +827,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const [purchaseApprovedTenders, setPurchaseApprovedTenders] = useState([]);
   const [ceoFundRequestsPending, setCeoFundRequestsPending] = useState(0);
   const [agriRentPending, setAgriRentPending] = useState(0);
+  const [ceoEvPending, setCeoEvPending] = useState(0);
   const [pageNotifs, setPageNotifs] = useState([]); // unread notifs for current page
   const [pcvNotifications, setPcvNotifications] = useState([]); // EV approval notifications
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -2069,11 +2093,17 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         const updates = res?.data?.updates || [];
         setStoreApprovalsPending(Array.isArray(updates) ? updates.length : 0);
       }).catch(() => {});
+      // Fetch pending EV approvals for CEO
+      apiClient.get('/finance-cash/ev/pending').then(res => {
+        const data = res?.data?.data || res?.data || [];
+        setCeoEvPending(Array.isArray(data) ? data.filter(p => p.status === 'pending_ceo').length : 0);
+      }).catch(() => {});
     } else {
       setCeoPending([]);
       setCeoPendingSnapshot(0);
       setCeoFundRequestsPending(0);
       setStoreApprovalsPending(0);
+      setCeoEvPending(0);
     }
     
     if (isFinanceRoute) {
@@ -2773,6 +2803,8 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               setCeoFundRequestsPending={setCeoFundRequestsPending}
               agriRentPending={agriRentPending}
               onOpenProcurementInbox={() => navigate('/purchase/smart-tenders?tab=contact')}
+              ceoEvPending={ceoEvPending}
+              setCeoEvPending={setCeoEvPending}
               pcvNotifications={pcvNotifications}
               setPcvNotifications={setPcvNotifications}
               isFinanceRoute={location.pathname.startsWith('/finance')}

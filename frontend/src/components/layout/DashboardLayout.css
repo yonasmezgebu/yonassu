@@ -41,6 +41,11 @@
 .dashboard-wrapper.sidebar-closed .dash-topbar {
   left: 0;
 }
+@media (min-width: 1025px) {
+  .dashboard-wrapper.sidebar-closed .dash-topbar {
+    left: 64px;
+  }
+}
 
 .dash-topbar-left {
   display: flex;
@@ -99,6 +104,12 @@
 }
 .dash-sidebar.closed {
   transform: translateX(-100%);
+}
+@media (min-width: 1025px) {
+  .dash-sidebar.closed {
+    transform: translateX(0);
+    width: 64px;
+  }
 }
 
 /* ── Brand / Logo Row ── */
@@ -222,9 +233,10 @@
   width: 100%;
   text-align: left;
   border-left: 3px solid transparent;
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.4;
   position: relative;
+  overflow: hidden;
 }
 
 /* Collapsed state */
@@ -352,6 +364,35 @@
   background: rgba(0,0,0,0.12);
 }
 
+/* ── Hover Expansion (Desktop Only) ── */
+@media (min-width: 1025px) {
+  .dash-sidebar.closed:hover {
+    width: 240px;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+  }
+  .dash-sidebar.closed:hover .dash-nav-item {
+    padding: 9px 14px;
+    justify-content: flex-start;
+  }
+  .dash-sidebar.closed:hover .dash-nav-item > span:not(.nav-icon) {
+    display: inline;
+  }
+  .dash-sidebar.closed:hover .dash-nav-chevron {
+    display: block;
+  }
+  .dash-sidebar.closed:hover .dash-nav-section-label {
+    text-align: left;
+    padding: 14px 12px 6px;
+    font-size: 10px;
+  }
+  .dash-sidebar.closed:hover .dash-brand-text {
+    display: block;
+  }
+  .dash-sidebar.closed:hover .dash-nav-submenu {
+    display: flex;
+  }
+}
+
 /* ══════════════════════════════════════════════
    MAIN CONTENT AREA
    ══════════════════════════════════════════════ */
@@ -367,6 +408,11 @@
 }
 .dashboard-wrapper.sidebar-closed .dash-main {
   margin-left: 0;
+}
+@media (min-width: 1025px) {
+  .dashboard-wrapper.sidebar-closed .dash-main {
+    margin-left: 64px;
+  }
 }
 
 .dash-content {
