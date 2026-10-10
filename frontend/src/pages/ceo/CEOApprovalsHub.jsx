@@ -178,6 +178,7 @@ const CEOApprovalsHub = () => {
   const [storeCount, setStoreCount] = useState(null);
   const [dangerZoneCount, setDangerZoneCount] = useState(0);
   const [quotationCount, setQuotationCount] = useState(null);
+  const [evCount, setEvCount] = useState(null);
 
   useEffect(() => {
     apiClient.get('/ceo/store-updates/pending')
@@ -198,6 +199,16 @@ const CEOApprovalsHub = () => {
     apiClient.get('/purchase/quotations/pending-ceo')
       .then(res => setQuotationCount(Array.isArray(res?.data) ? res.data.length : 0))
       .catch(() => setQuotationCount(0));
+  }, []);
+
+  useEffect(() => {
+    apiClient.get('/finance-cash/ev/pending')
+      .then(res => {
+        const data = res?.data?.data || res?.data || [];
+        const pending = Array.isArray(data) ? data.filter(p => p.status === 'pending_ceo').length : 0;
+        setEvCount(pending);
+      })
+      .catch(() => setEvCount(0));
   }, []);
 
   const approvalLinks = [
@@ -226,7 +237,7 @@ const CEOApprovalsHub = () => {
       bg: 'var(--color-danger-bg)',
       color: 'var(--color-danger)',
       path: '/ceo/finance-approvals',
-      count: null
+      count: evCount
     },
     {
       title: 'Final Payment Approvals',

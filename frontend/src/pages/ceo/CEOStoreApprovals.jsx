@@ -4,6 +4,33 @@ import { Package, Check, X, Search, RefreshCw, ArrowRight, AlertTriangle, ArrowL
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import apiClient from '../../services/apiClient';
 
+/* ─── Fields compared between the current and proposed store state ─── */
+const FIELD_ROWS = [
+  { key: 'material_name',     label: 'Material Name' },
+  { key: 'category',          label: 'Category' },
+  { key: 'department',        label: 'Department' },
+  { key: 'unit',              label: 'Unit' },
+  { key: 'quantity_in_store', label: 'Quantity',          numeric: true },
+  { key: 'unit_value',        label: 'Unit Value (ETB)',  numeric: true },
+  { key: 'total_value',       label: 'Total Value (ETB)', numeric: true },
+  { key: 'reorder_level',     label: 'Reorder Level',     numeric: true },
+];
+
+const parseState = (s) => (typeof s === 'string' ? JSON.parse(s) : (s || {}));
+
+const isEmpty = (v) => v === null || v === undefined || v === '';
+
+const formatField = (field, v) => {
+  if (isEmpty(v)) return '—';
+  if (field.numeric) return Number(v).toLocaleString();
+  return String(v);
+};
+
+const isFieldChanged = (field, before, after) => {
+  if (field.numeric) return Number(before[field.key] || 0) !== Number(after[field.key] || 0);
+  return String(before[field.key] ?? '') !== String(after[field.key] ?? '');
+};
+
 /* ─── Enterprise Global Styles ─── */
 const GlobalStyles = () => (
   <style>{`
@@ -108,6 +135,49 @@ const GlobalStyles = () => (
     .csa-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
     .csa-badge-warning { background: #FEF3C7; color: #D97706; }
 
+    /* Requested-change summary */
+    .csa-changes { padding: 16px 20px; background: #FFF7ED; border-bottom: 1px solid #FED7AA; }
+    .csa-changes-title {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+      color: #9A3412; margin-bottom: 10px;
+    }
+    .csa-change-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 7px 0; border-top: 1px dashed #FED7AA;
+    }
+    .csa-change-row:first-of-type { border-top: none; }
+    .csa-change-field { min-width: 140px; font-size: 12px; font-weight: 700; color: #7C2D12; }
+    .csa-change-before { font-size: 13px; color: #9CA3AF; text-decoration: line-through; }
+    .csa-change-arrow { color: #EA580C; flex-shrink: 0; }
+    .csa-change-after { font-size: 13px; font-weight: 700; color: #B45309; }
+    .csa-nochange { font-size: 13px; color: #92400E; }
+
+    /* Full detail table */
+    .csa-detail-grid { display: grid; gap: 1px; background: #F3F4F6; border-top: 1px solid #F3F4F6; }
+    .csa-detail-row {
+      display: grid; grid-template-columns: minmax(150px, 1.2fr) 2fr;
+      gap: 12px; padding: 11px 20px; background: #fff; align-items: center;
+    }
+    .csa-detail-row.changed { background: #FFFBEB; }
+    .csa-detail-label { font-size: 12px; font-weight: 600; color: #6B7280; display: flex; align-items: center; gap: 8px; }
+    .csa-detail-flag {
+      font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+      color: #B45309; background: #FEF3C7; border: 1px solid #FDE68A;
+      padding: 1px 6px; border-radius: 10px;
+    }
+    .csa-detail-vals { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+    .csa-detail-before { color: #6B7280; }
+    .csa-detail-row.changed .csa-detail-before { color: #9CA3AF; text-decoration: line-through; }
+    .csa-detail-after { font-weight: 700; color: #111827; }
+    .csa-detail-row.changed .csa-detail-after { color: #B45309; }
+    .csa-detail-sep { color: #D1D5DB; }
+
+    @media (max-width: 640px) {
+      .csa-detail-row { grid-template-columns: 1fr; gap: 4px; }
+      .csa-change-field { min-width: 110px; }
+    }
+
     .csa-modal-overlay {
       position: fixed; inset: 0; background: rgba(17,24,39,.5);
       display: flex; align-items: center; justify-content: center; z-index: 1000;
@@ -211,9 +281,14 @@ const CEOStoreApprovals = () => {
 
   const filtered = updates.filter(u => {
     const term = search.toLowerCase();
-    const after = typeof u.after_state === 'string' ? JSON.parse(u.after_state) : (u.after_state || {});
-    const matName = (after.material_name || '').toLowerCase();
-    return matName.includes(term) || (u.material_id || '').toLowerCase().includes(term);
+    const before = parseState(u.before_state);
+    const after = parseState(u.after_state);
+    const haystack = [
+      after.material_name, before.material_name,
+      after.category, after.department, after.unit,
+      String(u.material_id ?? ''),
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(term);
   });
 
   const getUpdateLabel = (type) => {
@@ -299,22 +374,33 @@ const CEOStoreApprovals = () => {
           </div>
 
           {filtered.map(u => {
-            const before = typeof u.before_state === 'string' ? JSON.parse(u.before_state) : (u.before_state || {});
-            const after  = typeof u.after_state  === 'string' ? JSON.parse(u.after_state)  : (u.after_state  || {});
-            const qtyDelta = (after.quantity_in_store || 0) - (before.quantity_in_store || 0);
-            const valDelta = (after.unit_value || 0) - (before.unit_value || 0);
+            const before = parseState(u.before_state);
+            const after  = parseState(u.after_state);
+            const renamed = String(before.material_name ?? '') !== String(after.material_name ?? '');
+            const changedFields = FIELD_ROWS.filter(f => isFieldChanged(f, before, after));
 
             return (
               <div key={u.id} className="csa-update-card">
                 {/* card header */}
                 <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                       <span className="csa-badge csa-badge-warning">{getUpdateLabel(u.update_type)}</span>
                       <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>{new Date(u.created_at).toLocaleString()}</span>
+                      {u.requested_by != null && (
+                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>• Requested by #{u.requested_by}</span>
+                      )}
                     </div>
                     <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111827' }}>
-                      {after.material_name || '—'}
+                      {renamed ? (
+                        <>
+                          <span style={{ color: '#9CA3AF', fontWeight: 500, textDecoration: 'line-through' }}>{before.material_name || '—'}</span>
+                          <ArrowRight size={14} style={{ verticalAlign: 'middle', margin: '0 6px', color: '#EA580C' }} />
+                          <span>{after.material_name || '—'}</span>
+                        </>
+                      ) : (
+                        <>{after.material_name || before.material_name || '—'}</>
+                      )}
                       <span style={{ color: '#9CA3AF', fontWeight: 400, fontSize: 13, marginLeft: 6 }}>({u.material_id})</span>
                     </h3>
                   </div>
@@ -328,53 +414,46 @@ const CEOStoreApprovals = () => {
                   </div>
                 </div>
 
-                {/* before / after comparison */}
-                <div className="csa-compare">
-                  <div className="csa-compare-side">
-                    <div className="csa-compare-label" style={{ color: '#6B7280' }}>Current State</div>
-                    <div className="csa-compare-grid">
-                      <div className="csa-stat-box">
-                        <div className="csa-stat-label">Quantity</div>
-                        <div className="csa-stat-value">
-                          {Number(before.quantity_in_store || 0).toLocaleString()}
-                          <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginLeft: 4 }}>{before.unit}</span>
+                {/* Requested changes — only the fields that actually differ */}
+                <div className="csa-changes">
+                  <div className="csa-changes-title">
+                    <AlertTriangle size={13} />
+                    {changedFields.length > 0
+                      ? `${changedFields.length} requested change${changedFields.length === 1 ? '' : 's'}`
+                      : 'Requested changes'}
+                  </div>
+                  {changedFields.length === 0 ? (
+                    <div className="csa-nochange">No field values differ in this request.</div>
+                  ) : (
+                    changedFields.map(f => (
+                      <div key={f.key} className="csa-change-row">
+                        <span className="csa-change-field">{f.label}</span>
+                        <span className="csa-change-before">{formatField(f, before[f.key])}</span>
+                        <ArrowRight size={13} className="csa-change-arrow" />
+                        <span className="csa-change-after">{formatField(f, after[f.key])}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Full detail — current vs proposed for every field */}
+                <div className="csa-detail-grid">
+                  {FIELD_ROWS.map(f => {
+                    const changed = isFieldChanged(f, before, after);
+                    return (
+                      <div key={f.key} className={`csa-detail-row${changed ? ' changed' : ''}`}>
+                        <div className="csa-detail-label">
+                          {f.label}
+                          {changed && <span className="csa-detail-flag">changed</span>}
+                        </div>
+                        <div className="csa-detail-vals">
+                          <span className="csa-detail-before">{formatField(f, before[f.key])}</span>
+                          <ArrowRight size={12} className="csa-detail-sep" />
+                          <span className="csa-detail-after">{formatField(f, after[f.key])}</span>
                         </div>
                       </div>
-                      <div className="csa-stat-box">
-                        <div className="csa-stat-label">Unit Value</div>
-                        <div className="csa-stat-value">ETB {Number(before.unit_value || 0).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="csa-arrow-wrap">
-                    <div style={{ padding: 8, background: '#E5E7EB', borderRadius: '50%' }}>
-                      <ArrowRight size={16} color="#6B7280" />
-                    </div>
-                  </div>
-
-                  <div className="csa-compare-side">
-                    <div className="csa-compare-label" style={{ color: '#059669' }}>Proposed Update</div>
-                    <div className="csa-compare-grid">
-                      <div className="csa-stat-box after">
-                        <div className="csa-stat-label" style={{ color: '#059669' }}>New Quantity</div>
-                        <div className="csa-stat-value after">
-                          {Number(after.quantity_in_store || 0).toLocaleString()}
-                          <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 400, marginLeft: 4 }}>{after.unit}</span>
-                        </div>
-                        {qtyDelta !== 0 && (
-                          <div className="csa-stat-delta">{qtyDelta > 0 ? '+' : ''}{qtyDelta} change</div>
-                        )}
-                      </div>
-                      <div className="csa-stat-box after">
-                        <div className="csa-stat-label" style={{ color: '#059669' }}>New Unit Value</div>
-                        <div className="csa-stat-value after">ETB {Number(after.unit_value || 0).toLocaleString()}</div>
-                        {valDelta !== 0 && (
-                          <div className="csa-stat-delta">{valDelta > 0 ? '+' : ''}{valDelta} change</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
             );

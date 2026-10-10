@@ -150,6 +150,7 @@ const CEOAuditLog = () => {
             <option value="Pharmacy Sales">Pharmacy Sales</option>
             <option value="Store">Store</option>
             <option value="Sales">Sales</option>
+            <option value="Car Rental">Rental Manager</option>
             <option value="Inventory">Inventory</option>
           </select>
         </div>
