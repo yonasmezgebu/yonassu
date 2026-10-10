@@ -26,20 +26,46 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.fullName.trim()) {
+      setError('Full name is required.');
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('Email address is required.');
+      return;
+    }
+    if (!/^09[0-9]{8}$/.test(formData.phone)) {
+      setError('Phone number must be in Ethiopian format: 09XXXXXXXX (10 digits, starting with 09).');
+      return;
+    }
+    if (!formData.password) {
+      setError('Password is required. Please create a password for your account.');
+      return;
+    }
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       const response = await authService.register(formData);
-      setSuccessMsg(response?.message || 'Registration successful! Redirecting to login...');
+      setSuccessMsg(response?.message || 'Your customer account has been created successfully. Redirecting to sign in...');
       setTimeout(() => {
         const redirect = searchParams.get('redirect');
         navigate(redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login');
       }, 3000);
     } catch (err) {
+      const data = err.response?.data;
+      // Prefer field-level validation errors so the user knows exactly what to fix
+      const fieldErrors = Array.isArray(data?.errors)
+        ? data.errors.map((fe) => fe.message).join(' ')
+        : '';
       setError(
-        err.response?.data?.message ||
+        fieldErrors ||
+        data?.message ||
         err.message ||
-        'Registration failed. Please check your details.'
+        'Registration failed. Please check your details and try again.'
       );
     } finally {
       setLoading(false);
