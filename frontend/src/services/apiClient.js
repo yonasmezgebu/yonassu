@@ -107,7 +107,11 @@ apiClient.interceptors.response.use(
       return Promise.reject(new Error('Session expired. Please login again.'));
     }
     const message = error.response.data?.message || error.response.data?.error || 'Something went wrong';
-    return Promise.reject(new Error(message));
+    const normalized = new Error(message);
+    normalized.status = error.response.status;
+    normalized.data = error.response.data;
+    normalized.response = error.response;
+    return Promise.reject(normalized);
   }
 );
 export default apiClient;
