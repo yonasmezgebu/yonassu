@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import {
+  DollarSign, BarChart2, Package, ClipboardList, AlertTriangle,
+  CheckCircle, Shuffle, Printer, Factory, Wrench, RefreshCw,
+  Scroll, TrendingDown, ChevronRight, Bell, Plus, Send,
+  BarChart, Zap, Pin, Leaf,
+} from 'lucide-react';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
 const G = {
@@ -24,7 +30,6 @@ const styleString = "@keyframes floatLeaf { 0%,100% { transform: translateY(0) r
   "@keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }\n" +
   "@keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px rgba(34,139,34,0.53)); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px rgba(139,195,74,0.8)); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px rgba(135,206,235,0.8)); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px rgba(34,139,34,0.53)); transform:scale(1) rotate(0deg); } }\n" +
   ".blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }\n" +
-  
   ".artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }\n" +
   ".btn-sync { position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px; }\n" +
   ".btn-sync::before { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2; }\n" +
@@ -72,6 +77,12 @@ const GlobalStyles = () => (
   <style dangerouslySetInnerHTML={{ __html: styleString }} />
 );
 
+/* ─── Icon box helper ────────────────────────────────────────────────────── */
+const IconBox = ({ icon: Icon, color, bg, size = 18 }) => (
+  <div style={{ background: bg, borderRadius: 0, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Icon size={size} color={color} strokeWidth={2.2} />
+  </div>
+);
 
 const GSHome = () => {
   const [stats, setStats] = useState(null);
@@ -144,7 +155,14 @@ const GSHome = () => {
   const maxDeptValue = Math.max(...deptBreakdown.map(c => Number(c.total_value || 0)), 1);
   const totalActiveDepts = deptBreakdown.length;
 
-  const logIcon  = { 'Register': '📦', 'Move to Production': '🏭', 'Return to Store': '↩️', 'Issue to Department': '📤', 'Value Update': '💰', 'Consume': '⚙️' };
+  const logIconMap  = {
+    'Register':            Package,
+    'Move to Production':  Factory,
+    'Return to Store':     RefreshCw,
+    'Issue to Department': Send,
+    'Value Update':        DollarSign,
+    'Consume':             Wrench,
+  };
   const logColor = { 'Register': G.forest, 'Move to Production': G.orange, 'Return to Store': G.sky, 'Issue to Department': G.purple, 'Value Update': G.emerald, 'Consume': G.brown };
 
   return (
@@ -154,7 +172,7 @@ const GSHome = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
         <div style={{ justifySelf: 'start' }}>
           <h1 className="artistic-3d-title">
-            Store HQ. &nbsp;<span className="blink-star">🌿</span>
+            Store HQ. &nbsp;<span className="blink-star"><Leaf size={22} strokeWidth={2.5} style={{ display: 'inline' }} /></span>
           </h1>
         </div>
         <div style={{ justifySelf: 'center' }}>
@@ -163,7 +181,7 @@ const GSHome = () => {
           </p>
         </div>
         <div style={{ justifySelf: 'end' }}>
-                    <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+          <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
             {refreshing && <SegmentedSpinner size={16} />}
             <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
           </button>
@@ -178,14 +196,14 @@ const GSHome = () => {
           style={{ background: "linear-gradient(135deg," + G.forest + " 0%," + G.dark + " 100%)", color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
           <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
           <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
-            <span style={{ fontSize: 24 }}>💰</span>
+            <DollarSign size={24} color="#fff" strokeWidth={2.2} />
           </div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Total Store Value</div>
           <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
             <span style={{ fontSize: '1.1rem', opacity: 0.75, marginRight: 6 }}>ETB</span>{Number(totalValue).toLocaleString(undefined,{maximumFractionDigits:0})}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
-            <span>📊</span> Across {totalMaterials} distinct item lines
+            <BarChart2 size={16} color="#fff" strokeWidth={2.2} /> Across {totalMaterials} distinct item lines
           </div>
         </div>
 
@@ -193,7 +211,7 @@ const GSHome = () => {
         <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/general-store/inventory')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Stock Lines</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>📦</span></div>
+            <IconBox icon={Package} color={G.forest} bg="#E6F2EB" size={18} />
           </div>
           <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{totalMaterials.toLocaleString()}</div>
           <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Unique SKU lines</div>
@@ -203,7 +221,7 @@ const GSHome = () => {
         <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/general-store/inventory')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Total Qty</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>📋</span></div>
+            <IconBox icon={ClipboardList} color={G.forest} bg="#E6F2EB" size={18} />
           </div>
           <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{Number(totalQty).toLocaleString()}</div>
           <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Total units in store</div>
@@ -213,7 +231,12 @@ const GSHome = () => {
         <div className="d-card" style={{ animationDelay: '0.2s', background: lowStockCount > 0 ? '#FFF8F0' : undefined }} onClick={() => nav('/general-store/inventory')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: lowStockCount > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Low Stock</span>
-            <div style={{ background: lowStockCount > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{lowStockCount > 0 ? '⚠️' : '✅'}</span></div>
+            <IconBox
+              icon={lowStockCount > 0 ? AlertTriangle : CheckCircle}
+              color={lowStockCount > 0 ? G.orange : G.forest}
+              bg={lowStockCount > 0 ? '#FFF4EB' : '#E6F2EB'}
+              size={18}
+            />
           </div>
           <div style={{ fontSize: '2.4rem', fontWeight: 900, color: lowStockCount > 0 ? G.orange : G.dark, margin: '12px 0 6px' }}>{lowStockCount}</div>
           <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Items below min level</div>
@@ -226,20 +249,20 @@ const GSHome = () => {
         {/* Action Breakdown */}
         <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <span style={{ fontSize:18 }}>🔀</span>
+            <Shuffle size={18} color={G.forest} strokeWidth={2.2} />
             <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Store Activity Breakdown</span>
             <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Based on recent logs</span>
           </div>
           {/* Sub-KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
             {[
-              { label: 'Total Machines', val: (machinesInStore + machinesInProd + machinesUnderMaint), icon: '🖨️', c: G.forest },
-              { label: 'In Production',  val: machinesInProd,       icon: '🏭', c: G.orange },
-              { label: 'Under Maint.',   val: machinesUnderMaint,   icon: '🔧', c: G.sky    },
-              { label: 'Pending Moves',  val: pendingMoves,         icon: '🔄', c: G.purple },
+              { label: 'Total Machines', val: (machinesInStore + machinesInProd + machinesUnderMaint), icon: Printer,    c: G.forest },
+              { label: 'In Production',  val: machinesInProd,       icon: Factory,    c: G.orange },
+              { label: 'Under Maint.',   val: machinesUnderMaint,   icon: Wrench,     c: G.sky    },
+              { label: 'Pending Moves',  val: pendingMoves,         icon: RefreshCw,  c: G.purple },
             ].map(k => (
               <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: "1.5px solid " + k.c + "22" }}>
-                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
+                <div style={{ marginBottom: 6 }}><k.icon size={18} color={k.c} strokeWidth={2.2} /></div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
               </div>
@@ -273,20 +296,20 @@ const GSHome = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize:18 }}>📜</span>
+              <Scroll size={18} color={G.forest} strokeWidth={2.2} />
               <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Live Activity</span>
             </div>
             {logs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
-                <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No logs yet
+                <TrendingDown size={28} color={G.sage} style={{ marginBottom: 8, opacity: 0.5 }} /><br />No logs yet
               </div>
             ) : logs.slice(0,6).map((l, i) => {
               const c = logColor[l.action_type] || COLORS_ARR[i % COLORS_ARR.length];
-              const icon = logIcon[l.action_type] || '📌';
+              const LogIcon = logIconMap[l.action_type] || Pin;
               return (
                 <div key={l.id} className="top-row" onClick={() => nav('/general-store/logs')}>
                   <div style={{ width: 32, height: 32, borderRadius: 0, background: c + "22", display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
+                    <LogIcon size={14} color={c} strokeWidth={2.2} />
                   </div>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -309,18 +332,22 @@ const GSHome = () => {
 
         {/* Low Stock Items */}
         <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={16} color={G.orange} strokeWidth={2.2} /> Attention Required
+          </div>
           {[
-            { label: pendingMoves + " Pending Actions", sub: "Movements awaiting approval", icon: '🔄', bg: '#EFF6FF', c: '#3b82f6', path: '/general-store/logs' },
-            { label: lowStock.length + " Low Stock Items", sub: 'Below minimum level', icon: '⚠️', bg: '#FFFBEB', c: '#f59e0b', path: '/general-store/inventory' }
+            { label: pendingMoves + " Pending Actions", sub: "Movements awaiting approval", icon: RefreshCw,     bg: '#EFF6FF', c: '#3b82f6', path: '/general-store/logs' },
+            { label: lowStock.length + " Low Stock Items", sub: 'Below minimum level',      icon: AlertTriangle, bg: '#FFFBEB', c: '#f59e0b', path: '/general-store/inventory' }
           ].map(row => (
             <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
-              <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
+              <div style={{ background: row.bg, padding: 9, borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <row.icon size={18} color={row.c} strokeWidth={2.2} />
+              </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 800, color: G.dark }}>{row.label}</div>
                 <div style={{ fontSize: 11, color: G.olive, fontWeight: 600 }}>{row.sub}</div>
               </div>
-              <span style={{ fontSize:14, color:'#ccc' }}>›</span>
+              <ChevronRight size={14} color="#ccc" strokeWidth={2} />
             </div>
           ))}
           {/* Low stock mini-list */}
@@ -335,20 +362,22 @@ const GSHome = () => {
 
         {/* Quick Actions */}
         <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Operations</div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Zap size={16} color={G.orange} strokeWidth={2.2} /> Quick Operations
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
-              { label: 'View Inventory',  sub: 'Browse items', icon: '📋', bg: '#E6F2EB', color: G.forest,  href: '/general-store/inventory' },
-              { label: 'Register Item',   sub: 'New stock',    icon: '➕', bg: '#E8F9F1', color: G.emerald, href: '/general-store/register' },
-              { label: 'Issue Item',      sub: 'To dept',      icon: '📤', bg: '#F1F8E9', color: G.olive,   href: '/general-store/issue' },
-              { label: 'Stock Alerts',    sub: 'Low stock',    icon: '🔔', bg: '#FFF3E0', color: G.orange,  href: '/general-store/inventory' },
-              { label: 'Move Logs',       sub: 'History',      icon: '📜', bg: '#E1F5FE', color: G.sky,     href: '/general-store/logs' },
-              { label: 'Valuation',       sub: 'Asset value',  icon: '📊', bg: '#F3E5F5', color: G.purple,  href: '/general-store/valuation' },
-              { label: 'Reports',         sub: 'Print audit',  icon: '🖨️', bg: '#EFEBE9', color: G.brown,   href: '/general-store/reports' }
+              { label: 'View Inventory', sub: 'Browse items', icon: ClipboardList, bg: '#E6F2EB', color: G.forest,  href: '/general-store/inventory' },
+              { label: 'Register Item',  sub: 'New stock',   icon: Plus,          bg: '#E8F9F1', color: G.emerald, href: '/general-store/register' },
+              { label: 'Issue Item',     sub: 'To dept',     icon: Send,          bg: '#F1F8E9', color: G.olive,   href: '/general-store/issue' },
+              { label: 'Stock Alerts',   sub: 'Low stock',   icon: Bell,          bg: '#FFF3E0', color: G.orange,  href: '/general-store/inventory' },
+              { label: 'Move Logs',      sub: 'History',     icon: Scroll,        bg: '#E1F5FE', color: G.sky,     href: '/general-store/logs' },
+              { label: 'Valuation',      sub: 'Asset value', icon: BarChart,      bg: '#F3E5F5', color: G.purple,  href: '/general-store/valuation' },
+              { label: 'Reports',        sub: 'Print audit', icon: Printer,       bg: '#EFEBE9', color: G.brown,   href: '/general-store/reports' }
             ].map((a, i) => (
               <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: (0.4 + i * 0.04) + "s" }}>
                 <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
-                  <span style={{ fontSize:22 }}>{a.icon}</span>
+                  <a.icon size={22} color={a.color} strokeWidth={2} />
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, marginBottom: 2 }}>{a.label}</div>
                 <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{a.sub}</div>

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Truck, Leaf, ChevronUp, ChevronDown, Package, RefreshCw, Printer, ShoppingBag } from 'lucide-react';
+import { AlertTriangle, BarChart, Bell, Box, CheckCircle, ClipboardList, CornerDownLeft, DollarSign, Download, Droplet, Factory, FileText, Leaf, Mailbox, Package, Pin, Plus, Printer, Radio, Receipt, RefreshCw, Scroll, Search, Send, Settings, Shield, ShoppingCart, Shuffle, Sprout, TrendingDown, Truck, Wrench, Zap } from 'lucide-react';
+
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
@@ -16,7 +17,7 @@ const CATEGORIES  = ['Paper', 'Ink', 'Toner', 'Fuel', 'Lubricant/Oil', 'Spare Pa
 
 const api = axios.create();
 api.interceptors.request.use(cfg => {
-  // FIX #4: Token handled centrally by apiClient interceptor — removed manual token read
+  const t = localStorage.getItem('token');
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });
@@ -234,7 +235,7 @@ export const GSHome = () => {
   const maxDeptValue = Math.max(...deptBreakdown.map(c => Number(c.total_value || 0)), 1);
 
   // ── Log action icons
-  const logIcon  = { 'Register': '📦', 'Move to Production': '🏭', 'Return to Store': '↩️', 'Issue to Department': '📤', 'Value Update': '💰', 'Consume': '⚙️' };
+  const logIcon  = { 'Register': <Package size={16} />, 'Move to Production': <Factory size={16} />, 'Return to Store': <CornerDownLeft size={16} />, 'Issue to Department': <Send size={16} />, 'Value Update': <DollarSign size={16} />, 'Consume': <Settings size={16} /> };
   const logColor = { 'Register': '#16A34A', 'Move to Production': '#D97706', 'Return to Store': '#0284C7', 'Issue to Department': '#2563EB', 'Value Update': '#2563EB', 'Consume': '#6B7280' };
   const COLORS_ARR = ['#2563EB', '#0284C7', '#7C3AED', '#D97706', '#16A34A', '#DC2626'];
 
@@ -370,7 +371,7 @@ export const GSHome = () => {
       <div className="gsh-header">
         <div>
           <h1 className="gsh-title">
-            Store HQ. <span>🌿</span>
+            Store HQ. <span><Leaf size={18} /></span>
           </h1>
           <p className="gsh-subtitle">
             Universal General Store · It&apos;s {timeString}
@@ -389,7 +390,7 @@ export const GSHome = () => {
         <div className="gsh-card gsh-card--hero" onClick={() => nav('/general-store/inventory')}>
           <div className="gsh-kpi-top">
             <span className="gsh-kpi-label">Total Store Value</span>
-            <span className="gsh-kpi-icon">💰</span>
+            <span className="gsh-kpi-icon"><DollarSign size={18} /></span>
           </div>
           <div className="gsh-kpi-value">
             <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.8, marginRight: 6 }}>ETB</span>
@@ -402,7 +403,7 @@ export const GSHome = () => {
         <div className="gsh-card gsh-clickable" onClick={() => nav('/general-store/inventory')}>
           <div className="gsh-kpi-top">
             <span className="gsh-kpi-label">Stock Lines</span>
-            <span className="gsh-kpi-icon">📦</span>
+            <span className="gsh-kpi-icon"><Package size={18} /></span>
           </div>
           <div className="gsh-kpi-value">{totalMaterials.toLocaleString()}</div>
           <div className="gsh-kpi-sub">Unique SKU lines</div>
@@ -412,7 +413,7 @@ export const GSHome = () => {
         <div className="gsh-card gsh-clickable" onClick={() => nav('/general-store/inventory')}>
           <div className="gsh-kpi-top">
             <span className="gsh-kpi-label">Total Qty</span>
-            <span className="gsh-kpi-icon">📋</span>
+            <span className="gsh-kpi-icon"><ClipboardList size={18} /></span>
           </div>
           <div className="gsh-kpi-value">{Number(totalQty).toLocaleString()}</div>
           <div className="gsh-kpi-sub">Total units in store</div>
@@ -423,7 +424,7 @@ export const GSHome = () => {
           <div className="gsh-kpi-top">
             <span className="gsh-kpi-label">Low Stock</span>
             <span className="gsh-kpi-icon" style={{ background: lowStockCount > 0 ? '#FEF3C7' : '#DCFCE7' }}>
-              {lowStockCount > 0 ? '⚠️' : '✅'}
+              {lowStockCount > 0 ? <AlertTriangle size={16} /> : '✓…'}
             </span>
           </div>
           <div className="gsh-kpi-value" style={{ color: lowStockCount > 0 ? '#D97706' : '#16A34A' }}>{lowStockCount}</div>
@@ -437,16 +438,16 @@ export const GSHome = () => {
         {/* Action Breakdown */}
         <div className="gsh-card">
           <div className="gsh-section-head">
-            <span style={{ fontSize: 18 }}>🔀</span>
+            <span style={{ fontSize: 18 }}><Shuffle size={18} /></span>
             <span className="gsh-section-title">Store Activity Breakdown</span>
             <span className="gsh-section-hint">Based on recent logs</span>
           </div>
           <div className="gsh-mini-grid">
             {[
-              { label: 'Total Machines', val: (machinesInStore + machinesInProd + machinesUnderMaint), icon: '🖨️', c: G.forest },
-              { label: 'In Production',  val: machinesInProd,       icon: '🏭', c: G.orange },
-              { label: 'Under Maint.',   val: machinesUnderMaint,   icon: '🔧', c: G.sky    },
-              { label: 'Pending Moves',  val: pendingMoves,         icon: '🔄', c: G.purple },
+              { label: 'Total Machines', val: (machinesInStore + machinesInProd + machinesUnderMaint), icon: <Printer size={16} />, c: G.forest },
+              { label: 'In Production',  val: machinesInProd,       icon: <Factory size={16} />, c: G.orange },
+              { label: 'Under Maint.',   val: machinesUnderMaint,   icon: <Wrench size={16} />, c: G.sky    },
+              { label: 'Pending Moves',  val: pendingMoves,         icon: <RefreshCw size={16} />, c: G.purple },
             ].map(k => (
               <div key={k.label} className="gsh-mini">
                 <div className="gsh-mini-icon">{k.icon}</div>
@@ -481,14 +482,14 @@ export const GSHome = () => {
         {/* Recent Activity Feed */}
         <div className="gsh-card">
           <div className="gsh-section-head">
-            <span style={{ fontSize: 18 }}>📜</span>
+            <span style={{ fontSize: 18 }}><Scroll size={18} /></span>
             <span className="gsh-section-title">Recent Activity</span>
           </div>
           {logs.length === 0 ? (
-            <div className="gsh-empty">📉 No logs yet</div>
+            <div className="gsh-empty"><TrendingDown size={18} /> No logs yet</div>
           ) : logs.slice(0,6).map((l, i) => {
             const c = logColor[l.action_type] || COLORS_ARR[i % COLORS_ARR.length];
-            const icon = logIcon[l.action_type] || '📌';
+            const icon = logIcon[l.action_type] || <Pin size={16} />;
             return (
               <div key={l.id} className="gsh-actrow" onClick={() => nav('/general-store/logs')}>
                 <div className="gsh-acticon" style={{ background: `${c}1A`, color: c }}>{icon}</div>
@@ -510,10 +511,10 @@ export const GSHome = () => {
 
         {/* Low Stock Items */}
         <div className="gsh-card">
-          <div className="gsh-section-head"><span className="gsh-section-title">⚠ Attention Required</span></div>
+          <div className="gsh-section-head"><span className="gsh-section-title"><AlertTriangle size={18} /> Attention Required</span></div>
           {[
-            { label: `${pendingMoves} Pending Actions`, sub: 'Movements awaiting approval', icon: '🔄', bg: '#E0F2FE', c: '#0284C7', path: '/general-store/logs' },
-            { label: `${lowStock.length} Low Stock Items`, sub: 'Below minimum level', icon: '⚠️', bg: '#FEF3C7', c: '#D97706', path: '/general-store/inventory' }
+            { label: `${pendingMoves} Pending Actions`, sub: 'Movements awaiting approval', icon: <RefreshCw size={16} />, bg: '#E0F2FE', c: '#0284C7', path: '/general-store/logs' },
+            { label: `${lowStock.length} Low Stock Items`, sub: 'Below minimum level', icon: <AlertTriangle size={16} />, bg: '#FEF3C7', c: '#D97706', path: '/general-store/inventory' }
           ].map(row => (
             <div key={row.label} className="gsh-alert" style={{ '--accent': row.c }} onClick={() => nav(row.path)}>
               <div className="gsh-alert-icon" style={{ background: row.bg }}>{row.icon}</div>
@@ -535,16 +536,16 @@ export const GSHome = () => {
 
         {/* Quick Actions */}
         <div className="gsh-card">
-          <div className="gsh-section-head"><span className="gsh-section-title">⚡ Quick Operations</span></div>
+          <div className="gsh-section-head"><span className="gsh-section-title"><Zap size={18} /> Quick Operations</span></div>
           <div className="gsh-quick-grid">
             {[
-              { label: 'View Inventory',  sub: 'Browse items', icon: '📋', bg: '#EFF6FF', color: G.forest,  href: '/general-store/inventory' },
-              { label: 'Register Item',   sub: 'New stock',    icon: '➕', bg: '#E0F2FE', color: G.emerald, href: '/general-store/register' },
-              { label: 'Issue Item',      sub: 'To dept',      icon: '📤', bg: '#DBEAFE', color: G.olive,   href: '/general-store/issue' },
-              { label: 'Stock Alerts',    sub: 'Low stock',    icon: '🔔', bg: '#FEF3C7', color: G.orange,  href: '/general-store/inventory' },
-              { label: 'Move Logs',       sub: 'History',      icon: '📜', bg: '#DBEAFE', color: G.sky,     href: '/general-store/logs' },
-              { label: 'Valuation',       sub: 'Asset value',  icon: '📊', bg: '#F3E5F5', color: G.purple,  href: '/general-store/valuation' },
-              { label: 'Reports',         sub: 'Print audit',  icon: '🖨️', bg: '#F3F4F6', color: G.brown,   href: '/general-store/reports' }
+              { label: 'View Inventory',  sub: 'Browse items', icon: <ClipboardList size={16} />, bg: '#EFF6FF', color: G.forest,  href: '/general-store/inventory' },
+              { label: 'Register Item',   sub: 'New stock',    icon: <Plus size={16} />, bg: '#E0F2FE', color: G.emerald, href: '/general-store/register' },
+              { label: 'Issue Item',      sub: 'To dept',      icon: <Send size={16} />, bg: '#DBEAFE', color: G.olive,   href: '/general-store/issue' },
+              { label: 'Stock Alerts',    sub: 'Low stock',    icon: <Bell size={16} />, bg: '#FEF3C7', color: G.orange,  href: '/general-store/inventory' },
+              { label: 'Move Logs',       sub: 'History',      icon: <Scroll size={16} />, bg: '#DBEAFE', color: G.sky,     href: '/general-store/logs' },
+              { label: 'Valuation',       sub: 'Asset value',  icon: <BarChart size={16} />, bg: '#F3E5F5', color: G.purple,  href: '/general-store/valuation' },
+              { label: 'Reports',         sub: 'Print audit',  icon: <Printer size={16} />, bg: '#F3F4F6', color: G.brown,   href: '/general-store/reports' }
             ].map(a => (
               <div key={a.label} className="gsh-quick" onClick={() => nav(a.href)}>
                 <div className="gsh-quick-icon" style={{ background: a.bg, color: a.color }}>{a.icon}</div>
@@ -778,7 +779,7 @@ export const GSInventory = () => {
                     </div>
                   ) : (
                     <div className="gsi-dept-row">
-                      <input className="gsi-input" value={updatingItem.department} onChange={e => setUpdatingItem({ ...updatingItem, department: e.target.value })} placeholder="Type dept…" />
+                      <input className="gsi-input" value={updatingItem.department} onChange={e => setUpdatingItem({ ...updatingItem, department: e.target.value })} placeholder="Type dept..." />
                       <button className="gsi-icon-btn gsi-icon-btn--danger" onClick={() => { setCustomDept(false); setUpdatingItem({ ...updatingItem, department: 'Printing' }); }} title="Reset to Printing">✕</button>
                     </div>
                   )}
@@ -808,7 +809,7 @@ export const GSInventory = () => {
                     style={{ width: 15, height: 15, accentColor: '#D97706', cursor: 'pointer' }}
                   />
                   <label htmlFor="upd_vat_toggle" style={{ fontSize: 13, fontWeight: 700, color: '#92400E', cursor: 'pointer' }}>
-                    🧾 Purchased with Input VAT (VAT-registered supplier)
+                    <Receipt size={18} /> Purchased with Input VAT (VAT-registered supplier)
                   </label>
                 </div>
                 {updatingItem.has_input_vat && (
@@ -857,7 +858,7 @@ export const GSInventory = () => {
             </div>
             {updatingItem.has_input_vat && (
               <div style={{ fontSize: 13, color: '#D97706', fontWeight: 600, padding: '4px 0' }}>
-                🧾 Input VAT: ETB {(total * ((updatingItem.vat_rate || 15) / 100)).toFixed(2)} &nbsp;|&nbsp; Total incl. VAT: ETB {(total * (1 + (updatingItem.vat_rate || 15) / 100)).toFixed(2)}
+                <Receipt size={18} /> Input VAT: ETB {(total * ((updatingItem.vat_rate || 15) / 100)).toFixed(2)} &nbsp;|&nbsp; Total incl. VAT: ETB {(total * (1 + (updatingItem.vat_rate || 15) / 100)).toFixed(2)}
               </div>
             )}
             <button className="gsi-save" onClick={submitUpdate} disabled={saving}>
@@ -880,10 +881,10 @@ export const GSInventory = () => {
   const deptColors = { Printing: '#16A34A', 'Car Rental': '#0284C7', AgriRent: '#D97706', Sales: '#7C3AED', Retail: '#DB2777', IT: '#2563EB', Maintenance: '#DC2626' };
 
   const stats = [
-    { label: 'Total Items', value: items.length, icon: '📋', c: '#2563EB' },
-    { label: 'Low Stock', value: items.filter(m => parseFloat(m.quantity_in_store) <= parseFloat(m.reorder_level || 10)).length, icon: '⚠️', c: '#D97706' },
-    { label: 'Filtered', value: filtered.length, icon: '🔍', c: '#0284C7' },
-    { label: 'Departments', value: [...new Set(items.map(m => m.department))].length, icon: '🏢', c: '#16A34A' },
+    { label: 'Total Items', value: items.length, icon: <ClipboardList size={16} />, c: '#2563EB' },
+    { label: 'Low Stock', value: items.filter(m => parseFloat(m.quantity_in_store) <= parseFloat(m.reorder_level || 10)).length, icon: <AlertTriangle size={16} />, c: '#D97706' },
+    { label: 'Filtered', value: filtered.length, icon: <Search size={16} />, c: '#0284C7' },
+    { label: 'Departments', value: [...new Set(items.map(m => m.department))].length, icon: <Box size={16} />, c: '#16A34A' },
   ];
   const numCols = ['IN STORE', 'REORDER', 'UNIT', 'COST PRICE', 'TOTAL VALUE'];
 
@@ -971,7 +972,7 @@ export const GSInventory = () => {
       {/* ── HEADER ── */}
       <div className="gsi-header">
         <div>
-          <h1 className="gsi-title">📦 Consumables Inventory</h1>
+          <h1 className="gsi-title"><Package size={18} /> Consumables Inventory</h1>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="gsi-print" onClick={handlePrint}>
@@ -1020,7 +1021,7 @@ export const GSInventory = () => {
         </div>
         <div className="gsi-filter">
           <label className="gsi-filter-label">Search</label>
-          <input className="gsi-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Item name or ID…" />
+          <input className="gsi-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Item name or ID..." />
         </div>
       </div>
 
@@ -1028,7 +1029,7 @@ export const GSInventory = () => {
       {loading ? (
         <div className="gsi-loading">
           <SegmentedSpinner size={28} color="#2563EB" />
-          <span>Loading inventory…</span>
+          <span>Loading inventory...</span>
         </div>
       ) : (
         <div className="gsi-table-card">
@@ -1062,14 +1063,14 @@ export const GSInventory = () => {
                   <div className="gsi-td gsi-td--num gsi-num gsi-td--strong">{m.total_value > 0 ? `ETB ${parseFloat(m.total_value).toLocaleString()}` : '—'}</div>
                   <div className="gsi-td">
                     {low
-                      ? <span className="gsi-badge gsi-badge--low">⚠ LOW</span>
+                      ? <span className="gsi-badge gsi-badge--low"><AlertTriangle size={18} /> LOW</span>
                       : <span className="gsi-badge gsi-badge--ok">✓ OK</span>}
                   </div>
                   <div className="gsi-td">
                     {m.pending_approval ? (
-                      <span className="gsi-badge" style={{ background: '#FEF3C7', color: '#92400E' }}>⏳ WAITING CEO</span>
+                      <span className="gsi-badge" style={{ background: '#FEF3C7', color: '#92400E' }}>ⳳ WAITING CEO</span>
                     ) : (
-                      <button className="gsi-upd-btn" onClick={() => setUpdatingItem({ ...m })}>✏ UPDATE</button>
+                      <button className="gsi-upd-btn" onClick={() => setUpdatingItem({ ...m })}>✓ UPDATE</button>
                     )}
                   </div>
                 </div>
@@ -1355,20 +1356,20 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
 
       {/* ── HEADER ── */}
       <div className="gsr-header">
-        <h1 className="gsr-title">➕ Register New Item</h1>
+        <h1 className="gsr-title"><Plus size={18} /> Register New Item</h1>
         <p className="gsr-subtitle">Add consumables to the Universal General Store · Any Department</p>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div className="gsr-progress" style={{ flex: 1 }}>
             <div className="gsr-progress-fill" style={{ width: form.material_name && form.department ? '100%' : form.material_name ? '60%' : '20%' }} />
           </div>
           <button className="gsr-income-btn" onClick={openIncoming} style={{ whiteSpace: 'nowrap' }}>
-            📥 Incoming Shipments
+            <Download size={18} /> Incoming Shipments
             {incomingList.length > 0 && <span className="gsr-income-badge">{incomingList.length}</span>}
           </button>
         </div>
         {incomingList.length > 0 && (
           <div className="gsr-income-bar" onClick={openIncoming}>
-            <span>📦 <strong>{incomingList.length}</strong> incoming shipment{incomingList.length !== 1 ? 's' : ''} waiting to be received.</span>
+            <span><Package size={18} /> <strong>{incomingList.length}</strong> incoming shipment{incomingList.length !== 1 ? 's' : ''} waiting to be received.</span>
             <span className="gsr-income-cta">Review & Receive →</span>
           </div>
         )}
@@ -1380,11 +1381,11 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
 
           {/* 1. Basic Info */}
           <div className="gsr-card">
-            <div className="gsr-card-head"><span style={{ fontSize: 16 }}>📋</span><span className="gsr-card-title">Basic Information</span></div>
+            <div className="gsr-card-head"><span style={{ fontSize: 16 }}><ClipboardList size={18} /></span><span className="gsr-card-title">Basic Information</span></div>
             <div className="gsr-card-body">
               <div className="gsr-field" style={{ marginBottom: 16 }}>
                 <label className="gsr-label">Item Name *</label>
-                <input className="gsr-input" value={form.material_name} onChange={e => set('material_name', e.target.value)} placeholder="e.g. Engine Oil 5W-30, A4 Copy Paper…" />
+                <input className="gsr-input" value={form.material_name} onChange={e => set('material_name', e.target.value)} placeholder="e.g. Engine Oil 5W-30, A4 Copy Paper..." />
               </div>
               <div className="gsr-grid-2">
                 <div className="gsr-field">
@@ -1405,7 +1406,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
                     </div>
                   ) : (
                     <div className="gsr-dept-row">
-                      <input className="gsr-input" value={form.department} onChange={e => set('department', e.target.value)} placeholder="Type dept…" />
+                      <input className="gsr-input" value={form.department} onChange={e => set('department', e.target.value)} placeholder="Type dept..." />
                       <button className="gsr-icon-btn gsr-icon-btn--danger" onClick={() => { setCustomDept(false); set('department', 'Printing'); }} title="Reset to Printing">✕</button>
                     </div>
                   )}
@@ -1416,10 +1417,10 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
 
           {/* 2. Stock & Unit */}
           <div className="gsr-card">
-            <div className="gsr-card-head"><span style={{ fontSize: 16 }}>📦</span><span className="gsr-card-title">Stock & Unit</span></div>
+            <div className="gsr-card-head"><span style={{ fontSize: 16 }}><Package size={18} /></span><span className="gsr-card-title">Stock & Unit</span></div>
             <div className="gsr-card-body">
               <div className="gsr-grid-2">
-                {[['unit', 'Unit of Measure', 'roll, litre, box…', 'text'], ['quantity_in_store', 'Opening Quantity', '0', 'number']].map(([k, lbl, ph, type]) => (
+                {[['unit', 'Unit of Measure', 'roll, litre, box...', 'text'], ['quantity_in_store', 'Opening Quantity', '0', 'number']].map(([k, lbl, ph, type]) => (
                   <div key={k} className="gsr-field">
                     <label className="gsr-label">{lbl}</label>
                     <input className="gsr-input" type={type} min="0" value={form[k]} placeholder={ph} onChange={e => set(k, e.target.value)} />
@@ -1431,7 +1432,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
 
           {/* 3. Pricing, VAT & Reorder */}
           <div className="gsr-card">
-            <div className="gsr-card-head"><span style={{ fontSize: 16 }}>💰</span><span className="gsr-card-title">Pricing, VAT & Reorder Control</span></div>
+            <div className="gsr-card-head"><span style={{ fontSize: 16 }}><DollarSign size={18} /></span><span className="gsr-card-title">Pricing, VAT & Reorder Control</span></div>
             <div className="gsr-card-body">
               <div className="gsr-grid-2">
                 <div className="gsr-field">
@@ -1455,7 +1456,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
                     style={{ width: 16, height: 16, accentColor: '#D97706', cursor: 'pointer' }}
                   />
                   <label htmlFor="vat_toggle" style={{ fontSize: 13, fontWeight: 700, color: '#92400E', cursor: 'pointer' }}>
-                    🧾 This item is purchased with Input VAT (VAT-registered supplier)
+                    <Receipt size={18} /> This item is purchased with Input VAT (VAT-registered supplier)
                   </label>
                 </div>
                 {form.has_input_vat && (
@@ -1489,7 +1490,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
           <div className="gsr-actions">
             <button className="gsr-submit" onClick={submit} disabled={saving}>
               {saving && <SegmentedSpinner size={16} color="#fff" />}
-              <span>{saving ? 'Registering…' : 'Register Item'}</span>
+              <span>{saving ? 'Registering...' : 'Register Item'}</span>
             </button>
           </div>
         </div>
@@ -1497,7 +1498,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
         {/* ── RIGHT: SUMMARY ── */}
         <div className="gsr-side">
           <div className="gsr-card">
-            <div className="gsr-card-head"><span style={{ fontSize: 16 }}>📊</span><span className="gsr-card-title">Live Calculation</span></div>
+            <div className="gsr-card-head"><span style={{ fontSize: 16 }}><BarChart size={18} /></span><span className="gsr-card-title">Live Calculation</span></div>
             <div className="gsr-card-body">
               <div className="gsr-calc-row">
                 <span className="gsr-calc-label">Qty × Cost Price</span>
@@ -1520,14 +1521,14 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
                 <span className="gsr-calc-total-value">ETB {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="gsr-reorder-note">
-                <span>⚡</span>
+                <span><Zap size={18} /></span>
                 <span>Alert fires at <strong>{reorder} {form.unit || 'units'}</strong></span>
               </div>
             </div>
           </div>
 
           <div className="gsr-card">
-            <div className="gsr-card-head"><span style={{ fontSize: 16 }}>🌿</span><span className="gsr-card-title">Item Preview</span></div>
+            <div className="gsr-card-head"><span style={{ fontSize: 16 }}><Leaf size={18} /></span><span className="gsr-card-title">Item Preview</span></div>
             <div className="gsr-card-body">
               {[
                 ['Name', form.material_name || '—', true],
@@ -1547,7 +1548,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
           </div>
 
           <div className="gsr-tips">
-            <div className="gsr-tips-title">🌱 TIPS</div>
+            <div className="gsr-tips-title"><Sprout size={18} /> TIPS</div>
             {['Total value auto-calculated: Qty × Price', 'Reorder level triggers low-stock alerts', 'Click "+" to enter a custom department'].map((t, i) => (
               <div key={i} className="gsr-tip">
                 <span className="gsr-tip-arrow">▶</span>
@@ -1563,7 +1564,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
         <div className="gsr-overlay" onClick={() => setShowIncoming(false)}>
           <div className="gsr-inc-modal" onClick={e => e.stopPropagation()}>
             <div className="gsr-inc-head">
-              <span style={{ fontSize: 18 }}>📥</span>
+              <span style={{ fontSize: 18 }}><Download size={18} /></span>
               <span className="gsr-inc-title">Incoming Shipments</span>
               <button className="gsr-inc-close" onClick={() => setShowIncoming(false)}>✕</button>
             </div>
@@ -1579,7 +1580,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
               {incTab === 'pending' ? (
                 incomingList.length === 0 ? (
                   <div className="gsr-inc-empty">
-                    <div style={{ fontSize: 32 }}>📭</div>
+                    <div style={{ fontSize: 32 }}><Mailbox size={18} /></div>
                     <div><strong>No pending incoming shipments.</strong></div>
                     <div style={{ fontSize: 12, color: G.darkGray }}>Shipments created by Purchase converters (Convert & Send to General Store) will appear here.</div>
                   </div>
@@ -1619,7 +1620,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
                               <td style={{ textAlign: 'right' }}>ETB {parseFloat(it.line_total || 0).toLocaleString()}</td>
                               <td style={{ textAlign: 'center' }}>
                                 <button className="gsr-inc-btn gsr-inc-btn--primary gsr-inc-btn--sm" disabled={receiving} onClick={() => acceptItem(inc, it)}>
-                                  ✅ Receive
+                                  ✓… Receive
                                 </button>
                               </td>
                             </tr>
@@ -1628,7 +1629,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
                       </table>
                       <div className="gsr-inc-actions">
                         <button className="gsr-inc-btn gsr-inc-btn--ghost" disabled={receiving} onClick={() => acceptShipment(inc)}>
-                          {receiving && selectedInc === inc.id ? 'Receiving…' : '📦 Receive All at Once'}
+                          {receiving && selectedInc === inc.id ? 'Receiving...' : '<Package size={18} /> Receive All at Once'}
                         </button>
                       </div>
                     </div>
@@ -1638,7 +1639,7 @@ showToast('success', `"${form.material_name}" registered — ETB ${total.toLocal
               ) : (
                 acceptedList.length === 0 ? (
                   <div className="gsr-inc-empty">
-                    <div style={{ fontSize: 32 }}>📦</div>
+                    <div style={{ fontSize: 32 }}><Package size={18} /></div>
                     <div><strong>No accepted shipments yet.</strong></div>
                     <div style={{ fontSize: 12, color: G.darkGray }}>Shipments you accepted will be listed here.</div>
                   </div>
@@ -1991,7 +1992,7 @@ export const GSIssueItem = () => {
           store_keeper_signature: 'Store Keeper',
           notes: form.job_reference,
         });
-        showToast('success', `✅ Issued & sale recorded for ${form.department}!`);
+        showToast('success', `✓… Issued & sale recorded for ${form.department}!`);
       } else if (form.request_id && (form.request_type === 'printing' || form.request_type === 'car')) {
         // Printing / Car — ship via material-requests API
         await api.post(`/api/v1/printing-assets/material-requests/${form.request_id}/ship`, { 
@@ -1999,11 +2000,11 @@ export const GSIssueItem = () => {
           requested_by: form.requested_by,
           job_reference: form.job_reference
         });
-        showToast('success', `✅ Successfully shipped ${form.quantity} ${selected?.unit}!`);
+        showToast('success', `✓… Successfully shipped ${form.quantity} ${selected?.unit}!`);
       } else {
         // Direct issue flow (no linked request)
         await api.post('/api/v1/printing-assets/issue/material', form);
-        showToast('success', `✅ Successfully issued ${form.quantity} ${selected?.unit} to ${form.department}!`);
+        showToast('success', `✓… Successfully issued ${form.quantity} ${selected?.unit} to ${form.department}!`);
       }
       setForm({ material_id: '', quantity: '', job_reference: '', department: '', requested_by: '', request_id: null, request_type: null });
       load(); // refresh available balances
@@ -2178,7 +2179,7 @@ export const GSIssueItem = () => {
           <div className="gsis-modal gsis-modal--sm" role="dialog" aria-modal="true">
             <div className="gsis-modal-head">
               <div>
-                <div className="gsis-modal-title">🚚 Confirm Shipment</div>
+                <div className="gsis-modal-title"><Truck size={18} /> Confirm Shipment</div>
                 <div className="gsis-modal-sub">Enter the quantity to ship for each item. Inventory will be deducted automatically.</div>
               </div>
               <button className="gsis-modal-close" onClick={() => setCarShipModal(null)} aria-label="Close">✕</button>
@@ -2215,7 +2216,7 @@ export const GSIssueItem = () => {
             <div className="gsis-modal-foot">
               <button className="gsis-btn" disabled={saving} onClick={() => setCarShipModal(null)}>Cancel</button>
               <button className="gsis-btn gsis-btn--success" disabled={saving} onClick={handleShipCarRequest}>
-                {saving ? 'Processing…' : 'Confirm Shipment'}
+                {saving ? 'Processing...' : 'Confirm Shipment'}
               </button>
             </div>
           </div>
@@ -2228,14 +2229,14 @@ export const GSIssueItem = () => {
         {/* ── HEADER BAR ── */}
         <div className="gsis-header">
           <div className="gsis-header-left">
-            <span className="gsis-header-icon">📤</span>
+            <span className="gsis-header-icon"><Send size={18} /></span>
             <div>
               <h1 className="gsis-title">Issue to Department</h1>
               <p className="gsis-subtitle">Formal process of releasing material from General Store stock</p>
             </div>
           </div>
           <button onClick={() => setShowWaitingModal(true)} className="gsis-wait-btn">
-            🛎️ Waiting Requests <span className="gsis-wait-badge">{requests.length + carRequests.length + posRequests.length}</span>
+            <Shield size={18} /> Waiting Requests <span className="gsis-wait-badge">{requests.length + carRequests.length + posRequests.length}</span>
           </button>
         </div>
 
@@ -2244,7 +2245,7 @@ export const GSIssueItem = () => {
           
           <div className="gsis-card">
             <div className="gsis-card-head">
-              <span style={{ fontSize: 16 }}>📝</span><span className="gsis-card-title">Issue Details</span>
+              <span style={{ fontSize: 16 }}><FileText size={18} /></span><span className="gsis-card-title">Issue Details</span>
             </div>
             
             <div className="gsis-card-body">
@@ -2310,11 +2311,11 @@ export const GSIssueItem = () => {
               <div className="gsis-action-note"><span className="gsis-action-check">✓</span> Logs movement history with date/time</div>
             </div>
             <button onClick={submit} disabled={saving} className="gsis-submit">
-              {saving ? 'Processing…' : '📤 Issue Material Now'}
+              {saving ? 'Processing...' : '<Send size={18} /> Issue Material Now'}
             </button>
           </div>
 
-          {/* ══ PAST REQUESTS (FLOW HISTORY) — CAR & AGRI RENTAL ══ */}
+          {/* â•â• PAST REQUESTS (FLOW HISTORY) — CAR & AGRI RENTAL â•â• */}
           <div className="gsis-history-head">
             <div>
               <h2 className="gsis-history-title">Past Requests (Flow History)</h2>
@@ -2404,7 +2405,7 @@ export const GSIssueItem = () => {
                                 <div className="gsis-detail">
                                   <div className="gsis-detail-inner">
                                     {loadingDet ? (
-                                      <div className="gsis-detail-loading"><SegmentedSpinner size={18} /> Loading…</div>
+                                      <div className="gsis-detail-loading"><SegmentedSpinner size={18} /> Loading...</div>
                                     ) : det ? (
                                       <>
                                         <div className="gsis-detail-grid">
@@ -2475,7 +2476,7 @@ export const GSIssueItem = () => {
           <div className="gsis-modal gsis-modal--wide">
             <div className="gsis-modal-head">
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <span style={{ fontSize: 24 }}>🛎️</span>
+                <span style={{ fontSize: 24 }}><Shield size={18} /></span>
                 <div>
                   <div className="gsis-modal-title">Waiting Requests Queue</div>
                   <div className="gsis-modal-sub">{requests.length + carRequests.length + posRequests.length} pending — click Prepare to auto-fill the form below</div>
@@ -2487,7 +2488,7 @@ export const GSIssueItem = () => {
               {requests.length > 0 && (
                 <div className="gsis-group">
                   <div className="gsis-group-head">
-                    <span className="gsis-group-tag gsis-group-tag--print">📦 Printing / Office</span>
+                    <span className="gsis-group-tag gsis-group-tag--print"><Package size={18} /> Printing / Office</span>
                     <span className="gsis-group-count">{requests.length} request(s)</span>
                   </div>
                   {requests.map(r => (
@@ -2506,7 +2507,7 @@ export const GSIssueItem = () => {
               {carRequests.length > 0 && (
                 <div className="gsis-group">
                   <div className="gsis-group-head">
-                    <span className="gsis-group-tag gsis-group-tag--car">🚚 Car & Agri Rental</span>
+                    <span className="gsis-group-tag gsis-group-tag--car"><Truck size={18} /> Car & Agri Rental</span>
                     <span className="gsis-group-count">{carRequests.length} request(s)</span>
                   </div>
                   {carRequests.map(r => (
@@ -2525,7 +2526,7 @@ export const GSIssueItem = () => {
               {posRequests.length > 0 && (
                 <div className="gsis-group">
                   <div className="gsis-group-head">
-                    <span className="gsis-group-tag gsis-group-tag--pos">🛒 POS Sales</span>
+                    <span className="gsis-group-tag gsis-group-tag--pos"><ShoppingCart size={18} /> POS Sales</span>
                     <span className="gsis-group-count">{posRequests.length} request(s) awaiting store release</span>
                   </div>
                   {posRequests.map(r => {
@@ -2549,7 +2550,7 @@ export const GSIssueItem = () => {
                 </div>
               )}
               {requests.length === 0 && carRequests.length === 0 && posRequests.length === 0 && (
-                <div className="gsis-modal-empty">✅ No pending requests at this time.</div>
+                <div className="gsis-modal-empty">✓… No pending requests at this time.</div>
               )}
             </div>
           </div>
@@ -2731,7 +2732,7 @@ export const GSLogs = () => {
         {/* ── HEADER ── */}
         <div className="gsl-header">
           <div className="gsl-header-left">
-            <span className="gsl-header-icon">📋</span>
+            <span className="gsl-header-icon"><ClipboardList size={18} /></span>
             <div>
               <h1 className="gsl-title">Movement Logs</h1>
               <p className="gsl-subtitle">Complete audit trail across all departments</p>
@@ -2766,7 +2767,7 @@ export const GSLogs = () => {
         {loading ? (
           <div className="gsl-loading">
             <SegmentedSpinner size={28} color="#2563EB" />
-            <span>Loading movement logs…</span>
+            <span>Loading movement logs...</span>
           </div>
         ) : (
           <div className="gsl-table-card">
@@ -2781,7 +2782,7 @@ export const GSLogs = () => {
               {/* Data Rows */}
               {logs.filter(l => l.action_type === 'Issue to Department').length === 0 ? (
                 <div className="gsl-empty-card">
-                  <div className="gsl-empty-icon">🔍</div>
+                  <div className="gsl-empty-icon"><Search size={18} /></div>
                   <div className="gsl-empty-title">No issue records found for this filter.</div>
                 </div>
               ) : logs.filter(l => l.action_type === 'Issue to Department').map(l => (
@@ -2898,7 +2899,7 @@ export const GSValuation = () => {
         {/* ── HEADER ── */}
         <div className="gsv-header">
           <div className="gsv-header-left">
-            <span className="gsv-header-icon">💰</span>
+            <span className="gsv-header-icon"><DollarSign size={18} /></span>
             <div>
               <h1 className="gsv-title">Inventory Valuation</h1>
               <p className="gsv-subtitle">Stock value grouped by department</p>
@@ -2925,7 +2926,7 @@ export const GSValuation = () => {
         {loading ? (
           <div className="gsv-loading">
             <SegmentedSpinner size={28} color="#2563EB" />
-            <span>Calculating valuation…</span>
+            <span>Calculating valuation...</span>
           </div>
         ) : (
           <>
@@ -2943,7 +2944,7 @@ export const GSValuation = () => {
             </div>
 
             <div className="gsv-total">
-              <div className="gsv-total-label">🏪 Grand Total Store Value</div>
+              <div className="gsv-total-label"><Droplet size={18} /> Grand Total Store Value</div>
               <div className="gsv-total-value">ETB {grandTotal.toLocaleString()}</div>
             </div>
           </>
@@ -3049,7 +3050,7 @@ export const GSAlerts = () => {
         {/* ── HEADER ── */}
         <div className="gsa-header">
           <div className="gsa-header-left">
-            <span className="gsa-header-icon">⚠️</span>
+            <span className="gsa-header-icon"><AlertTriangle size={18} /></span>
             <div>
               <h1 className="gsa-title">Low Stock Alerts</h1>
               <p className="gsa-subtitle">Items at or below their automatic reorder levels</p>
@@ -3064,7 +3065,7 @@ export const GSAlerts = () => {
 
         {/* ── STATUS BANNER ── */}
         <div className="gsa-status">
-          <span className="gsa-status-icon">📡</span>
+          <span className="gsa-status-icon"><Radio size={18} /></span>
           <div>
             <div className="gsa-status-title">System Status</div>
             <div className="gsa-status-sub">Tracking individual item thresholds automatically.</div>
@@ -3074,7 +3075,7 @@ export const GSAlerts = () => {
         {loading ? (
           <div className="gsa-loading">
             <SegmentedSpinner size={28} color="#2563EB" />
-            <span>Loading low-stock alerts…</span>
+            <span>Loading low-stock alerts...</span>
           </div>
         ) : low.length === 0 ? (
           <div className="gsa-empty-card">
@@ -3110,3 +3111,5 @@ export const GSAlerts = () => {
     </div>
   );
 };
+
+
