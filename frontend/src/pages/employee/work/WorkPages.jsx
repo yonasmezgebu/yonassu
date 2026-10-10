@@ -115,7 +115,7 @@ export const DailyReport = () => {
   const fetchHistory = async () => {
     try {
       const res = await fetch('http://localhost:5000/api/employee-reports/my', {
-        headers: { // FIX #4: Authorization header set automatically by apiClient }
+        // FIX #4: Authorization header set automatically by apiClient
       });
       if (res.ok) {
         const data = await res.json();
