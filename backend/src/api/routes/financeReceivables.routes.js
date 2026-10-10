@@ -262,17 +262,22 @@ router.get('/live-income', authenticate, async (req, res) => {
     // 2) Car Rental orders that have payment proof uploaded but not yet approved
     //    These may not have a finance_income_submissions record if they were created
     //    before the auto-sync code was added, so we union them here directly.
+    // Avoid duplicating orders already in finance_income_submissions.
+    // manual_details is a TEXT column, so parse the linked order_id in JS
+    // rather than using the jsonb `->>` operator (which does not exist for text).
+    const syncedRentalOrderIds = (await knex('finance_income_submissions')
+      .where('department', 'Car Rental')
+      .where('status', 'Pending')
+      .whereNotNull('manual_details')
+      .select('manual_details'))
+      .map(r => {
+        try { return Number(JSON.parse(r.manual_details).order_id); } catch (_) { return NaN; }
+      })
+      .filter(Number.isFinite);
+
     const pendingRentals = await knex('rental_orders')
       .whereIn('payment_status', ['PENDING_VERIFICATION', 'UNPAID', 'PENDING'])
-      .whereNotIn(
-        'id',
-        // Avoid duplicating orders already in finance_income_submissions
-        knex('finance_income_submissions')
-          .where('department', 'Car Rental')
-          .where('status', 'Pending')
-          .whereNotNull('manual_details')
-          .select(knex.raw('(manual_details) ->> \'{order_id}\''))
-      )
+      .modify(q => { if (syncedRentalOrderIds.length) q.whereNotIn('id', syncedRentalOrderIds); })
       .orderBy('updated_at', 'desc');
 
     // Normalise pending rental orders into the same shape as finance_income_submissions

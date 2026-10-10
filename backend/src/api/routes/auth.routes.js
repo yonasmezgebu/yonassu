@@ -10,9 +10,22 @@ const loginValidation = [
   body('password').notEmpty().withMessage('Password is required')
 ];
 const registerValidation = [
-  body('fullName').notEmpty().withMessage('Full name is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('phone').matches(/^09[0-9]{8}$/).withMessage('Valid Ethiopian phone number is required')
+  body('fullName')
+    .trim()
+    .notEmpty().withMessage('Full name is required')
+    .isLength({ min: 2, max: 100 }).withMessage('Full name must be between 2 and 100 characters'),
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email address (e.g. name@example.com)')
+    .normalizeEmail(),
+  body('phone')
+    .trim()
+    .notEmpty().withMessage('Phone number is required')
+    .matches(/^09[0-9]{8}$/).withMessage('Phone number must be in Ethiopian format: 09XXXXXXXX (10 digits, starting with 09)'),
+  body('password')
+    .notEmpty().withMessage('Password is required')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
 ];
 const changePasswordValidation = [
   body('currentPassword').notEmpty().withMessage('Current password is required'),
