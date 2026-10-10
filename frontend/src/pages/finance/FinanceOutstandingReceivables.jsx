@@ -620,7 +620,7 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 500, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 8 }}>Attached Payment Proof</div>
                     <img
-                      src={`http://localhost:5000/${manualDetails.proofImagePath}`}
+                      src={`http://localhost:5000/${String(manualDetails.proofImagePath).replace(/^\//, '')}`}
                       alt="Payment Proof"
                       style={{ maxWidth: '100%', maxHeight: 400, border: '1px solid #E5E7EB', borderRadius: 8 }}
                     />

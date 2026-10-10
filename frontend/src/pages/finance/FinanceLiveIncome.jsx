@@ -9,6 +9,7 @@ import {
 import api from '../../services/apiClient';
 import { useAuth } from '../../hooks/useAuth';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import ImageViewer from '../../components/ui/ImageViewer';
 
 /* ─── Global Styles ──────────────────────────────────────────────── */
 const G = `
@@ -230,7 +231,8 @@ const getImageUrl = (path) => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
   const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
-  return `${base}/${path.replace(/^\//, '')}`;
+  const clean = String(path).replace(/^\//, '');
+  return `${base}/${clean.includes('/') ? clean : `uploads/temp/${clean}`}`;
 };
 
 const CASH_DEPTS = ['Pharmacy', 'Sales', 'Retail'];
@@ -360,6 +362,7 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   const [rejecting, setRejecting] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [lightboxSrc, setLightboxSrc] = useState(null);
   const printRef = useRef(null);
 
   const loadDetail = useCallback(async () => {
@@ -534,6 +537,8 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   const bankHolder = firstTxnPayment?.account_holder || manualDetails?.bankDetails?.accountHolder;
   const telebirrNum = firstTxnPayment?.telbir_number || manualDetails?.telebirrNumber || manualDetails?.telebirrDetails?.telebirrNumber;
   const telebirrName = manualDetails?.telebirrDetails?.fullName || manualDetails?.receivedFrom;
+  const destAcct = manualDetails?.paymentAccount || null;
+  const SEE_SCREENSHOT = 'See payment screenshot for destination account';
   const paymentRef = manualDetails?.paymentReference || manualDetails?.paymentAccount || submission.reference_no || firstTxnPayment?.receipt_no || '—';
 
   // Prefer the exact-detail block whenever we have a concrete payment number
@@ -659,9 +664,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                   {!isCash && (
                     <div style={{ fontSize: 13, color: '#6B7280', marginTop: 8 }}>
                       {isTelebirr
-                        ? <>Number: <strong style={{ color: '#111827' }}>{telebirrNum || '0901407032'} — SUTANA WALLET</strong></>
+                        ? <>Number: <strong style={{ color: '#111827' }}>{telebirrNum ? `${telebirrNum} — SUTANA WALLET` : (destAcct || SEE_SCREENSHOT)}</strong></>
                         : isBankTransfer
-                          ? <>Account: <strong style={{ color: '#111827' }}>{bankAcct ? `${bankName || 'Bank'} ${bankAcct}` : '1000675227776 — SUTANA'}</strong></>
+                          ? <>Account: <strong style={{ color: '#111827' }}>{bankAcct ? `${bankName || 'Bank'} ${bankAcct}` : (destAcct || SEE_SCREENSHOT)}</strong></>
                           : <strong style={{ color: '#111827' }}>{String(payMethodRaw || 'verify against screenshot').toUpperCase()}</strong>}
                     </div>
                   )}
@@ -775,29 +780,13 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                       </div>
                     ) : (
                       <div style={{ background: '#E0F2FE', padding: 12, border: '1px solid #E5E7EB', fontSize: 13, color: '#111827', marginBottom: 16, borderRadius: 8 }}>
-                        <strong>Expected Accounts:</strong><br />
-                        💳 Telebirr: <strong>0901407032</strong> (SUTANA WALLET)<br />
-                        🏦 CBE Bank: <strong>1000675227776</strong> (SUTANA)
+                        <strong>Destination account:</strong> not recorded for this submission — verify the exact account from the customer's payment screenshot below.
                       </div>
                     )}
                     {manualDetails.paymentReference && (
                       <div style={{ marginBottom: 16 }}>
                         <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>Transaction ID / Reference</div>
                         <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', letterSpacing: 1 }}>{manualDetails.paymentReference}</div>
-                      </div>
-                    )}
-                    {manualDetails.proofImagePath && (
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 8 }}>Attached Payment Proof</div>
-                        <img
-                          src={getImageUrl(manualDetails.proofImagePath)}
-                          alt="Payment Proof"
-                          style={{ maxWidth: '100%', maxHeight: 400, border: '1px solid #E5E7EB', borderRadius: 8 }}
-                        />
-                        <a href={getImageUrl(manualDetails.proofImagePath)} target="_blank" rel="noreferrer"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, color: '#FFFFFF', fontWeight: 500, textDecoration: 'none', background: '#2563EB', padding: '6px 12px', borderRadius: 8 }}>
-                          <Eye size={13} /> Open Full Image
-                        </a>
                       </div>
                     )}
                   </div>
@@ -957,7 +946,7 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                 <div style={{ background: 'rgba(255,255,255,0.15)', padding: '8px 10px', fontSize: 20, borderRadius: 8 }}>🏦</div>
                 <div>
                   <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{isAwash ? 'AWASH BANK TRANSFER' : 'BANK TRANSFER'}</div>
-                  <div style={{ color: '#FFFFFF', fontWeight: 600 }}>Account: {bankAcct ? `${bankName || 'Bank'} ${bankAcct}${bankHolder ? ' — ' + bankHolder : ''}` : '1000675227776 — SUTANA'}</div>
+                  <div style={{ color: '#FFFFFF', fontWeight: 600 }}>Account: {bankAcct ? `${bankName || 'Bank'} ${bankAcct}${bankHolder ? ' — ' + bankHolder : ''}` : (destAcct || SEE_SCREENSHOT)}</div>
                   <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 4 }}>Login to {isAwash ? 'Awash' : 'CBE Internet'} Banking to confirm ETB {fmt(systemTotal)}</div>
                 </div>
               </div>
@@ -967,7 +956,7 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                 <div style={{ background: 'rgba(255,255,255,0.2)', padding: '8px 10px', fontSize: 20, borderRadius: 8 }}>📱</div>
                 <div>
                   <div style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>TELEBIRR PAYMENT</div>
-                  <div style={{ color: '#FFFFFF', fontWeight: 600 }}>Number: {telebirrNum ? `${telebirrNum}${telebirrName ? ' — ' + telebirrName : ''}` : '0901407032 — SUTANA WALLET'}</div>
+                  <div style={{ color: '#FFFFFF', fontWeight: 600 }}>Number: {telebirrNum ? `${telebirrNum}${telebirrName ? ' — ' + telebirrName : ''}` : (destAcct || SEE_SCREENSHOT)}</div>
                   <div style={{ color: '#FFFFFF', fontSize: 12, marginTop: 4, opacity: 0.85 }}>Check Telebirr app to confirm ETB {fmt(systemTotal)}</div>
                 </div>
               </div>
@@ -980,16 +969,17 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                   <FileText size={14} /> Customer Payment Screenshot
                 </div>
                 <img src={proofUrl} alt="Payment Proof"
-                  style={{ maxWidth: '100%', maxHeight: 420, border: '1px solid var(--color-border)', borderRadius: 8, display: 'block' }}
+                  onClick={() => setLightboxSrc(proofUrl)}
+                  style={{ maxWidth: '100%', maxHeight: 420, border: '1px solid var(--color-border)', borderRadius: 8, display: 'block', cursor: 'zoom-in' }}
                   onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
                 <div style={{ display: 'none', background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger)', padding: '16px', borderRadius: 8, alignItems: 'center', gap: 8, color: 'var(--color-danger)', fontSize: 13 }}>
                   <AlertTriangle size={16} /> Image failed to load.
                 </div>
-                <a href={proofUrl} target="_blank" rel="noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: '#FFFFFF', fontWeight: 500, textDecoration: 'none', background: 'var(--color-primary)', padding: '6px 12px', borderRadius: 8 }}>
+                <button type="button" onClick={() => setLightboxSrc(proofUrl)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: '#FFFFFF', fontWeight: 500, textDecoration: 'none', background: 'var(--color-primary)', padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>
                   <Eye size={13} /> Open Full-Size Image
-                </a>
+                </button>
               </div>
             ) : (
               <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', padding: '16px 20px', marginBottom: 20, fontSize: 13, color: 'var(--color-warning)', borderRadius: 8 }}>
@@ -1030,11 +1020,11 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                       ) : isTele ? (
                         telebirrNum
                           ? <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{telebirrNum}{telebirrName ? ' — ' + telebirrName : ''}</div>
-                          : <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>0901407032 — SUTANA WALLET</div>
+                          : <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{destAcct || SEE_SCREENSHOT}</div>
                       ) : isBank ? (
                         bankAcct
                           ? <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{bankName || 'Bank'} {bankAcct}{bankHolder ? ' — ' + bankHolder : ''}</div>
-                          : <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>CBE Bank 1000675227776 — SUTANA</div>
+                          : <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{destAcct || SEE_SCREENSHOT}</div>
                       ) : (
                         <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
                           Paid to SUTANA via <strong>{String(method || mdPayMethod || 'unspecified method').toUpperCase()}</strong> — confirm the exact channel (Bank / Telebirr / Cash) from the customer's screenshot below.
@@ -1296,6 +1286,10 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
             )}
           </div>
         </div>
+      )}
+
+      {lightboxSrc && (
+        <ImageViewer file={{ url: lightboxSrc, originalName: 'Payment Proof' }} onClose={() => setLightboxSrc(null)} />
       )}
     </div>
   );

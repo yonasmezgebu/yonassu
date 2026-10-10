@@ -160,7 +160,9 @@ const FinanceHome = () => {
     parseFloat(equityNetIn || 0) +
     parseFloat(netProfit || 0) -
     parseFloat(expenseOut || 0) +
-    parseFloat(unbankedCRV || 0);
+    parseFloat(unbankedCRV || 0) +
+    parseFloat(assetGrand || 0) -
+    parseFloat(totalOwed || 0);
 
   return (
     <div className={styles.page}>
@@ -196,7 +198,9 @@ const FinanceHome = () => {
                     { label: 'Net Owner Flow (Equity)', val: equityNetIn, nav: '/finance/equity' },
                     { label: 'Collected / Paid So Far (Accounts Receivable)', val: settledReceivable, nav: '/finance/accounts-receivable' },
                     { label: 'Net Profit (Income Statement)', val: netProfit, nav: '/finance/profit-loss' },
-                    { label: 'Paid Out (Expenses)', val: -expenseOut, nav: '/finance/ev' }
+                    { label: 'Paid Out (Expenses)', val: -expenseOut, nav: '/finance/ev' },
+                    { label: 'Total Assets (Non-Cash)', val: assetGrand, nav: '/finance/overview' },
+                    { label: 'Total Liabilities (Owed)', val: -totalOwed, nav: '/finance/liabilities' }
                   ];
                   let runningTotal = 0;
                   return (

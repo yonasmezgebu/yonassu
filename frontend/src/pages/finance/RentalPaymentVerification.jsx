@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Eye, CheckCircle, XCircle, Download, FileText, Check, Upload } from 'lucide-react';
 import financeService from '../../services/financeService';
+import ImageViewer from '../../components/ui/ImageViewer';
 import styles from './RentalPaymentVerification.module.css';
 
 const getImageUrl = (path) => {
@@ -27,6 +28,7 @@ const RentalPaymentVerification = () => {
   const [selectedProofFile, setSelectedProofFile] = useState(null);
   const fileInputRef = useRef(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
+  const [lightboxSrc, setLightboxSrc] = useState(null);
 
   const showNotification = (message, type) => {
     setNotification({ show: true, message, type });
@@ -275,15 +277,16 @@ const RentalPaymentVerification = () => {
                       src={getImageUrl(selectedOrder.paymentProofUrl)}
                       alt="Payment Proof"
                       className={styles.proofImg}
+                      onClick={() => setLightboxSrc(getImageUrl(selectedOrder.paymentProofUrl))}
+                      style={{ cursor: 'zoom-in' }}
                     />
-                    <a
-                      href={getImageUrl(selectedOrder.paymentProofUrl)}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setLightboxSrc(getImageUrl(selectedOrder.paymentProofUrl))}
                       className={styles.viewFullBtn}
                     >
                       <Eye size={16} /> View Full Image
-                    </a>
+                    </button>
                   </div>
                 </div>
               )}
@@ -407,6 +410,10 @@ const RentalPaymentVerification = () => {
           )}
         </div>
       </div>
+
+      {lightboxSrc && (
+        <ImageViewer file={{ url: lightboxSrc, originalName: 'Payment Proof' }} onClose={() => setLightboxSrc(null)} />
+      )}
     </div>
   );
 };
