@@ -21,7 +21,7 @@ const C = {
 /* ─── Axios instance ───────────────────────────────────────────────────────── */
 const api = axios.create({ baseURL: '' });
 api.interceptors.request.use(cfg => {
-  // FIX #4: Token handled centrally by apiClient interceptor — removed manual token read
+  const t = localStorage.getItem('token');
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });

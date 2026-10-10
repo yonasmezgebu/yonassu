@@ -648,7 +648,7 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
                   Attached Payment Proof
                 </div>
                 <img
-                  src={`http://localhost:5000/${order.payment_screenshot}`}
+                  src={`http://localhost:5000/${String(order.payment_screenshot).replace(/^\//, '')}`}
                   alt="Payment Screenshot"
                   style={{ maxWidth: '100%', maxHeight: 360, border: `2px solid ${C.sage}`, display: 'block' }}
                   onError={e => { e.target.style.display = 'none'; }}

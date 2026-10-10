@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Tractor, Plus, Edit2, Trash2, Image as ImageIcon,
   EyeOff, CheckCircle, AlertTriangle, AlertCircle,
-  X, DollarSign, Layers, Fuel, Leaf, RefreshCw, Send
+  X, DollarSign, Layers, Fuel, Leaf, RefreshCw, Send,
+  Wrench, Clock, Wifi
 } from 'lucide-react';
 import tractorService from '../../../services/tractorService';
 import './TractorRegister.css';
@@ -27,6 +28,30 @@ const G = {
   text:    '#424242',
   warning: '#FF9800',
   error:   '#F44336',
+};
+
+/* ── Machine status badge helper ── */
+const getMachineStatusBadge = (tractor) => {
+  const av = (tractor.availability || '').toLowerCase();
+  if (av === 'maintenance' || av === 'in maintenance') {
+    return (
+      <span style={{ background: '#FEE2E2', color: '#B91C1C', padding: '3px 10px', fontSize: 12, fontWeight: 600, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+        <Wrench size={11} /> Maintenance
+      </span>
+    );
+  }
+  if (av === 'booked' || av === 'rented' || av === 'out') {
+    return (
+      <span style={{ background: '#FEF3C7', color: '#B45309', padding: '3px 10px', fontSize: 12, fontWeight: 600, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+        <Clock size={11} /> Booked
+      </span>
+    );
+  }
+  return (
+    <span style={{ background: '#DCFCE7', color: '#16A34A', padding: '3px 10px', fontSize: 12, fontWeight: 600, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+      <Wifi size={11} /> Available
+    </span>
+  );
 };
 
 /* ── Image URL helper ── */
@@ -574,10 +599,10 @@ const TractorRegister = () => {
                   <table className="fm-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                        {['#', 'Machine', 'Daily Rate', 'Asset Value', 'Publication Status', 'Actions'].map((h, i) => (
+                        {['#', 'Machine', 'Daily Rate', 'Asset Value', 'Machine Status', 'Publication Status', 'Actions'].map((h, i) => (
                           <th key={h} style={{
                             padding: '12px 16px',
-                            textAlign: i >= 5 ? 'center' : 'left',
+                            textAlign: i >= 6 ? 'center' : 'left',
                             fontSize: 12, fontWeight: 500, color: '#6B7280',
                             textTransform: 'uppercase', letterSpacing: '0.03em',
                             borderRight: 'none',
@@ -622,6 +647,10 @@ const TractorRegister = () => {
                                   ? <span style={{ fontWeight: 600, fontSize: 14, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>ETB {parseFloat(tractor.asset_value).toLocaleString()}</span>
                                   : <span style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', fontWeight: 500 }}>Unset</span>}
                               </div>
+                            </td>
+                            {/* Machine Status */}
+                            <td data-label="Machine Status" style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                              {getMachineStatusBadge(tractor)}
                             </td>
                             {/* Publication Status */}
                             <td data-label="Publication Status" style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>

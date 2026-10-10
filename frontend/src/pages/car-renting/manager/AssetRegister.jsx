@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Car, Plus, Edit2, Trash2, Image as ImageIcon,
   EyeOff, CheckCircle, AlertTriangle, AlertCircle,
-  X, DollarSign, Layers, Fuel, Leaf, RefreshCw, Send
+  X, DollarSign, Layers, Fuel, Leaf, RefreshCw, Send,
+  Wrench, Clock, Wifi
 } from 'lucide-react';
 import carService from '../../../services/carService';
 
@@ -26,6 +27,30 @@ const G = {
   text:    '#424242',
   warning: '#FF9800',
   error:   '#F44336',
+};
+
+/* ── Machine status badge helper ── */
+const getMachineStatusBadge = (car) => {
+  const av = (car.availability || '').toLowerCase();
+  if (av === 'maintenance' || av === 'in maintenance') {
+    return (
+      <span style={{ background: '#FEE2E2', color: '#B91C1C', padding: '3px 10px', fontSize: 12, fontWeight: 600, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+        <Wrench size={11} /> Maintenance
+      </span>
+    );
+  }
+  if (av === 'booked' || av === 'rented' || av === 'out') {
+    return (
+      <span style={{ background: '#FEF3C7', color: '#B45309', padding: '3px 10px', fontSize: 12, fontWeight: 600, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+        <Clock size={11} /> Booked
+      </span>
+    );
+  }
+  return (
+    <span style={{ background: '#DCFCE7', color: '#16A34A', padding: '3px 10px', fontSize: 12, fontWeight: 600, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+      <Wifi size={11} /> Available
+    </span>
+  );
 };
 
 /* ── Image URL helper ── */
@@ -564,13 +589,13 @@ const AssetRegister = () => {
                   <table className="fm-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#E8F5E9', borderBottom: `2px solid ${G.sage}` }}>
-                        {['#', 'Vehicle', 'Daily Rate', 'Asset Value', 'Publication Status', 'Actions'].map((h, i) => (
+                        {['#', 'Vehicle', 'Daily Rate', 'Asset Value', 'Machine Status', 'Publication Status', 'Actions'].map((h, i) => (
                           <th key={h} style={{
                             padding: '12px 16px',
-                            textAlign: i >= 5 ? 'center' : 'left',
+                            textAlign: i >= 6 ? 'center' : 'left',
                             fontSize: 11, fontWeight: 900, color: G.dark,
                             textTransform: 'uppercase', letterSpacing: 0.8,
-                            borderRight: i < 5 ? `1px solid ${G.sage}` : 'none',
+                            borderRight: i < 6 ? `1px solid ${G.sage}` : 'none',
                             whiteSpace: 'nowrap',
                           }}>{h}</th>
                         ))}
@@ -627,6 +652,10 @@ const AssetRegister = () => {
                                   ? <span style={{ fontWeight: 900, fontSize: 14, color: G.dark }}>ETB {parseFloat(car.asset_value).toLocaleString()}</span>
                                   : <span style={{ fontSize: 11, color: '#BDBDBD', fontStyle: 'italic', fontWeight: 700 }}>Unset</span>}
                               </div>
+                            </td>
+                            {/* Machine Status */}
+                            <td data-label="Machine Status" style={{ padding: '12px 16px', borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                              {getMachineStatusBadge(car)}
                             </td>
                             {/* Publication Status */}
                             <td data-label="Publication Status" style={{ padding: '12px 16px', borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>

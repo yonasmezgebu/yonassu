@@ -56,10 +56,22 @@ const SECTION_TITLE = {
 };
 
 /* ─────────────── MAIN COMPONENT ─────────────── */
+const resolveAccountMethod = (acc) => {
+  if (!acc) return '';
+  const type = String(acc.account_type || '').toLowerCase();
+  const provider = String(acc.bank_provider || '').trim();
+  const name = String(acc.account_name || '').toLowerCase();
+  if (name.includes('cash') || type === 'cash') return 'Cash';
+  if (type.includes('wallet') || type.includes('mobile') || type.includes('telebirr')) return 'Telebirr';
+  if (type.includes('bank') || type.includes('saving')) return provider ? `${provider} Bank` : 'Bank';
+  return provider ? `${provider} Bank` : (acc.account_name || 'Bank');
+};
+
 const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
   const fileRef = useRef(null);
 
   const [cars, setCars] = useState([]);
+  const [financeAccounts, setFinanceAccounts] = useState([]);
   const [form, setForm] = useState({
     carId:           waitlistState?.carId ? String(waitlistState.carId) : '',
     startDate:       '',
@@ -68,6 +80,7 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
     notes:           '',
     paymentMethod:   'Telebirr',
     paymentReference:'',
+    paymentAccountId:'', paymentAccountName:'', paymentAccountNumber:'', paymentProvider:'', paymentAccountType:'',
     customerName:    waitlistState?.customerName || '',
     customerPhone:   waitlistState?.customerPhone || '',
     customerEmail:   waitlistState?.customerEmail || '',
@@ -99,6 +112,13 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    api.get('/finance-bank').then(res => {
+      const list = Array.isArray(res) ? res : (res && Array.isArray(res.data) ? res.data : []);
+      setFinanceAccounts(list);
+    }).catch(() => {});
+  }, []);
+
   /* ── Auto-compute pricing ── */
   useEffect(() => {
     if (scheduleLater || !form.startDate || !form.endDate || !form.carId) { setPricing(null); return; }
@@ -117,6 +137,23 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
     const reader = new FileReader();
     reader.onload = ev => setScreenshotPreview(ev.target.result);
     reader.readAsDataURL(file);
+  };
+
+  const handleAccountSelect = (id) => {
+    if (id === '__cash__') {
+      setForm(f => ({ ...f, paymentAccountId: id, paymentMethod: 'Cash', paymentAccountName: '', paymentAccountNumber: '', paymentProvider: '', paymentAccountType: '' }));
+      return;
+    }
+    const acc = financeAccounts.find(a => String(a.id) === String(id));
+    setForm(f => ({
+      ...f,
+      paymentAccountId: id,
+      paymentMethod: acc ? resolveAccountMethod(acc) : f.paymentMethod,
+      paymentAccountName: acc?.account_name || '',
+      paymentAccountNumber: acc?.account_number || '',
+      paymentProvider: acc?.bank_provider || '',
+      paymentAccountType: acc?.account_type || ''
+    }));
   };
 
   const minDate = new Date().toISOString().split('T')[0];
@@ -309,18 +346,29 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
               </div>
             </div>
 
-            {/* Schedule-later toggle (walk-in hold for a still-booked vehicle) */}
-            <div style={{ marginBottom: '1rem', background: scheduleLater ? '#E8F5E9' : C.lightGray, border: `1px solid ${scheduleLater ? C.forestGreen : C.border}`, padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: C.darkGray }}>
-                <input type="checkbox" checked={scheduleLater} onChange={e => setScheduleLater(e.target.checked)} style={{ width: 16, height: 16, accentColor: C.forestGreen }} />
-                Vehicle still rented — set dates later
-              </label>
-              {waitlistState?.waitlistId && (
-                <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: C.forestGreen, background: '#fff', border: `1px solid ${C.forestGreen}`, padding: '3px 9px' }}>
+            {/* Waitlist tag for available machines if coming from request */}
+            {selectedCar?.availability === 'Available' && waitlistState?.waitlistId && (
+              <div style={{ marginBottom: '1rem', padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.forestGreen, background: '#E8F5E9', border: `1px solid ${C.forestGreen}`, padding: '3px 9px' }}>
                   FROM AVAILABILITY REQUEST
                 </span>
-              )}
-            </div>
+              </div>
+            )}
+            
+            {/* Schedule-later toggle (only if car is NOT available) */}
+            {selectedCar?.availability !== 'Available' && (
+              <div style={{ marginBottom: '1rem', background: scheduleLater ? '#E8F5E9' : C.lightGray, border: `1px solid ${scheduleLater ? C.forestGreen : C.border}`, padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: C.darkGray }}>
+                  <input type="checkbox" checked={scheduleLater} onChange={e => setScheduleLater(e.target.checked)} style={{ width: 16, height: 16, accentColor: C.forestGreen }} />
+                  Vehicle still rented — set dates later
+                </label>
+                {waitlistState?.waitlistId && (
+                  <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: C.forestGreen, background: '#fff', border: `1px solid ${C.forestGreen}`, padding: '3px 9px' }}>
+                    FROM AVAILABILITY REQUEST
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Pickup location */}
             <div>
@@ -377,25 +425,51 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
               {/* Payment info banner */}
               <div style={{ padding: '14px 16px', background: C.lightGray, border: `1px solid ${C.border}`, marginBottom: '1.2rem', fontSize: 13, color: C.darkGray }}>
                 <div style={{ fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Info size={14} color={C.emerald} /> Pay the total amount to SUTANA:
+                  <Info size={14} color={C.emerald} /> Select the account the customer paid into:
                 </div>
-                <div style={{ marginBottom: 4 }}>📱 <strong>Telebirr:</strong> 0901407032 (SUTANA WALLET)</div>
-                <div>🏦 <strong>CBE Bank:</strong> 1000675227776 (SUTANA)</div>
+                {financeAccounts.length === 0 ? (
+                  <div style={{ color: C.textSec }}>⏳ Loading payment accounts…</div>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <select value={form.paymentAccountId} onChange={e => handleAccountSelect(e.target.value)}
+                      style={{ ...INPUT, appearance: 'none', paddingRight: 36, cursor: 'pointer', fontWeight: 600 }}>
+                      <option value="">— Select Payment Account —</option>
+                      {['Bank', 'Mobile Wallet'].map(type => {
+                        const group = financeAccounts.filter(a => a.account_type === type && a.status === 'Active');
+                        if (group.length === 0) return null;
+                        return (
+                          <optgroup key={type} label={type}>
+                            {group.map(acc => (
+                              <option key={acc.id} value={acc.id}>
+                                {resolveAccountMethod(acc)}{acc.account_number ? ` — ${acc.account_number}` : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
+                      <option value="__cash__">💵 Cash</option>
+                    </select>
+                    <ChevronDown size={14} color={C.border} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                  </div>
+                )}
+                {(() => {
+                  const acc = financeAccounts.find(a => String(a.id) === String(form.paymentAccountId));
+                  if (!acc) return null;
+                  return (
+                    <div style={{ marginTop: 10 }}>
+                      <div><strong>Method:</strong> {resolveAccountMethod(acc)}</div>
+                      {acc.account_number && <div><strong>Account Number:</strong> {acc.account_number}</div>}
+                      {acc.bank_provider && <div><strong>Bank / Provider:</strong> {acc.bank_provider}</div>}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1.2rem' }}>
                 <div>
                   <label style={LABEL}><CreditCard size={12} /> Payment Method</label>
-                  <div style={{ position: 'relative' }}>
-                    <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
-                      style={{ ...INPUT, appearance: 'none', paddingRight: 36, cursor: 'pointer', fontWeight: 600 }}>
-                      <option value="Telebirr">📱 Telebirr</option>
-                      <option value="CBE Bank">🏦 CBE Bank</option>
-                      <option value="Cash">💵 Cash</option>
-                      <option value="Awash Bank">🏦 Awash Bank</option>
-                    </select>
-                    <ChevronDown size={14} color={C.border} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                  </div>
+                  <input readOnly value={form.paymentMethod || ''} placeholder="Choose an account above"
+                    style={{ ...INPUT, background: C.lightGray, fontWeight: 600 }} />
                 </div>
                 <div>
                   <label style={LABEL}><Hash size={12} /> Transaction Reference <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4, textTransform: 'none' }}>— optional if screenshot provided</span></label>
