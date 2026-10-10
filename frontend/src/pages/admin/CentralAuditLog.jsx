@@ -102,10 +102,11 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
   );
   const isCarRental  = !isSuperAdmin && !isCEO && (
     roleStr.includes('car rental') || roleStr.includes('car renting') ||
-    deptStr.includes('car rental') || deptStr.includes('car renting')
+    roleStr.includes('rental manager') || roleStr.includes('renting manager') ||
+    roleStr.includes('agri rental') || roleStr.includes('agrirent')
   );
 
-  const lockedModule = fixedModule || (isHR ? 'HR' : (isPharmacy ? 'Pharmacy' : (isStore ? 'Store' : '')));
+  const lockedModule = fixedModule || (isHR ? 'HR' : (isPharmacy ? 'Pharmacy' : (isStore ? 'Store' : (isCarRental ? 'Car Rental' : ''))));
   const isLocked     = !!lockedModule;
   const financeMode  = mode === 'finance' || mode === 'pharmacy';
 
@@ -417,7 +418,7 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                 : isSales
                 ? 'Sales activity log — all sales module records plus your own actions.'
                 : isCarRental
-                ? 'Car & Agri Rental activity log — your department records only.'
+                ? 'Car & Agri Rental activity log — your own activity only.'
                 : isSuperAdmin || isCEO
                 ? 'Append-only system record of all module activities.'
                 : 'Personal activity log — record of your actions.'}
@@ -570,6 +571,21 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                               return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : null;
                             } catch { return null; }
                           };
+
+                          const looseEqual = (a, b) => {
+                            if (a === b) return true;
+                            try { return JSON.stringify(a) === JSON.stringify(b); }
+                            catch { return String(a) === String(b); }
+                          };
+
+                          const renderCell = (v) => {
+                            if (v === null || v === undefined || v === '') return '—';
+                            if (typeof v === 'object') {
+                              return <pre className={styles.diffCode} style={{ margin: 0 }}>{safeParse(v)}</pre>;
+                            }
+                            return String(v);
+                          };
+
                           const pObj = getObj(log.previous_value);
                           const nObj = getObj(log.new_value);
 
@@ -578,7 +594,7 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                             const keys = Array.from(new Set([...Object.keys(pObj || {}), ...Object.keys(nObj || {})]))
                               .filter(k => !IGNORE_KEYS.has(k));
                             const changedKeys = pObj && nObj
-                              ? keys.filter(k => String(pObj[k] ?? '') !== String(nObj[k] ?? ''))
+                              ? keys.filter(k => !looseEqual(pObj[k], nObj[k]))
                               : keys;
 
                             if (changedKeys.length > 0) {
@@ -594,14 +610,16 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                                     </thead>
                                     <tbody>
                                       {changedKeys.map(key => {
-                                        const pv = pObj && pObj[key] !== undefined && pObj[key] !== null ? String(pObj[key]) : '—';
-                                        const nv = nObj && nObj[key] !== undefined && nObj[key] !== null ? String(nObj[key]) : '—';
-                                        const isChanged = pv !== nv && pObj !== null && nObj !== null;
+                                        const isChanged = pObj != null && nObj != null && !looseEqual(pObj[key], nObj[key]);
                                         return (
                                           <tr key={key} className={isChanged ? styles.diffChangedRow : ''}>
                                             <td className={styles.diffField}>{key}</td>
-                                            <td className={isChanged ? `${styles.diffValue} ${styles.diffPrev}` : styles.diffValue}>{pv}</td>
-                                            <td className={isChanged ? `${styles.diffValue} ${styles.diffNew}` : styles.diffValue}>{nv}</td>
+                                            <td className={isChanged ? `${styles.diffValue} ${styles.diffPrev}` : styles.diffValue}>
+                                              {renderCell(pObj ? pObj[key] : undefined)}
+                                            </td>
+                                            <td className={isChanged ? `${styles.diffValue} ${styles.diffNew}` : styles.diffValue}>
+                                              {renderCell(nObj ? nObj[key] : undefined)}
+                                            </td>
                                           </tr>
                                         );
                                       })}
@@ -623,17 +641,24 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                             diffContent = (
                               <div className={styles.diffContainer}>
                                 {log.previous_value != null && (
-                                  <div className={styles.diffBox}>
+                                  <div className={`${styles.diffBox} ${styles.diffBoxPrev}`}>
                                     <div className={styles.diffTitle}>Previous Value</div>
                                     <pre className={styles.diffCode}>{safeParse(log.previous_value)}</pre>
                                   </div>
                                 )}
                                 {log.new_value != null && (
-                                  <div className={styles.diffBox}>
-                                    <div className={styles.diffTitle}>{log.previous_value == null ? 'Action Payload (Snapshot)' : 'New Value'}</div>
+                                  <div className={`${styles.diffBox} ${styles.diffBoxNew}`}>
+                                    <div className={styles.diffTitle}>New Value</div>
                                     <pre className={styles.diffCode}>{safeParse(log.new_value)}</pre>
                                   </div>
                                 )}
+                              </div>
+                            );
+                          } else {
+                            diffContent = (
+                              <div className={styles.diffBox} style={{ marginTop: '1rem' }}>
+                                <div className={styles.diffTitle}>No Changes Recorded</div>
+                                <div className={styles.diffSummary}>No before/after data was recorded for this action.</div>
                               </div>
                             );
                           }

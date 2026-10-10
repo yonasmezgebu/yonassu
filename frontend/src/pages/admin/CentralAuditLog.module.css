@@ -344,6 +344,22 @@
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border);
 }
+.diffBoxPrev {
+  border: 1px solid #FCA5A5;
+  background: #FFFBFA;
+}
+.diffBoxPrev .diffTitle {
+  color: #B91C1C;
+  border-bottom-color: #FECACA;
+}
+.diffBoxNew {
+  border: 1px solid #6EE7B7;
+  background: #FBFFFD;
+}
+.diffBoxNew .diffTitle {
+  color: #15803D;
+  border-bottom-color: #A7F3D0;
+}
 .diffCode {
   margin: 0;
   font-family: 'Consolas', 'Courier New', monospace;
