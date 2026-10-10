@@ -1431,7 +1431,7 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     .modify((q) => { applyRange(q, 'created_at'); })
     .select(db.raw('to_char(created_at, \'YYYY-MM\') as month'))
     .sum('subtotal as revenue').sum('vat_total as output_vat')
-    .groupByRaw("to_char(created_at::date, 'YYYY-MM')")
+    .groupByRaw("to_char(created_at, 'YYYY-MM')")
     .orderBy('month');
 
   const cogsMonthRows = await db('sales_invoice_items as sii')
@@ -1440,7 +1440,7 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     .modify((q) => { applyRange(q, 'si.created_at'); })
     .select(db.raw('to_char(si.created_at, \'YYYY-MM\') as month'))
     .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cogs'))
-    .groupByRaw("to_char(si.created_at::date, 'YYYY-MM')");
+    .groupByRaw("to_char(si.created_at, 'YYYY-MM')");
 
   const cogsByMonth = {};
   for (const r of cogsMonthRows) cogsByMonth[r.month] = fmt2(r.cogs);

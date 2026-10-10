@@ -180,17 +180,31 @@ exports.verifyPassword = catchAsync(async (req, res) => {
   res.status(200).json({ status: 'success', message: 'Password verified' });
 });
 
+const insertedIdOf = (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const first = rows[0];
+  return first && typeof first === 'object' && 'id' in first ? first.id : first;
+};
 exports.register = catchAsync(async (req, res) => {
   const { fullName, email, phone, password, role: selectedRole } = req.body;
   const ip = req.ip;
   if (!password) {
-    throw new AppError('Password is required', 400);
+    throw new AppError('Password is required. Please create a password for your account.', 400);
   }
+  const passwordValidation = validatePasswordStrength(password);
+  if (!passwordValidation.isValid) {
+    throw new AppError(`Password is too weak: ${passwordValidation.errors.join('; ')}.`, 400);
+  }
+  const normalizedEmail = String(email).trim().toLowerCase();
   const existingUser = await db('users')
-    .where('email', email.toLowerCase())
+    .where('email', normalizedEmail)
     .first();
   if (existingUser) {
-    throw new AppError('User with this email already exists', 400);
+    throw new AppError('An account with this email already exists. Please sign in instead.', 409);
+  }
+  const existingPhone = await db('users').where('phone', phone).first();
+  if (existingPhone) {
+    throw new AppError('An account with this phone number already exists. Please sign in instead.', 409);
   }
   const hashedPassword = await hashPassword(password);
   const activeStatus = await db('user_statuses').where('status_code', 'active').first();
@@ -207,9 +221,9 @@ exports.register = catchAsync(async (req, res) => {
   if (!dept) throw new AppError(`${deptName} department is not configured.`, 500);
 
   const result = await transaction(async (trx) => {
-    const [userId] = await trx('users').insert({
+    const insertedUser = await trx('users').insert({
       full_name: fullName,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       phone,
       password: hashedPassword,
       department_id: dept.id,
@@ -217,28 +231,46 @@ exports.register = catchAsync(async (req, res) => {
       must_change_password: false, 
       created_at: db.fn.now()
     });
+    const userId = insertedIdOf(insertedUser);
+    if (!userId) {
+      throw new AppError('Failed to create the user account. Please try again.', 500);
+    }
     await trx('user_roles').insert({
       user_id: userId,
       role_id: role.id
     });
     if (roleName === 'Customer') {
-      const walkinType = await trx('customer_types').where('name', 'Regular').first();
+      let walkinType = await trx('customer_types').where('name', 'Regular').first();
+      if (!walkinType) {
+        walkinType = await trx('customer_types').orderBy('id').first();
+      }
+      if (!walkinType) {
+        const insertedType = await trx('customer_types')
+          .insert({ name: 'Regular', color_code: '#6B7280', sort_order: 0 });
+        walkinType = { id: insertedIdOf(insertedType) };
+      }
+      if (!walkinType.id) {
+        throw new AppError(
+          'Customer type is not configured. Please contact administrator.',
+          500
+        );
+      }
       await trx('customers').insert({
         user_id: userId,
         name: fullName,
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         phone: phone || null,
-        customer_type_id: walkinType ? walkinType.id : 1, 
+        customer_type_id: walkinType.id,
         created_by: userId,
         created_at: db.fn.now()
       });
     }
     return userId;
   });
-  await audit('USER_REGISTERED', result, { ip, details: { email, phone } });
+  await audit('USER_REGISTERED', result, { ip, details: { email: normalizedEmail, phone } });
   res.status(201).json({
     status: 'success',
-    message: 'Registration successful. You can now login with your password.'
+    message: 'Your customer account has been created successfully. You can now sign in with your email and password.'
   });
 });
 exports.logout = catchAsync(async (req, res) => {

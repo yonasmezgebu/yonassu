@@ -11,6 +11,7 @@ const MODULE_PREFIXES = {
   FRM: 'FARMING',
   RET: 'RETAIL',
   INV: 'RETAIL',
+  AGR: 'AGRI_RENT',
 };
 
 const STAGE_MAPS = {
@@ -33,6 +34,10 @@ const STAGE_MAPS = {
   RETAIL: {
     stages: ['PROCESSING', 'PACKING', 'SHIPPED', 'DELIVERED'],
     map: (s) => ({ PROCESSING: 0, PACKING: 1, SHIPPED: 2, DELIVERED: 3, CANCELLED: -1 })[s] ?? -1,
+  },
+  AGRI_RENT: {
+    stages: ['REQUESTED', 'APPROVED', 'CONFIRMED', 'ACTIVE', 'COMPLETED'],
+    map: (s) => ({ pending: 0, approved: 1, confirmed: 2, active: 3, completed: 4, cancelled: -1 })[String(s).toLowerCase()] ?? -1,
   },
 };
 
@@ -83,6 +88,15 @@ const STATUS_LABELS = {
     SHIPPED: 'SHIPPED — Your order has been shipped',
     DELIVERED: 'DELIVERED — Your order has been delivered',
     CANCELLED: 'CANCELLED — This order has been cancelled',
+  },
+  AGRI_RENT: {
+    pending: 'REQUESTED — Your machine rental request has been received and is awaiting review',
+    approved: 'APPROVED — Your rental request has been approved',
+    confirmed: 'CONFIRMED — Your rental is confirmed and scheduled',
+    active: 'ACTIVE — Your machine has been released and is working on your field',
+    completed: 'COMPLETED — Your rental has been completed',
+    cancelled: 'CANCELLED — This rental has been cancelled',
+    rejected: 'REJECTED — The payment for this rental could not be verified',
   },
 };
 
@@ -266,14 +280,52 @@ exports.trackOrder = catchAsync(async (req, res) => {
     });
   }
 
+  if (moduleType === 'AGRI_RENT') {
+    row = await db('agrirent_orders')
+      .where('order_number', invoice)
+      .where('deleted_at', null)
+      .first();
+    if (!row) return sendNotFound(res);
+    if (!phonesMatch(phoneClean, row.customer_phone)) return sendNotFound(res);
+
+    const tractor = row.tractor_id
+      ? await db('tractors').where('id', row.tractor_id).select('name', 'tractor_type').first()
+      : null;
+    const sm = STAGE_MAPS.AGRI_RENT;
+    const idx = sm.map(row.status);
+    const cancelled = String(row.status).toLowerCase() === 'cancelled';
+    const machine = tractor ? `${tractor.name}${tractor.tractor_type ? ` (${tractor.tractor_type})` : ''}` : 'Machine';
+
+    return res.json({
+      status: 'success',
+      data: {
+        order_id: row.order_number,
+        module: moduleType,
+        order_date: fmtDate(row.created_at),
+        status: String(row.status || '').toUpperCase(),
+        status_label: STATUS_LABELS.AGRI_RENT[String(row.status).toLowerCase()] || STATUS_LABELS.AGRI_RENT.pending,
+        stages: buildStages(sm.stages, idx, cancelled),
+        cancelled,
+        estimated_completion: fmtDate(row.end_date),
+        product: `${machine} — ${row.total_days} day(s)${row.field_location ? ` at ${row.field_location}` : ''}`,
+        total_amount: parseFloat(row.total_amount) || 0,
+        payment_status: row.payment_status || 'Pending',
+        pickup_location: row.field_location ? `Field: ${row.field_location}` : 'Sutana AgriRent, Addis Ababa',
+        working_hours: '8:00 AM — 6:00 PM',
+        contact_number: CONTACT_NUMBER,
+      },
+    });
+  }
+
   if (moduleType === 'RETAIL') {
     const prefix = invoice.split('-')[0];
     if (prefix === 'RET') {
       row = await db('retail_orders as ro')
         .leftJoin('users', 'ro.customer_id', 'users.id')
         .where('ro.invoice_number', invoice)
-        .select('ro.*', 'users.phone as customer_phone')
+        .select('ro.*', 'users.phone as user_phone')
         .first();
+      if (row && !row.customer_phone) row.customer_phone = row.user_phone;
     } else {
       row = await db('retail_transactions').where('invoice_number', invoice).first();
       if (row) { row.status = 'DELIVERED'; row.payment_status = 'PAID'; }

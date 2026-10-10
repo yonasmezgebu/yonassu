@@ -36,11 +36,27 @@ exports.getAllTractorsPublic = async (req, res) => {
 
 exports.getAllTractorsManager = async (req, res) => {
   try {
-    const tractors = await tractorRepository.findAll({});
-    res.status(200).json({
-      status: 'success',
-      data: tractors.map(t => t.toJSON())
+    const { db } = require('../../config/database');
+    const tractorRows = await db('tractors').whereNull('deleted_at').orderBy('created_at', 'desc');
+
+    // Enrich with booking end date from active AgriRent orders (same as public endpoint)
+    const releaseRows = await db('agrirent_orders')
+      .whereNull('deleted_at')
+      .whereNotIn('status', ['completed', 'cancelled', 'rejected'])
+      .whereIn('tractor_id', tractorRows.map(t => t.id))
+      .select('tractor_id')
+      .max('end_date as release_date')
+      .groupBy('tractor_id');
+    const releaseByTractor = {};
+    releaseRows.forEach(r => { releaseByTractor[r.tractor_id] = r.release_date; });
+
+    const data = tractorRows.map(t => {
+      const json = TractorModel.fromDatabase(t).toJSON();
+      json.bookingEndDate = releaseByTractor[t.id] || null;
+      return json;
     });
+
+    res.status(200).json({ status: 'success', data });
   } catch (error) {
     logger.error('Error fetching manager tractors:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch tractors' });

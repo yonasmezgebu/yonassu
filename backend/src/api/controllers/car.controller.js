@@ -36,9 +36,26 @@ exports.getAllCarsPublic = async (req, res) => {
 exports.getAllCarsManager = async (req, res) => {
   try {
     const cars = await carRepository.findAll({});
+    
+    // Add release date / booking info
+    const { db } = require('../../config/database');
+    const releaseRows = await db('rental_orders')
+      .whereNull('deleted_at')
+      .whereNotIn('status', ['COMPLETED', 'CLOSED', 'CANCELLED', 'REJECTED', 'ABANDONED'])
+      .whereIn('car_id', cars.map(c => c.id))
+      .select('car_id', db.raw('MAX(COALESCE(extended_return_date, return_date)) as release_date'))
+      .groupBy('car_id');
+      
+    const releaseByCar = {};
+    releaseRows.forEach(r => { releaseByCar[r.car_id] = r.release_date; });
+
     res.status(200).json({
       status: 'success',
-      data: cars.map(car => car.toJSON())
+      data: cars.map(car => {
+        const json = car.toJSON();
+        json.bookingEndDate = releaseByCar[car.id] || null;
+        return json;
+      })
     });
   } catch (error) {
     logger.error('Error fetching manager cars:', error);

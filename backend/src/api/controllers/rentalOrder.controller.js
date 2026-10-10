@@ -13,6 +13,25 @@ const vatConfigService = require('../../services/vatConfig.service');
 const { generateInvoiceNumber } = require('../../utils/orderNumber');
 const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
 
+// ── HELPER: Destination account the customer selected ─────────────────────────
+const buildDestinationAccount = ({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType }) => {
+  const acctType = String(paymentAccountType || '').toLowerCase();
+  const isBank = acctType.includes('bank') || acctType.includes('saving');
+  const isWallet = acctType.includes('wallet') || acctType.includes('mobile');
+  const number = (paymentAccountNumber || '').trim();
+  const provider = (paymentProvider || '').trim();
+  const holder = (paymentAccountName || '').trim();
+  const paymentAccount = number
+    ? [provider, number].filter(Boolean).join(' ') + (holder ? ` (${holder})` : '')
+    : null;
+  return {
+    bankName: isBank ? (provider || null) : null,
+    accountNumber: isBank ? (number || null) : null,
+    telebirrNumber: isWallet ? (number || null) : null,
+    paymentAccount
+  };
+};
+
 // ── HELPER: Sync car rental payment to Finance Receivables ───────────────────────
 // Mirrors same logic as AgriRent syncToFinance
 const syncRentalToFinance = async (order, userId, verifiedAmount) => {
@@ -642,6 +661,7 @@ exports.createManualOrder = async (req, res) => {
       carId, customerName, customerPhone, customerEmail,
       startDate, endDate, pickupLocation, notes,
       paymentMethod, paymentReference,
+      paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType,
       driverName, driverLicense, scheduleLater, waitlistId
     } = req.body;
 
@@ -667,6 +687,8 @@ exports.createManualOrder = async (req, res) => {
     if (!isScheduleLater && !paymentReference && !proofUrl) {
       return res.status(400).json({ status: 'error', message: 'Either payment reference or screenshot is required' });
     }
+
+    const destAcct = buildDestinationAccount({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType });
 
     const pickup = startDate ? new Date(startDate) : null;
     const returnDate = endDate ? new Date(endDate) : null;
@@ -782,6 +804,10 @@ exports.createManualOrder = async (req, res) => {
             proofImagePath:   proofUrl,
             amount:           totalAmount,
             receivedFrom:     customerName,
+            bankName:         destAcct.bankName,
+            accountNumber:    destAcct.accountNumber,
+            telebirrNumber:   destAcct.telebirrNumber,
+            paymentAccount:   destAcct.paymentAccount,
             // Car / booking details so Finance can see full context
             carName,
             licensePlate,

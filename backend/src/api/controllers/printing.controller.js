@@ -28,8 +28,25 @@ const calculatePrintingPrice = (params) => {
 const applyPrintingVat = async (productType, baseTotal) => {
   const pt = await db('printing_product_types').where('code', productType).first();
   const r = await vatConfigService.computeVatForItem('printing', pt ? pt.id : null, baseTotal);
-  const vat = parseFloat(r.vat.toFixed(2));
   return { baseTotal, vat, total: baseTotal + vat };
+};
+// Destination account the customer selected (mirrors AgriRent / Car Rental).
+const buildDestinationAccount = ({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType }) => {
+  const acctType = String(paymentAccountType || '').toLowerCase();
+  const isBank = acctType.includes('bank') || acctType.includes('saving');
+  const isWallet = acctType.includes('wallet') || acctType.includes('mobile');
+  const number = (paymentAccountNumber || '').trim();
+  const provider = (paymentProvider || '').trim();
+  const holder = (paymentAccountName || '').trim();
+  const paymentAccount = number
+    ? [provider, number].filter(Boolean).join(' ') + (holder ? ` (${holder})` : '')
+    : null;
+  return {
+    bankName: isBank ? (provider || null) : null,
+    accountNumber: isBank ? (number || null) : null,
+    telebirrNumber: isWallet ? (number || null) : null,
+    paymentAccount
+  };
 };
 // Build invoice lines for a printing order using the already-computed pricing/VAT
 // so the invoice total always matches the order total (subtotal + binding + VAT).
@@ -157,7 +174,11 @@ exports.createOrder = catchAsync(async (req, res) => {
     dueDate,
     specialInstructions,
     paymentMethod,
-    paymentReference
+    paymentReference,
+    paymentAccountName,
+    paymentAccountNumber,
+    paymentProvider,
+    paymentAccountType
   } = req.body;
   const userId = req.user.id;
   let resolvedCustomerId = req.body.customerId || null;
@@ -245,6 +266,7 @@ exports.createOrder = catchAsync(async (req, res) => {
 
   // Walk-in screenshot proof (multipart) — mirrored from the online order form.
   const screenshotFile = req.files && req.files.paymentScreenshot ? req.files.paymentScreenshot[0] : null;
+  const destAcct = buildDestinationAccount({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType });
 
   // Automatically send to Finance Live Income for verification — EXCEPT cash
   // walk-in orders, which are already collected at the counter so they skip
@@ -255,6 +277,10 @@ exports.createOrder = catchAsync(async (req, res) => {
       order_id: orderId,
       paymentMethod: paymentMethod,
       paymentReference: paymentReference || null,
+      bankName: destAcct.bankName,
+      accountNumber: destAcct.accountNumber,
+      telebirrNumber: destAcct.telebirrNumber,
+      paymentAccount: destAcct.paymentAccount,
       receivedFrom: customer?.name || 'Walk-in Customer'
     };
     if (screenshotFile) manualDetails.paymentScreenshot = screenshotFile.filename;

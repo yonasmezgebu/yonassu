@@ -8,6 +8,25 @@ const { generateInvoiceNumber } = require('../../utils/orderNumber');
 const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
 const { notifyWaitlistForTractor } = require('../../services/agriRentWaitlist.service');
 
+// ── HELPER: Destination account the customer selected ─────────────────────────
+const buildDestinationAccount = ({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType }) => {
+  const acctType = String(paymentAccountType || '').toLowerCase();
+  const isBank = acctType.includes('bank') || acctType.includes('saving');
+  const isWallet = acctType.includes('wallet') || acctType.includes('mobile');
+  const number = (paymentAccountNumber || '').trim();
+  const provider = (paymentProvider || '').trim();
+  const holder = (paymentAccountName || '').trim();
+  const paymentAccount = number
+    ? [provider, number].filter(Boolean).join(' ') + (holder ? ` (${holder})` : '')
+    : null;
+  return {
+    bankName: isBank ? (provider || null) : null,
+    accountNumber: isBank ? (number || null) : null,
+    telebirrNumber: isWallet ? (number || null) : null,
+    paymentAccount
+  };
+};
+
 // ── HELPER: Sync to Finance ───────────────────────────────────────────────────
 const syncToFinance = async (order, userId) => {
   try {
@@ -163,16 +182,19 @@ exports.createOrder = async (req, res) => {
   try {
     const {
       tractorId, startDate, endDate, fieldLocation, fieldSizeHectares,
-      farmingPurpose, specialInstructions, paymentMethod, paymentReference
+      farmingPurpose, specialInstructions, paymentMethod, paymentReference,
+      paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType
     } = req.body;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ status: 'error', message: 'Start and end dates are required' });
     }
     
+    const destAcct = buildDestinationAccount({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType });
+
     let paymentScreenshot = null;
     if (req.file) {
-      paymentScreenshot = req.file.filename;
+      paymentScreenshot = `/uploads/temp/${req.file.filename}`;
     }
 
     if (!paymentReference && !paymentScreenshot) {
@@ -273,14 +295,18 @@ exports.createOrder = async (req, res) => {
         reference_no: paymentReference || 'SCREENSHOT_UPLOADED',
         description: `AgriRent Order ${orderNumber} - ${req.user.fullName || req.user.full_name || 'Customer'}`,
         status: 'Pending',
-        manual_details: JSON.stringify({
-          order_id: id,
-          paymentMethod: paymentMethod || 'Telebirr',
-          paymentReference: paymentReference || null,
-          proofImagePath: paymentScreenshot,
-          amount: totalAmount,
-          receivedFrom: req.user.fullName || req.user.full_name || 'Customer'
-        }),
+          manual_details: JSON.stringify({
+            order_id: id,
+            paymentMethod: paymentMethod || 'Telebirr',
+            paymentReference: paymentReference || null,
+            proofImagePath: paymentScreenshot,
+            amount: totalAmount,
+            receivedFrom: req.user.fullName || req.user.full_name || 'Customer',
+            bankName: destAcct.bankName,
+            accountNumber: destAcct.accountNumber,
+            telebirrNumber: destAcct.telebirrNumber,
+            paymentAccount: destAcct.paymentAccount
+          }),
         created_at: new Date(),
         updated_at: new Date()
       });
@@ -323,7 +349,8 @@ exports.createManualOrder = async (req, res) => {
       startDate, endDate, dailyRateOverride, fieldLocation,
       fieldSizeHectares, farmingPurpose, specialInstructions,
       paymentMethod, paymentReference, paymentStatus,
-      scheduleLater, waitlistId
+      scheduleLater, waitlistId,
+      paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType
     } = req.body;
 
     if (!customerName || !customerPhone) {
@@ -339,9 +366,11 @@ exports.createManualOrder = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Start and end dates are required' });
     }
 
+    const destAcct = buildDestinationAccount({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType });
+
     let paymentScreenshot = null;
     if (req.file) {
-      paymentScreenshot = req.file.filename;
+      paymentScreenshot = `/uploads/temp/${req.file.filename}`;
     }
 
     let totalDays = 0;
@@ -479,7 +508,11 @@ exports.createManualOrder = async (req, res) => {
             paymentReference: paymentReference || null,
             proofImagePath: paymentScreenshot,
             amount: totalAmount,
-            receivedFrom: customerName
+            receivedFrom: customerName,
+            bankName: destAcct.bankName,
+            accountNumber: destAcct.accountNumber,
+            telebirrNumber: destAcct.telebirrNumber,
+            paymentAccount: destAcct.paymentAccount
           }),
           created_at: new Date(),
           updated_at: new Date()
