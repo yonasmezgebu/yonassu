@@ -297,6 +297,11 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     // If a non-CEO (like Purchase Manager) clicks a generic broadcast link meant for CEO:
     if (!isCeo && link.startsWith('/ceo/tenders')) return '/purchase/smart-tenders';
 
+    // Car Renting route mappings
+    if (link === '/car-renting/orders' || link.startsWith('/car-renting/orders')) {
+      return '/car-renting/manager/orders';
+    }
+
     return link;
   };
 
