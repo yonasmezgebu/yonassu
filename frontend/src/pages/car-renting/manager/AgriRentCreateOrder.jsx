@@ -102,6 +102,7 @@ const AgriRentCreateOrder = () => {
     tractorId: location.state?.tractorId || '',
     startDate: '', endDate: '',
     fieldLocation: '', fieldSizeHectares: '', farmingPurpose: 'Plowing',
+    dailyRateOverride: '', hectareRate: '', purposeFee: '',
     specialInstructions: '',
     paymentMethod: '',   // will be set once accounts load
     paymentReference: '',
@@ -174,9 +175,20 @@ const AgriRentCreateOrder = () => {
     if (end <= start) { setPricing(null); return; }
     const days = Math.max(1, Math.ceil((end - start) / 86400000));
     const tractor = tractors.find(t => t.id === parseInt(form.tractorId));
-    const dailyRate = tractor ? parseFloat(tractor.dailyRate || tractor.daily_rate || 0) : 0;
-    setPricing({ days, dailyRate, total: days * dailyRate, tractorName: tractor?.name });
-  }, [form.startDate, form.endDate, form.tractorId, tractors]);
+    const baseRate = tractor ? parseFloat(tractor.dailyRate || tractor.daily_rate || 0) : 0;
+    const dailyRate = isManager && form.dailyRateOverride !== '' ? (parseFloat(form.dailyRateOverride) || 0) : baseRate;
+    const hectares = parseFloat(form.fieldSizeHectares) || 0;
+    const hectareRate = isManager ? (parseFloat(form.hectareRate) || 0) : 0;
+    const purposeFee = isManager ? (parseFloat(form.purposeFee) || 0) : 0;
+    const dayComponent = days * dailyRate;
+    const hectareComponent = hectares * hectareRate;
+    setPricing({
+      days, dailyRate, baseRate, hectares, hectareRate, purposeFee,
+      dayComponent, hectareComponent,
+      total: dayComponent + hectareComponent + purposeFee,
+      tractorName: tractor?.name,
+    });
+  }, [form.startDate, form.endDate, form.tractorId, form.fieldSizeHectares, form.dailyRateOverride, form.hectareRate, form.purposeFee, tractors]);
 
   const [vatCtx, setVatCtx] = useState(null);
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
@@ -205,7 +217,7 @@ const AgriRentCreateOrder = () => {
     if (machineStatus === 'booked') {
       setScheduleLater(true);
     } else if (machineStatus === 'available') {
-      if (!location.state?.waitlistId) setScheduleLater(false);
+      setScheduleLater(false);
       setQueueConfirmed(false);
     }
   }, [machineStatus]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -237,7 +249,7 @@ const AgriRentCreateOrder = () => {
     if (!scheduleLater && new Date(form.endDate) <= new Date(form.startDate)) { toast('End date must be after start date.', 'error'); return; }
     if (isManager && !form.customerName) { toast('Customer name is required.', 'error'); return; }
     if (isManager && !form.customerPhone) { toast('Customer phone is required.', 'error'); return; }
-    if (!scheduleLater && !isManagerCash && !form.paymentReference && !screenshotFile) {
+    if (!scheduleLater && !isManager && !isManagerCash && !form.paymentReference && !screenshotFile) {
       toast('Please provide either a Payment Reference or upload a Payment Screenshot.', 'error');
       return;
     }
@@ -521,6 +533,11 @@ const AgriRentCreateOrder = () => {
                   {[
                     { label: 'Daily Rate', value: `${pricing.dailyRate.toFixed(2)} ETB` },
                     { label: 'Total Days', value: `${pricing.days} days` },
+                    ...(isManager && pricing.hectareRate > 0
+                      ? [{ label: 'Hectare Rate', value: `${pricing.hectareRate.toFixed(2)} ETB x ${pricing.hectares} ha` }] : []),
+                    ...(isManager && pricing.purposeFee > 0
+                      ? [{ label: 'Purpose Fee', value: `${pricing.purposeFee.toFixed(2)} ETB` }] : []),
+                    { label: 'Subtotal', value: `${pricing.total.toFixed(2)} ETB` },
                     { label: 'VAT Amount', value: `${pricingVat.toFixed(2)} ETB` },
                     { label: 'Total (incl. VAT)', value: `${pricingTotal.toFixed(2)} ETB`, large: true },
                   ].map(({ label, value, large }) => (
@@ -529,6 +546,45 @@ const AgriRentCreateOrder = () => {
                       <div style={{ fontSize: large ? 26 : 17, fontWeight: large ? 900 : 700, color: C.darkGreen }}>{value}</div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── CUSTOM PAYMENT (manager) ── */}
+            {isManager && !scheduleLater && machineStatus !== 'maintenance' && (
+              <div style={SECTION_STYLE}>
+                <h3 style={SECTION_TITLE}>
+                  <CreditCard size={18} color={C.forestGreen} /> Custom Payment
+                  <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 'auto' }}>Optional</span>
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={LABEL_STYLE}>Day Rate (ETB/day)</label>
+                    <input type="number" min="0" step="0.01" value={form.dailyRateOverride}
+                      onChange={e => setForm(f => ({ ...f, dailyRateOverride: e.target.value }))}
+                      placeholder={pricing ? pricing.baseRate.toFixed(2) : 'Machine rate'}
+                      onFocus={() => setFocusedField('dayRate')} onBlur={() => setFocusedField('')}
+                      style={fInput('dayRate')} />
+                  </div>
+                  <div>
+                    <label style={LABEL_STYLE}>Rate per Hectare (ETB/ha)</label>
+                    <input type="number" min="0" step="0.01" value={form.hectareRate}
+                      onChange={e => setForm(f => ({ ...f, hectareRate: e.target.value }))}
+                      placeholder="e.g. 1200"
+                      onFocus={() => setFocusedField('hectareRate')} onBlur={() => setFocusedField('')}
+                      style={fInput('hectareRate')} />
+                  </div>
+                  <div>
+                    <label style={LABEL_STYLE}>Farming Purpose Fee (ETB)</label>
+                    <input type="number" min="0" step="0.01" value={form.purposeFee}
+                      onChange={e => setForm(f => ({ ...f, purposeFee: e.target.value }))}
+                      placeholder="e.g. 500"
+                      onFocus={() => setFocusedField('purposeFee')} onBlur={() => setFocusedField('')}
+                      style={fInput('purposeFee')} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: C.textSec, marginTop: 10 }}>
+                  Hire total = (days &times; day rate) + (hectares &times; per-hectare rate) + purpose fee, plus VAT. Leave blank to use the machine's standard day rate.
                 </div>
               </div>
             )}
@@ -642,11 +698,20 @@ const AgriRentCreateOrder = () => {
                   </div>
                 )}
 
+                {isManager && !isManagerCash && (
+                  <div style={{ padding: '14px 16px', borderRadius: 0, background: '#E8F5E9', border: `1px solid ${C.forestGreen}`, marginBottom: '1.2rem', fontSize: 13, color: C.darkGray }}>
+                    <div style={{ fontWeight: 800, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Info size={14} color={C.forestGreen} /> Pay Later
+                    </div>
+                    Leave the reference and screenshot blank to create this order unpaid. It appears on the customer's AgriRent dashboard (matched by email) so they can pay and upload proof later. The machine stays inactive until Finance approves the payment.
+                  </div>
+                )}
+
                 {!isManagerCash && (
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.2rem' }}>
                       <div>
-                        <label style={LABEL_STYLE}><Hash size={12} /> Transaction Reference <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4 }}>— optional if screenshot provided</span></label>
+                        <label style={LABEL_STYLE}><Hash size={12} /> Transaction Reference <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4 }}>— {isManager ? 'optional' : 'optional if screenshot provided'}</span></label>
                         <input value={form.paymentReference} onChange={e => setForm(f => ({ ...f, paymentReference: e.target.value }))}
                           placeholder="e.g. FT123456789"
                           onFocus={() => setFocusedField('payRef')} onBlur={() => setFocusedField('')}
@@ -665,7 +730,7 @@ const AgriRentCreateOrder = () => {
                     <div>
                       <label style={LABEL_STYLE}>
                         <ImagePlus size={12} /> Payment Screenshot
-                        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4 }}>— optional if reference provided</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4 }}>— {isManager ? 'optional' : 'optional if reference provided'}</span>
                       </label>
 
                       {screenshotPreview ? (
