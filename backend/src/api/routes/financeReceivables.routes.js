@@ -277,6 +277,9 @@ router.get('/live-income', authenticate, async (req, res) => {
 
     const pendingRentals = await knex('rental_orders')
       .whereIn('payment_status', ['PENDING_VERIFICATION', 'UNPAID', 'PENDING'])
+      .whereNotIn('status', ['CANCELLED', 'REJECTED', 'ABANDONED'])
+      .whereNull('archived_at')
+      .whereNull('deleted_at')
       .modify(q => { if (syncedRentalOrderIds.length) q.whereNotIn('id', syncedRentalOrderIds); })
       .orderBy('updated_at', 'desc');
 
@@ -1357,7 +1360,7 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
       const order = await knex('rental_orders').where({ id: rentalId }).first();
       if (!order) return res.status(404).json({ success: false, message: 'Rental order not found' });
       await knex('rental_orders').where({ id: rentalId }).update({
-        payment_status: 'REJECTED',
+        payment_status: 'PAYMENT_REJECTED',
         finance_notes: reason,
         updated_at: knex.fn.now()
       });
@@ -1401,8 +1404,8 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
     if (String(id).startsWith('agrirent-')) {
       const agriId = String(id).replace('agrirent-', '');
       await knex('agrirent_orders').where({ id: agriId }).update({
-        payment_status: 'REJECTED',
-        notes: reason,
+        payment_status: 'Rejected',
+        finance_notes: reason,
         updated_at: knex.fn.now()
       });
       sendFinanceNotification({
@@ -1425,6 +1428,38 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
       rejection_reason: reason,
       updated_at: knex.fn.now()
     });
+
+    // Try to sync rejection back to source order (if linked) for visibility in dashboards/customers
+    try {
+      const sub = await knex('finance_income_submissions').where({ id }).first();
+      const md = sub && typeof sub.manual_details === 'string'
+        ? JSON.parse(sub.manual_details)
+        : (sub?.manual_details || {});
+      const dept = String(sub?.department || '').toLowerCase();
+      if (md && md.order_id && dept) {
+        if (dept.includes('agrirent')) {
+          await knex('agrirent_orders').where({ id: md.order_id }).update({
+            payment_status: 'Rejected',
+            finance_notes: reason,
+            updated_at: knex.fn.now()
+          });
+        } else if (dept.includes('car rental')) {
+          await knex('rental_orders').where({ id: md.order_id }).update({
+            payment_status: 'PAYMENT_REJECTED',
+            finance_notes: reason,
+            updated_at: knex.fn.now()
+          });
+        } else if (dept === 'printing') {
+          await knex('printing_orders').where({ id: md.order_id }).update({
+            payment_status: 'Rejected',
+            finance_notes: reason,
+            updated_at: knex.fn.now()
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync rejection to source order:', e);
+    }
 
     // Clean the Sales & Invoice page — cancel any invoice previously recorded
     // for this submission (and its receipt) so it no longer appears as unpaid.
