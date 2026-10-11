@@ -7,14 +7,41 @@ const { uploads } = require('../middleware/upload.middleware');
 // Public/Customer routes
 router.post('/', authenticate, rentalOrderController.createOrder);
 router.get('/my-orders', authenticate, rentalOrderController.getCustomerOrders);
-router.delete('/my-orders/:id/hide', authenticate, async (req, res) => {
-  const { db } = require('../../config/database');
-  const order = await db('rental_orders').where({ id: req.params.id, customer_id: req.user.id }).first();
-  if (!order) return res.status(404).json({ message: 'Order not found' });
-  if (!['COMPLETED', 'completed', 'REJECTED', 'rejected', 'CANCELLED', 'cancelled', 'ABANDONED', 'abandoned'].includes(order.status)) return res.status(400).json({ message: 'Only completed, rejected, cancelled or abandoned orders can be removed' });
-  await db('rental_orders').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
-  res.json({ message: 'Order removed from your dashboard' });
-});
+const handleCustomerHideOrder = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const order = await db('rental_orders')
+      .where('id', req.params.id)
+      .andWhere(function () {
+        this.where('customer_id', req.user.id);
+        if (req.user.email) this.orWhere('customer_email', req.user.email);
+      })
+      .first();
+
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+
+    const terminalStatuses = ['COMPLETED', 'completed', 'REJECTED', 'rejected', 'CANCELLED', 'cancelled', 'ABANDONED', 'abandoned'];
+    if (!terminalStatuses.includes(order.status)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Only completed, rejected, cancelled or abandoned orders can be removed from dashboard'
+      });
+    }
+
+    await db('rental_orders')
+      .where({ id: req.params.id })
+      .update({ is_deleted_by_customer: true, updated_at: db.fn.now() });
+
+    res.status(200).json({ status: 'success', message: 'Order removed from your dashboard' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: 'Failed to remove order', error: err.message });
+  }
+};
+
+router.delete('/my-orders/:id/hide', authenticate, handleCustomerHideOrder);
+router.delete('/my-orders/:id', authenticate, handleCustomerHideOrder);
 router.get('/search', authenticate, authorizeRoles(['Admin', 'CEO']), rentalOrderController.searchOrders);
 router.post('/:id/payment-proof', authenticate, uploads.singlePaymentProof.single('proof'), rentalOrderController.uploadPaymentProof);
 
