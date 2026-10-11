@@ -200,12 +200,39 @@
 .ro2-stat--warn   { border-left-color: hsl(var(--warn)); }
 .ro2-stat--info   { border-left-color: hsl(var(--info)); }
 .ro2-stat--danger { border-left-color: hsl(var(--danger)); }
+.ro2-stat--cancel { border-left-color: hsl(38 90% 45%); animation: ro2-pulse-border 1.6s ease infinite; }
+@keyframes ro2-pulse-border {
+  0%, 100% { border-left-color: hsl(38 90% 45%); }
+  50%       { border-left-color: hsl(0 72% 51%); }
+}
 .ro2-stat__num {
   font-size: 1.75rem;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: hsl(var(--primary));
+}
+.ro2-stat--warn .ro2-stat__num   { color: hsl(var(--warn)); }
+.ro2-stat--info .ro2-stat__num   { color: hsl(var(--info)); }
+.ro2-stat--danger .ro2-stat__num { color: hsl(var(--danger)); }
+.ro2-stat--cancel .ro2-stat__num { color: hsl(38 90% 40%); }
+
+/* ── Cancellation request inline flag ──────────────────────── */
+.ro2-cancel-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: hsl(38 100% 95%);
+  color: hsl(38 90% 35%);
+  border: 1px solid hsl(38 80% 70%);
+  cursor: help;
+  white-space: nowrap;
 }
 .ro2-stat--warn .ro2-stat__num   { color: hsl(var(--warn)); }
 .ro2-stat--info .ro2-stat__num   { color: hsl(var(--info)); }
