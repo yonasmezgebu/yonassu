@@ -322,7 +322,12 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
   const totalAmount = parseFloat(order.total_amount || 0);
   const vatAmt      = parseFloat(order.vat_amount || 0);
   const subAmt      = parseFloat(order.subtotal) || Math.max(0, totalAmount - vatAmt);
+  const hectareRate = parseFloat(order.hectare_rate || 0);
+  const purposeFee  = parseFloat(order.purpose_fee || 0);
+  const hectares    = parseFloat(order.field_size_hectares || 0);
   const isPaid     = ['Confirmed', 'PAID', 'PAYMENT_VERIFIED'].includes(order.payment_status);
+  const payRejected = String(order.payment_status || '').toLowerCase().includes('reject');
+  const financeReason = order.finance_notes || order.manager_note;
   const r          = order.status === 'active' ? rentalStats(order) : null;
 
   /* ── Action button component ── */
@@ -484,12 +489,28 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
               )}
             </div>
 
+            {payRejected && (
+              <div style={{ marginTop: 14, padding: '14px 18px', background: '#FFEBEE', border: '2px solid #EF9A9A' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 12, color: '#B71C1C', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <XCircle size={15} /> Payment Rejected by Finance
+                </div>
+                <div style={{ marginTop: 6, fontSize: 13, color: '#7f1d1d' }}>
+                  Reason: <strong>{financeReason || 'No reason provided'}</strong>
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, color: '#9a3412' }}>
+                  The customer can fix the payment details and resubmit from their AgriRent orders — it returns to Finance for re-verification.
+                </div>
+              </div>
+            )}
+
             {/* Key Stats Grid */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <InfoCard label="Total Amount" value={`ETB ${fmt(totalAmount)}`} icon={<DollarSign size={11} />} accent={C.darkGreen} large />
               <InfoCard label="VAT Amount" value={`ETB ${fmt(vatAmt)}`} icon={<Banknote size={11} />} accent={C.earthBrown} />
               <InfoCard label="Rental Days" value={`${totalDays} days`} icon={<Calendar size={11} />} accent={C.emerald} />
               <InfoCard label="Daily Rate" value={`ETB ${fmt(dailyRate)} / day`} icon={<Star size={11} />} accent={C.forestGreen} />
+              {hectareRate > 0 && <InfoCard label="Hectare Rate" value={`ETB ${fmt(hectareRate)} / ha`} icon={<Banknote size={11} />} accent={C.emerald} />}
+              {purposeFee > 0 && <InfoCard label="Purpose Fee" value={`ETB ${fmt(purposeFee)}`} icon={<Package size={11} />} accent={C.earthBrown} />}
               <InfoCard label="Payment Method" value={order.payment_method} icon={<Package size={11} />} accent={C.earthBrown} />
             </div>
 
@@ -604,6 +625,33 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
                     {fmt(dailyRate * totalDays)}
                   </td>
                 </tr>
+                {hectareRate > 0 && (
+                  <tr>
+                    <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>
+                      Land / Hectare Fee
+                    </td>
+                    <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }}>
+                      {hectares} ha
+                    </td>
+                    <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }}>
+                      {fmt(hectareRate)}
+                    </td>
+                    <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>
+                      {fmt(hectareRate * hectares)}
+                    </td>
+                  </tr>
+                )}
+                {purposeFee > 0 && (
+                  <tr>
+                    <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>
+                      Farming Purpose Fee
+                    </td>
+                    <td colSpan={2} style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }} />
+                    <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>
+                      {fmt(purposeFee)}
+                    </td>
+                  </tr>
+                )}
                 <tr>
                   <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>
                     Subtotal
