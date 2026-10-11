@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight,
   Shield, FileText, Info, Phone, Mail, CreditCard, ChevronDown, ChevronUp, 
   MapPin, Key, Calendar, FileBadge, Wallet, HelpCircle, Bell,
-  Car, Image as ImageIcon, Building2, RefreshCw
+  Car, Image as ImageIcon, Building2, RefreshCw, ShieldAlert, LogOut
 } from 'lucide-react';
 import { PublicNav } from './ServicesPage';
 import RentalAgreementModal from './RentalAgreementModal';
@@ -41,38 +41,48 @@ const FleetGalleryPage = () => {
   const [reserveModalOpen, setReserveModalOpen] = useState(false);
   const [selectedCarForReserve, setSelectedCarForReserve] = useState(null);
   const [toast, setToast] = useState({ show: false, type: '', title: '', message: '' });
-  
+  const [roleWarning, setRoleWarning] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = authService.isAuthenticated();
+  const currentUser = authService.getCurrentUser();
 
   // Auto-open modal after returning from login
   useEffect(() => {
     if (location.state?.openCarRentalOrder && authService.isAuthenticated()) {
       const car = location.state.car;
       if (car) {
-        setSelectedCarForReserve(car);
-        setReserveModalOpen(true);
+        if (!authService.hasRole('customer')) {
+          setRoleWarning(true);
+        } else {
+          setSelectedCarForReserve(car);
+          setReserveModalOpen(true);
+        }
       }
       window.history.replaceState({}, document.title);
     }
     if (location.state?.openCarWaitlist && authService.isAuthenticated()) {
       const car = location.state.car;
       if (car) {
-        const user = authService.getCurrentUser();
-        setSelectedCarForNotify(car);
-        setNotifyFormData({
-          fullName: user?.fullName || user?.full_name || user?.name || '',
-          phone: user?.phone || '',
-          email: user?.email || '',
-          driverName: '',
-          driverLicense: '',
-          pickupLocation: '',
-          message: ''
-        });
-        setNotifyError('');
-        setNotifySuccess(null);
-        setNotifyModalOpen(true);
+        if (!authService.hasRole('customer')) {
+          setRoleWarning(true);
+        } else {
+          const user = authService.getCurrentUser();
+          setSelectedCarForNotify(car);
+          setNotifyFormData({
+            fullName: user?.fullName || user?.full_name || user?.name || '',
+            phone: user?.phone || '',
+            email: user?.email || '',
+            driverName: '',
+            driverLicense: '',
+            pickupLocation: '',
+            message: ''
+          });
+          setNotifyError('');
+          setNotifySuccess(null);
+          setNotifyModalOpen(true);
+        }
       }
       window.history.replaceState({}, document.title);
     }
@@ -133,10 +143,14 @@ const FleetGalleryPage = () => {
   const handleReserve = (car) => {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: location.pathname, openCarRentalOrder: true, car: car } });
-    } else {
-      setSelectedCarForReserve(car);
-      setReserveModalOpen(true);
+      return;
     }
+    if (!authService.hasRole('customer')) {
+      setRoleWarning(true);
+      return;
+    }
+    setSelectedCarForReserve(car);
+    setReserveModalOpen(true);
   };
 
   const handleReservationSuccess = (orderData) => {
@@ -152,6 +166,10 @@ const FleetGalleryPage = () => {
   const handleNotify = (car) => {
     if (!authService.isAuthenticated()) {
       navigate('/login', { state: { from: location.pathname, openCarWaitlist: true, car: car } });
+      return;
+    }
+    if (!authService.hasRole('customer')) {
+      setRoleWarning(true);
       return;
     }
     const user = authService.getCurrentUser();
@@ -247,39 +265,31 @@ const FleetGalleryPage = () => {
         </div>
       )}
       
-      <div className={styles.heroSection}>
-        {/* ── Left Panel: Text ── */}
-        <div className={styles.heroLeft}>
-          <div className={styles.heroContent}>
-            <div className={styles.heroBadge}>
-              <Car size={13} /> Premium Car Rental
-            </div>
-            <h1>Premium Cars for<br />Every Journey</h1>
-            <p>Reliable, modern vehicles at transparent rates. Browse our full fleet and reserve your car in minutes.</p>
-            <div className={styles.heroStats}>
-              <div className={styles.heroStat}>
-                <span className={styles.heroStatNum}>{cars.length > 0 ? cars.length : '—'}</span>
-                <span className={styles.heroStatLabel}>Vehicles</span>
-              </div>
-              <div className={styles.heroStat}>
-                <span className={styles.heroStatNum}>24/7</span>
-                <span className={styles.heroStatLabel}>Support</span>
-              </div>
-              <div className={styles.heroStat}>
-                <span className={styles.heroStatNum}>100%</span>
-                <span className={styles.heroStatLabel}>Insured</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Thin Center Divider ── */}
-        <div className={styles.heroDivider} />
-
-        {/* ── Right Panel: Photo ── */}
-        <div className={styles.heroRight}>
-          <img src={carHero} alt="Car rental fleet" />
-          <div className={styles.heroOverlay} />
+      <div className={styles.heroSection} style={{ 
+        position: 'relative', 
+        minHeight: '460px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: `url(${carHero}) center/cover no-repeat`,
+        width: '100%'
+      }}>
+        {/* Dark overlay to make text readable */}
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.55)' }} />
+        
+        {/* Text content */}
+        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0 20px' }}>
+          <h1 style={{
+            fontSize: 'clamp(36px, 6vw, 64px)',
+            fontWeight: 900,
+            color: '#ffffff',
+            lineHeight: 1.15,
+            letterSpacing: '-0.02em',
+            textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+            margin: 0
+          }}>
+            Premium Cars for<br />Every Journey
+          </h1>
         </div>
       </div>
 
@@ -907,6 +917,29 @@ const FleetGalleryPage = () => {
           onClose={() => setReserveModalOpen(false)}
           onSuccess={handleReservationSuccess}
         />
+      )}
+
+      {roleWarning && (
+        <div onClick={() => setRoleWarning(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1.5rem' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '1rem', maxWidth: '28rem', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: '2.5rem 2rem', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: 'linear-gradient(90deg, #2563EB, #fbbf24, #a855f7)' }} />
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: '#2563EB' }}>
+              <ShieldAlert size={48} strokeWidth={1.8} />
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#111827', margin: '0 0 0.75rem' }}>Customer Account Required</h2>
+            <p style={{ fontSize: '0.9rem', color: '#4b5563', margin: '0 0 1.75rem', lineHeight: 1.625 }}>
+              You are currently signed in as <strong>{currentUser?.fullName || currentUser?.full_name || currentUser?.name || 'a staff account'}</strong>.
+              Reserving a car is available only to <strong>Customer</strong> accounts.
+              Please <strong>log out</strong> and sign in with your customer account to continue with this order.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '18rem', margin: '0 auto' }}>
+              <button type="button" onClick={() => authService.logout()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', background: '#2563EB', color: '#fff', fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer' }}>
+                <LogOut size={16} /> Log Out &amp; Switch to Customer
+              </button>
+              <button type="button" onClick={() => setRoleWarning(false)} style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid #e5e7eb', background: '#f3f4f6', color: '#111827', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}>Not Now</button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
