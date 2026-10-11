@@ -322,51 +322,49 @@ const AssetRegister = () => {
 
       {/* ══ FULL-WIDTH CONTAINER ══ */}
       <div style={{
-        minHeight: '100vh', background: G.forest,
+        minHeight: '100vh', background: '#FFFFFF',
         fontFamily: "'Inter',sans-serif", color: G.text,
         width: '100%', margin: 0, padding: 0,
       }}>
 
         {/* ── TOP HEADER BAR ── */}
         <div style={{
-          background: G.dark, padding: '0 28px',
-          borderBottom: `4px solid ${G.olive}`,
+          background: '#FFFFFF', padding: '24px 28px 16px',
+          borderBottom: '1px solid #E5E7EB',
         }}>
-          <div style={{ height: 4, background: `linear-gradient(90deg, ${G.mint}, ${G.lime}, ${G.leaf}, ${G.mint})`, backgroundSize: '400% 100%', animation: 'shimmerG 3s linear infinite' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: G.mint, letterSpacing: 1, textTransform: 'uppercase' }}>
-                📋 Master Asset Register
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 24 }}>📋</span> Master Asset Register
               </h1>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: G.sage }}>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>
                 Full inventory of all vehicles. Add assets here to publish to the Rental Post page.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="fm-btn" onClick={() => fetchCars(true)} style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                background: G.emerald, color: '#fff', border: `2px solid ${G.olive}`,
-                padding: '10px 18px', cursor: 'pointer',
-                fontWeight: 800, fontSize: 12, textTransform: 'uppercase',
-                boxShadow: `0 5px 0 ${G.dark}`,
+                background: G.emerald, color: '#fff', border: 'none',
+                padding: '9px 18px', cursor: 'pointer',
+                fontWeight: 700, fontSize: 13, borderRadius: 6,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               }}>
                 <RefreshCw size={14} style={{ animation: isRefreshing ? 'fmSpin 1s linear infinite' : 'none' }} /> Refresh
               </button>
               <button className="fm-btn" onClick={() => navigate('/car-renting/manager/fleet')} style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                background: G.white, color: G.dark, border: `2px solid ${G.olive}`,
-                padding: '10px 18px', cursor: 'pointer',
-                fontWeight: 800, fontSize: 12, textTransform: 'uppercase',
-                boxShadow: `0 5px 0 ${G.dark}`,
+                background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB',
+                padding: '9px 18px', cursor: 'pointer',
+                fontWeight: 700, fontSize: 13, borderRadius: 6,
               }}>
                 🚗 Go to Rental Post
               </button>
               <button className="fm-btn" onClick={() => { resetForm(); setEditingCar(null); setIsFormOpen(true); }} style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                background: G.lime, color: G.dark, border: `2px solid ${G.olive}`,
-                padding: '10px 20px', cursor: 'pointer',
-                fontWeight: 900, fontSize: 12, textTransform: 'uppercase',
-                boxShadow: `0 5px 0 ${G.dark}`,
+                background: G.forest, color: '#fff', border: 'none',
+                padding: '9px 20px', cursor: 'pointer',
+                fontWeight: 700, fontSize: 13, borderRadius: 6,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               }}>
                 <Plus size={15} /> Add Vehicle
               </button>
@@ -376,35 +374,35 @@ const AssetRegister = () => {
 
         {/* ── KPI SUMMARY STRIP ── */}
         <div style={{
-          background: G.forest, padding: '20px 28px',
-          borderBottom: `3px solid ${G.olive}`,
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16,
+          background: '#F9FAFB', padding: '16px 28px',
+          borderBottom: '1px solid #E5E7EB',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12,
         }} className="fm-grid">
           {[
-            { icon: Layers,     label: 'Total Assets',      value: cars.length,         color: G.mint   },
-            { icon: CheckCircle,label: 'Published Online',  value: activeCarsCount,     color: G.lime   },
-            { icon: EyeOff,     label: 'Internal/Hidden',   value: hiddenCarsCount,     color: '#FFCC80' },
-            { icon: DollarSign, label: 'Total Asset Value', value: `ETB ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 0 })}`, color: G.mint },
+            { icon: Layers,     label: 'Total Assets',      value: cars.length,         color: G.emerald  },
+            { icon: CheckCircle,label: 'Published Online',  value: activeCarsCount,     color: '#16A34A'  },
+            { icon: EyeOff,     label: 'Internal/Hidden',   value: hiddenCarsCount,     color: '#D97706'  },
+            { icon: DollarSign, label: 'Total Asset Value', value: `ETB ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 0 })}`, color: G.dark },
           ].map((k, i) => (
             <div key={i} style={{
-              background: G.dark, border: `2px solid ${G.olive}`,
-              borderTop: `4px solid ${k.color}`,
-              padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
-              boxShadow: `0 4px 0 ${G.olive}`,
+              background: '#FFFFFF', border: '1px solid #E5E7EB',
+              borderLeft: `4px solid ${k.color}`,
+              padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
+              borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
             }}>
-              <div style={{ background: 'rgba(255,255,255,0.1)', padding: 10 }}>
+              <div style={{ background: `${k.color}15`, padding: 10, borderRadius: 8 }}>
                 <k.icon size={20} color={k.color} />
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: G.sage, textTransform: 'uppercase', letterSpacing: 0.8 }}>{k.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.8 }}>{k.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#111827', lineHeight: 1.2 }}>{k.value}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* ── MAIN CONTENT AREA ── */}
-        <div style={{ background: G.lightGray, minHeight: 'calc(100vh - 200px)' }}>
+        <div style={{ background: '#F9FAFB', minHeight: 'calc(100vh - 200px)' }}>
 
           {/* ═══ FORM PANEL ═══ */}
           {isFormOpen && (
