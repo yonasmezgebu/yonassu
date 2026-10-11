@@ -5,7 +5,7 @@ import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Clock, CheckCircle, XCircle, Car, User,
   Calendar, FileText, Plus, Archive, Trash2, AlertTriangle,
-  Play, Ban, RotateCcw, ListChecks, X, Bell, CalendarClock,
+  Play, Ban, RotateCcw, ListChecks, X, Check, Bell, CalendarClock,
 } from 'lucide-react';
 import CarRentalOrderDetail  from './CarRentalOrderDetail';
 import CarRentalCreateOrder  from './CarRentalCreateOrder';
@@ -49,7 +49,7 @@ const PayBadge = ({ status }) => {
   let label = 'Awaiting Payment';
   let Icon = Clock;
   if (status === 'PAID' || status === 'Confirmed') { mod = 'success'; label = 'Payment Confirmed'; Icon = CheckCircle; }
-  else if (status === 'REJECTED' || status === 'Rejected') { mod = 'danger'; label = 'Payment Rejected'; Icon = XCircle; }
+  else if (String(status || '').toUpperCase().includes('REJECT')) { mod = 'danger'; label = 'Payment Rejected'; Icon = XCircle; }
   return (
     <span className={`ro2-badge ro2-badge--${mod}`}>
       <Icon size={12} /> {label}
@@ -109,6 +109,7 @@ const RentalOrders = () => {
     notes: '', cancelReason: '', status: '', statusNote: '',
     startDate: '', endDate: '', dailyRate: '',
   });
+  const [cancellingId, setCancellingId] = useState(null);
 
   const toast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
@@ -214,12 +215,19 @@ const RentalOrders = () => {
 
   const createOrderFromWaitlist = (w) => {
     setWaitlistState({
-      carId:          w.car_id,
-      customerName:   w.customer_name,
-      customerPhone:  w.customer_phone,
-      customerEmail:  w.customer_email,
-      customerId:     w.user_id,
-      waitlistId:     w.id,
+      carId:           w.car_id,
+      carAvailability: w.car_availability,
+      customerName:    w.customer_name,
+      customerPhone:   w.customer_phone,
+      customerEmail:   w.customer_email,
+      customerId:      w.user_id,
+      waitlistId:      w.id,
+      driverName:      w.driver_name,
+      driverLicense:   w.driver_license,
+      startDate:       w.preferred_start_date ? String(w.preferred_start_date).slice(0, 10) : '',
+      endDate:         w.preferred_end_date ? String(w.preferred_end_date).slice(0, 10) : '',
+      pickupLocation:  w.pickup_location || '',
+      notes:           w.message || '',
     });
     setView('create');
   };
@@ -241,13 +249,14 @@ const RentalOrders = () => {
           odometer:  form.odometer  || null,
           notes:     form.notes     || '',
         });
-        toast(res.message || `${oNum} completed — car released`, 'success');
+        toast(res.message || `${oNum} completed & moved to history — car released`, 'success');
       } else if (m.type === 'cancel') {
         const res = await axios.post(`/rental-orders/${id}/cancel`, { reason: form.cancelReason });
-        toast(res.message || `${oNum} cancelled`, 'success');
+        toast(res.message || `${oNum} cancelled & moved to history`, 'success');
       } else if (m.type === 'status') {
         const res = await axios.put(`/rental-orders/${id}/status`, { status: form.status, managerNote: form.statusNote });
-        toast(res.message || `Status updated to ${form.status}`, 'success');
+        const movedToHist = ['COMPLETED', 'CANCELLED', 'REJECTED'].includes(form.status);
+        toast(res.message || `Status updated to ${form.status}${movedToHist ? ' — moved to history' : ''}`, 'success');
       } else if (m.type === 'archive') {
         const res = await axios.post(`/rental-orders/${id}/archive`);
         toast(res.message || `${oNum} moved to history`, 'success');
@@ -273,10 +282,30 @@ const RentalOrders = () => {
 
   /* ── Stats ── */
   const stats = {
-    total:      pagination.total || orders.length,
-    pending:    orders.filter(o => o.status === 'PENDING_APPROVAL').length,
-    active:     orders.filter(o => o.status === 'ACTIVE').length,
-    payPending: orders.filter(o => ['PENDING', 'Pending'].includes(o.paymentStatus)).length,
+    total:        pagination.total || orders.length,
+    pending:      orders.filter(o => o.status === 'PENDING_APPROVAL').length,
+    active:       orders.filter(o => o.status === 'ACTIVE').length,
+    payPending:   orders.filter(o => ['PENDING', 'Pending', 'PENDING_VERIFICATION'].includes(o.paymentStatus) && !['CANCELLED','REJECTED'].includes(o.status)).length,
+    cancelPending: orders.filter(o => o.isCancellationRequested || o.is_cancellation_requested).length,
+  };
+
+  /* ── Quick approve/reject cancellation without opening detail ── */
+  const handleQuickCancellation = async (order, isApproved) => {
+    const id = order.id;
+    setCancellingId(id);
+    try {
+      const res = await axios.post(`/rental-orders/${id}/cancel/approve`, { isApproved });
+      const oNum = order.orderNumber || order.order_number;
+      toast(
+        res.message || (isApproved ? `${oNum} cancellation approved & moved to history` : `${oNum} cancellation rejected`),
+        isApproved ? 'success' : 'info'
+      );
+      load(filter);
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   /* ── Drill-down views ── */
@@ -508,10 +537,11 @@ const RentalOrders = () => {
       {/* ── KPI STATS ── */}
       <section className="ro2-stats">
         {[
-          { label: 'Total Orders',     val: stats.total,      cls: '',                    isActive: filter.status === '' && filter.paymentStatus === '', reset: true },
-          { label: 'Pending Approval', val: stats.pending,    cls: 'ro2-stat--warn',      isActive: filter.status === 'PENDING_APPROVAL', filterKey: 'status', filterVal: 'PENDING_APPROVAL' },
-          { label: 'On Rent Now',      val: stats.active,     cls: 'ro2-stat--info',      isActive: filter.status === 'ACTIVE', filterKey: 'status', filterVal: 'ACTIVE' },
-          { label: 'Awaiting Payment', val: stats.payPending, cls: 'ro2-stat--danger',    isActive: filter.paymentStatus === 'PENDING', filterKey: 'paymentStatus', filterVal: 'PENDING' },
+          { label: 'Total Orders',        val: stats.total,         cls: '',                  isActive: filter.status === '' && filter.paymentStatus === '', reset: true },
+          { label: 'Pending Approval',    val: stats.pending,       cls: 'ro2-stat--warn',    isActive: filter.status === 'PENDING_APPROVAL', filterKey: 'status', filterVal: 'PENDING_APPROVAL' },
+          { label: 'On Rent Now',         val: stats.active,        cls: 'ro2-stat--info',    isActive: filter.status === 'ACTIVE', filterKey: 'status', filterVal: 'ACTIVE' },
+          { label: 'Awaiting Payment',    val: stats.payPending,    cls: 'ro2-stat--danger',  isActive: filter.paymentStatus === 'PENDING', filterKey: 'paymentStatus', filterVal: 'PENDING' },
+          { label: 'Cancel Requests',     val: stats.cancelPending, cls: stats.cancelPending ? 'ro2-stat--cancel' : '', isActive: filter.status === 'CANCELLATION_REQUESTED', filterKey: 'status', filterVal: 'CANCELLATION_REQUESTED' },
         ].map(s => {
           const active = s.reset
             ? s.isActive
@@ -708,6 +738,7 @@ const RentalOrders = () => {
               const isManualOrder = !!(order.isManual || order.is_manual);
               const isTerminal = TERMINAL_STATUSES.includes(order.status);
               const isStartable = STARTABLE_STATUSES.includes(order.status);
+              const isCancelRequest = !!(order.isCancellationRequested || order.is_cancellation_requested);
               const r = rentalStats(order);
               const carName = order.carName || (order.car ? `${order.car.brand || ''} ${order.car.model || ''}`.trim() : 'N/A');
               return (
@@ -763,7 +794,14 @@ const RentalOrders = () => {
                     )}
                   </td>
 
-                  <td><StatusBadge code={order.status} /></td>
+                  <td>
+                    <StatusBadge code={order.status} />
+                    {isCancelRequest && (
+                      <div className="ro2-cancel-flag" title={order.cancellationReason || order.cancellation_reason || 'Customer requested cancellation'}>
+                        <AlertTriangle size={13} /> Cancel Request
+                      </div>
+                    )}
+                  </td>
 
                   <td>
                     <div className="ro2-actions-cell">
@@ -780,7 +818,26 @@ const RentalOrders = () => {
                           <RotateCcw size={13} /> Complete / Return
                         </button>
                       )}
-                      {!isTerminal && (
+                      {isCancelRequest && (
+                        <>
+                          <button
+                            className="ro2-btn ro2-btn--success ro2-btn--sm"
+                            disabled={cancellingId === order.id}
+                            onClick={() => handleQuickCancellation(order, true)}
+                            title={(order.cancellationReason || order.cancellation_reason) ? `Reason: ${order.cancellationReason || order.cancellation_reason}` : 'Approve cancellation'}
+                          >
+                            <Check size={13} /> Approve Cancel
+                          </button>
+                          <button
+                            className="ro2-btn ro2-btn--danger ro2-btn--sm"
+                            disabled={cancellingId === order.id}
+                            onClick={() => handleQuickCancellation(order, false)}
+                          >
+                            <X size={13} /> Reject Cancel
+                          </button>
+                        </>
+                      )}
+                      {!isCancelRequest && !isTerminal && (
                         <button className="ro2-btn ro2-btn--danger ro2-btn--sm" onClick={() => openModal('cancel', order)}>
                           <Ban size={13} /> Cancel
                         </button>
