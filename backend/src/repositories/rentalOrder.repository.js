@@ -8,7 +8,7 @@ class RentalOrderRepository extends BaseRepository {
   }
 
   async findAll(options = {}) {
-    const { filters = {}, status, archived } = options;
+    const { filters = {}, status, archived, includeArchived } = options;
     try {
       let query = db('rental_orders as ro')
         .leftJoin('cars as c', 'ro.car_id', 'c.id')
@@ -23,7 +23,7 @@ class RentalOrderRepository extends BaseRepository {
         .whereNull('ro.deleted_at')
         .modify((q) => {
           if (archived) q.whereNotNull('ro.archived_at');
-          else q.whereNull('ro.archived_at');
+          else if (!includeArchived) q.whereNull('ro.archived_at');
         })
         .orderBy('ro.created_at', 'desc');
 
@@ -98,12 +98,12 @@ class RentalOrderRepository extends BaseRepository {
 
   async updateStatus(id, status, extraData = {}) {
     await db('rental_orders').where('id', id).update({ status, ...extraData, updated_at: db.fn.now() });
-    return this.findById(id);
+    return this.findById(id, { includeArchived: true });
   }
 
   async update(id, data) {
     await db('rental_orders').where('id', id).update({ ...data, updated_at: db.fn.now() });
-    return this.findById(id);
+    return this.findById(id, { includeArchived: true });
   }
 }
 
