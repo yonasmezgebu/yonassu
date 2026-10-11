@@ -45,10 +45,16 @@ const sendNotification = async (recipientRole, recipientId, notificationData) =>
     let userIds = [];
     if (recipientRole && !recipientId) {
       // Broadcast to all users with this role (roles are in user_roles + roles tables)
+      const targetRoles = Array.isArray(recipientRole) ? recipientRole : [recipientRole];
+      if (targetRoles.some(r => String(r).toLowerCase().includes('rent'))) {
+        ['Car Renting Manager', 'Rental Manager', 'Car Rental Manager', 'Agri Rental Manager'].forEach(r => {
+          if (!targetRoles.includes(r)) targetRoles.push(r);
+        });
+      }
       const users = await db('user_roles')
         .join('roles', 'user_roles.role_id', 'roles.id')
         .join('users', 'user_roles.user_id', 'users.id')
-        .where('roles.name', recipientRole)
+        .whereIn('roles.name', targetRoles)
         .whereNull('users.deleted_at')
         .select('users.id');
       userIds = users.map(u => u.id);
@@ -87,7 +93,13 @@ const sendNotification = async (recipientRole, recipientId, notificationData) =>
     if (ioInstance) {
       const payload = { title, message, type, link, related_entity_id, is_read: false, timestamp: new Date() };
       if (recipientRole) {
-        ioInstance.to(recipientRole).emit('notification', payload);
+        const rolesToEmit = Array.isArray(recipientRole) ? [...recipientRole] : [recipientRole];
+        if (rolesToEmit.some(r => String(r).toLowerCase().includes('rent'))) {
+          ['Car Renting Manager', 'Rental Manager', 'Car Rental Manager', 'Agri Rental Manager'].forEach(r => {
+            if (!rolesToEmit.includes(r)) rolesToEmit.push(r);
+          });
+        }
+        rolesToEmit.forEach(r => ioInstance.to(r).emit('notification', payload));
       }
       if (recipientId) {
         ioInstance.to(`user_${recipientId}`).emit('notification', payload);
