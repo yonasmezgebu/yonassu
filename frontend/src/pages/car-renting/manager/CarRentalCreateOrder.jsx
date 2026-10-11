@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Car, User, Phone, Mail, Calendar, CreditCard, Hash,
   Upload, ImagePlus, CheckCircle, ChevronDown,
-  ArrowLeft, Loader2, X, Info, MapPin
+  ArrowLeft, Loader2, X, Info, MapPin, Clock, Wrench, FileText
 } from 'lucide-react';
 import api from '../../../services/apiClient';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
@@ -32,6 +32,42 @@ const getImageUrl = (path) => {
 };
 const carLabel = (car) => car ? `${car.name}` : '';
 const carRate = (car) => parseFloat(car?.dailyRate || car?.daily_rate || car?.pricePerDay || 0) || 0;
+
+/* ── Machine status helpers ── */
+const getMachineStatus = (car) => {
+  if (!car) return null;
+  const av = (car.availability || car.availabilityStatus || '').toLowerCase();
+  if (av === 'maintenance' || av === 'in maintenance') return 'maintenance';
+  if (av === 'booked' || av === 'rented' || av === 'out') return 'booked';
+  return 'available';
+};
+
+const STATUS_CONFIG = {
+  available: {
+    label: 'AVAILABLE',
+    color: C.forestGreen,
+    bg: '#E8F5E9',
+    border: C.forestGreen,
+    icon: CheckCircle,
+    message: 'This vehicle is available. You can book it immediately.',
+  },
+  booked: {
+    label: 'CURRENTLY BOOKED',
+    color: '#E65100',
+    bg: '#FFF3E0',
+    border: '#FF8F00',
+    icon: Clock,
+    message: null,
+  },
+  maintenance: {
+    label: 'UNDER MAINTENANCE',
+    color: C.red,
+    bg: '#FFEBEE',
+    border: C.red,
+    icon: Wrench,
+    message: 'This vehicle is under maintenance and cannot be booked right now. Please select a different vehicle.',
+  },
+};
 
 const INPUT = {
   width: '100%', padding: '11px 14px',
@@ -74,22 +110,25 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
   const [financeAccounts, setFinanceAccounts] = useState([]);
   const [form, setForm] = useState({
     carId:           waitlistState?.carId ? String(waitlistState.carId) : '',
-    startDate:       '',
-    endDate:         '',
-    pickupLocation:  '',
-    notes:           '',
+    startDate:       waitlistState?.startDate || '',
+    endDate:         waitlistState?.endDate || '',
+    pickupLocation:  waitlistState?.pickupLocation || '',
+    notes:           waitlistState?.notes || '',
     paymentMethod:   'Telebirr',
     paymentReference:'',
     paymentAccountId:'', paymentAccountName:'', paymentAccountNumber:'', paymentProvider:'', paymentAccountType:'',
     customerName:    waitlistState?.customerName || '',
     customerPhone:   waitlistState?.customerPhone || '',
     customerEmail:   waitlistState?.customerEmail || '',
+    driverName:      waitlistState?.driverName || waitlistState?.customerName || '',
+    driverLicense:   waitlistState?.driverLicense || '',
   });
   const [scheduleLater, setScheduleLater] = useState(
-    // Prefer schedule-later when opened straight from the availability request
-    // (the vehicle is still rented; dates come later once it is free).
-    !!waitlistState?.waitlistId
+    waitlistState?.carAvailability
+      ? waitlistState.carAvailability.toLowerCase() !== 'available'
+      : !!waitlistState?.waitlistId
   );
+  const [queueConfirmed, setQueueConfirmed] = useState(false);
   const [screenshotFile,    setScreenshotFile]    = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [pricing,           setPricing]           = useState(null);
@@ -158,15 +197,46 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
 
   const minDate = new Date().toISOString().split('T')[0];
 
+  /* ── Derived machine state ── */
+  const selectedCar = cars.find(c => String(c.id) === String(form.carId));
+  const machineStatus = getMachineStatus(selectedCar);
+  const statusCfg = machineStatus ? STATUS_CONFIG[machineStatus] : null;
+  const bookedUntilLabel = selectedCar?.bookingEndDate
+    ? new Date(selectedCar.bookingEndDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : 'Unknown Date';
+
+  // Auto-set schedule later based on status
+  useEffect(() => {
+    if (machineStatus === 'booked') {
+      setScheduleLater(true);
+    } else if (machineStatus === 'available') {
+      setScheduleLater(false);
+      setQueueConfirmed(false);
+    }
+  }, [machineStatus]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.carId)          { toast('Please select a car.', 'error'); return; }
+    if (!form.carId)          { toast('Please select a vehicle.', 'error'); return; }
+
+    // Block maintenance
+    if (machineStatus === 'maintenance') {
+      toast('This vehicle is under maintenance. Please choose a different vehicle.', 'error');
+      return;
+    }
+
+    // If booked, require queue confirmation
+    if (machineStatus === 'booked' && !queueConfirmed) {
+      toast('Please confirm you want to join the queue for this vehicle.', 'error');
+      return;
+    }
+
     if (!scheduleLater && !form.startDate)      { toast('Start date is required.', 'error'); return; }
     if (!scheduleLater && !form.endDate)        { toast('End date is required.', 'error'); return; }
     if (!scheduleLater && new Date(form.endDate) <= new Date(form.startDate)) { toast('End date must be after start date.', 'error'); return; }
     if (!form.customerName)   { toast('Customer name is required.', 'error'); return; }
     if (!form.customerPhone)  { toast('Customer phone is required.', 'error'); return; }
-    if (!scheduleLater && !form.paymentReference && !screenshotFile) {
+    if (!scheduleLater && form.paymentMethod !== 'Cash' && !form.paymentReference && !screenshotFile) {
       toast('Provide a payment reference or upload a payment screenshot.', 'error'); return;
     }
 
@@ -179,8 +249,10 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
       if (waitlistState?.customerId) formData.set('customerId', waitlistState.customerId);
       if (scheduleLater) {
         formData.set('scheduleLater', 'true');
-        if (waitlistState?.waitlistId) formData.set('waitlistId', waitlistState.waitlistId);
       }
+      if (waitlistState?.waitlistId) formData.set('waitlistId', waitlistState.waitlistId);
+      if (!formData.get('driverLicense')) formData.set('driverLicense', form.driverLicense?.trim() || 'N/A');
+      if (!formData.get('driverName')) formData.set('driverName', form.driverName?.trim() || form.customerName);
       if (screenshotFile) formData.append('paymentProof', screenshotFile);
 
       const res = await api.post('/rental-orders/manual', formData, {
@@ -206,8 +278,6 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
     borderColor: focusedField === field ? C.forestGreen : C.border,
     background:  focusedField === field ? '#FBFCFB' : C.white,
   });
-
-  const selectedCar = cars.find(c => String(c.id) === String(form.carId));
 
   return (
     <div className="crco-page" style={{ minHeight: '100vh', background: C.white, fontFamily: 'Inter, sans-serif', color: C.darkGray }}>
@@ -251,13 +321,20 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
       <div style={{ maxWidth: 900, margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
         <form onSubmit={handleSubmit}>
 
-          {/* ══ SECTION 1: CUSTOMER ══ */}
+          {/* ══ SECTION 1: CUSTOMER & DRIVER ══ */}
           <div style={SECTION}>
-            <h3 style={SECTION_TITLE}><User size={18} color={C.forestGreen} /> Customer Information</h3>
+            <h3 style={SECTION_TITLE}><User size={18} color={C.forestGreen} /> Customer & Driver Information</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={LABEL}><User size={12} /> Full Name *</label>
-                <input value={form.customerName} onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
+                <input value={form.customerName} onChange={e => {
+                  const val = e.target.value;
+                  setForm(f => ({
+                    ...f,
+                    customerName: val,
+                    driverName: !f.driverName || f.driverName === f.customerName ? val : f.driverName
+                  }));
+                }}
                   placeholder="Customer full name"
                   onFocus={() => setFocusedField('customerName')} onBlur={() => setFocusedField('')}
                   style={fInput('customerName')} />
@@ -270,12 +347,29 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
                   style={fInput('customerPhone')} />
               </div>
             </div>
-            <div>
+            <div style={{ marginBottom: '1rem' }}>
               <label style={LABEL}><Mail size={12} /> Email Address <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 6, textTransform: 'none' }}>(optional)</span></label>
               <input value={form.customerEmail} onChange={e => setForm(f => ({ ...f, customerEmail: e.target.value }))}
                 placeholder="customer@email.com" type="email"
                 onFocus={() => setFocusedField('customerEmail')} onBlur={() => setFocusedField('')}
                 style={fInput('customerEmail')} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', paddingTop: '0.85rem', borderTop: `1px dashed #E0E0E0` }}>
+              <div>
+                <label style={LABEL}><User size={12} /> Driver Name <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 6, textTransform: 'none' }}>(optional, defaults to customer)</span></label>
+                <input value={form.driverName} onChange={e => setForm(f => ({ ...f, driverName: e.target.value }))}
+                  placeholder={form.customerName || "Driver full name"}
+                  onFocus={() => setFocusedField('driverName')} onBlur={() => setFocusedField('')}
+                  style={fInput('driverName')} />
+              </div>
+              <div>
+                <label style={LABEL}><FileText size={12} /> Driver License Number <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 6, textTransform: 'none' }}>(optional, defaults to N/A)</span></label>
+                <input value={form.driverLicense} onChange={e => setForm(f => ({ ...f, driverLicense: e.target.value }))}
+                  placeholder="e.g. DL-1234567 or N/A"
+                  onFocus={() => setFocusedField('driverLicense')} onBlur={() => setFocusedField('')}
+                  style={fInput('driverLicense')} />
+              </div>
             </div>
           </div>
 
@@ -293,58 +387,96 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
                   onFocus={() => setFocusedField('carId')} onBlur={() => setFocusedField('')}>
                   <option value="">— Choose a vehicle —</option>
                   {cars
-                    .filter(c => scheduleLater || c.availability === 'Available')
-                    .map(c => (
-                      <option key={c.id} value={c.id}>
-                        {carLabel(c)} · {c.carType || ''} · {carRate(c).toFixed(0)} ETB/day · {c.availability || 'Available'}
-                      </option>
-                    ))}
+                    .map(c => {
+                      const st = getMachineStatus(c);
+                      const statusTag = st === 'available' ? '✅ Available' : st === 'booked' ? '🔴 Booked' : '🔧 Maintenance';
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {carLabel(c)} · {c.carType || ''} · {carRate(c).toFixed(0)} ETB/day · {statusTag}
+                        </option>
+                      );
+                    })}
                 </select>
                 <ChevronDown size={15} color={C.border} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
               </div>
             </div>
 
-            {/* Selected car preview */}
-            {selectedCar && (
-              <div style={{ padding: '12px 16px', background: C.lightGray, border: `1px solid ${C.border}`, borderLeft: `4px solid ${C.emerald}`, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 12 }}>
-                {getImageUrl(selectedCar.image1) && (
-                  <img src={getImageUrl(selectedCar.image1)} alt={selectedCar.name}
-                    style={{ width: 64, height: 48, objectFit: 'cover', border: `1px solid ${C.border}`, background: C.white, flexShrink: 0 }}
-                    onError={e => { e.currentTarget.style.display = 'none'; }} />
-                )}
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: C.darkGreen }}>{selectedCar.name}</div>
-                  <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
-                    {selectedCar.carType || 'Car'}&nbsp;·&nbsp;
-                    {selectedCar.seats} seats&nbsp;·&nbsp;
-                    {selectedCar.transmission || 'Manual'}&nbsp;·&nbsp;
-                    Fuel: {selectedCar.fuelType || 'N/A'}&nbsp;·&nbsp;
-                    Rate: <strong>{carRate(selectedCar).toFixed(2)} ETB/day</strong>
+            {/* ── Machine Status Banner ── */}
+            {selectedCar && statusCfg && (() => {
+              const Icon = statusCfg.icon;
+              return (
+                <div style={{
+                  padding: '14px 18px', marginBottom: '1rem',
+                  background: statusCfg.bg,
+                  border: `1.5px solid ${statusCfg.border}`,
+                  borderLeft: `5px solid ${statusCfg.border}`,
+                  display: 'flex', alignItems: 'flex-start', gap: 12
+                }}>
+                  <Icon size={22} color={statusCfg.color} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 900, fontSize: 13, color: statusCfg.color, letterSpacing: '0.05em' }}>
+                        {statusCfg.label}
+                      </span>
+                      <span style={{ fontSize: 12, color: C.textSec, fontWeight: 600 }}>
+                        {selectedCar.name} · {selectedCar.carType || 'Car'} · <strong>{carRate(selectedCar).toFixed(2)} ETB/day</strong>
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: C.darkGray, lineHeight: 1.5 }}>
+                      {machineStatus === 'booked'
+                        ? `This vehicle is currently hired out and is expected to be free by ${bookedUntilLabel}. You can join the queue — we will notify you and finalize dates once it returns.`
+                        : statusCfg.message}
+                    </p>
+
+                    {/* Queue confirmation checkbox for BOOKED machines */}
+                    {machineStatus === 'booked' && (
+                      <div style={{
+                        marginTop: 12, padding: '10px 14px',
+                        background: queueConfirmed ? '#E8F5E9' : C.white,
+                        border: `1px solid ${queueConfirmed ? C.forestGreen : '#FF8F00'}`,
+                        display: 'flex', alignItems: 'center', gap: 10
+                      }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: C.darkGray }}>
+                          <input
+                            type="checkbox"
+                            checked={queueConfirmed}
+                            onChange={e => {
+                              setQueueConfirmed(e.target.checked);
+                              if (e.target.checked) setScheduleLater(true);
+                            }}
+                            style={{ width: 17, height: 17, accentColor: C.forestGreen }}
+                          />
+                          <span>
+                            I understand this vehicle is currently booked.{' '}
+                            <strong style={{ color: C.forestGreen }}>Add me to the queue</strong> — dates will be set once it is available.
+                          </span>
+                        </label>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: selectedCar.availability === 'Available' ? C.forestGreen : '#8D6E63', background: C.white, border: `1px solid ${selectedCar.availability === 'Available' ? C.forestGreen : '#8D6E63'}`, padding: '3px 9px' }}>
-                  {(selectedCar.availability || 'Available').toUpperCase()}
+              );
+            })()}
+
+            {/* Dates (Hidden entirely for maintenance) */}
+            {machineStatus !== 'maintenance' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={LABEL}><Calendar size={12} /> Start Date {scheduleLater && <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, textTransform: 'none' }}>— later</span>}</label>
+                  <input type="date" value={form.startDate} min={minDate} disabled={scheduleLater}
+                    onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                    onFocus={() => setFocusedField('startDate')} onBlur={() => setFocusedField('')}
+                    style={{ ...fInput('startDate'), opacity: scheduleLater ? 0.55 : 1 }} />
+                </div>
+                <div>
+                  <label style={LABEL}><Calendar size={12} /> End Date {scheduleLater && <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, textTransform: 'none' }}>— later</span>}</label>
+                  <input type="date" value={form.endDate} min={form.startDate || minDate} disabled={scheduleLater}
+                    onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                    onFocus={() => setFocusedField('endDate')} onBlur={() => setFocusedField('')}
+                    style={{ ...fInput('endDate'), opacity: scheduleLater ? 0.55 : 1 }} />
                 </div>
               </div>
             )}
-
-            {/* Dates */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label style={LABEL}><Calendar size={12} /> Start Date {scheduleLater && <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, textTransform: 'none' }}>— later</span>}</label>
-                <input type="date" value={form.startDate} min={minDate} disabled={scheduleLater}
-                  onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                  onFocus={() => setFocusedField('startDate')} onBlur={() => setFocusedField('')}
-                  style={{ ...fInput('startDate'), opacity: scheduleLater ? 0.55 : 1 }} />
-              </div>
-              <div>
-                <label style={LABEL}><Calendar size={12} /> End Date {scheduleLater && <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, textTransform: 'none' }}>— later</span>}</label>
-                <input type="date" value={form.endDate} min={form.startDate || minDate} disabled={scheduleLater}
-                  onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                  onFocus={() => setFocusedField('endDate')} onBlur={() => setFocusedField('')}
-                  style={{ ...fInput('endDate'), opacity: scheduleLater ? 0.55 : 1 }} />
-              </div>
-            </div>
 
             {/* Waitlist tag for available machines if coming from request */}
             {selectedCar?.availability === 'Available' && waitlistState?.waitlistId && (
@@ -371,13 +503,15 @@ const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
             )}
 
             {/* Pickup location */}
-            <div>
-              <label style={LABEL}><MapPin size={12} /> Pickup Location <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 6, textTransform: 'none' }}>(optional)</span></label>
-              <input value={form.pickupLocation} onChange={e => setForm(f => ({ ...f, pickupLocation: e.target.value }))}
-                placeholder="e.g. Addis Ababa Office, Airport, etc."
-                onFocus={() => setFocusedField('pickupLocation')} onBlur={() => setFocusedField('')}
-                style={fInput('pickupLocation')} />
-            </div>
+            {machineStatus !== 'maintenance' && (
+              <div>
+                <label style={LABEL}><MapPin size={12} /> Pickup Location <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 6, textTransform: 'none' }}>(optional)</span></label>
+                <input value={form.pickupLocation} onChange={e => setForm(f => ({ ...f, pickupLocation: e.target.value }))}
+                  placeholder="e.g. Addis Ababa Office, Airport, etc."
+                  onFocus={() => setFocusedField('pickupLocation')} onBlur={() => setFocusedField('')}
+                  style={fInput('pickupLocation')} />
+              </div>
+            )}
           </div>
 
           {/* ── PRICE ESTIMATE ── */}
