@@ -65,41 +65,39 @@ const AgriRentList = () => {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: G.lightGray, fontFamily: "'Inter',sans-serif", color: G.text }}>
+    <div style={{ minHeight: '100vh', background: '#FFFFFF', fontFamily: "'Inter',sans-serif", color: G.text }}>
       <style>{`
         @keyframes fmSpin { from { transform:rotate(0deg);} to { transform:rotate(360deg);} }
         .ag-btn { transition: transform .08s, box-shadow .08s; }
         .ag-btn:hover { transform: translateY(-2px); }
         .ag-btn:active { transform: translateY(3px) !important; box-shadow: none !important; }
-        .ag-row:hover { background: #E8F5E9 !important; }
+        .ag-row:hover { background: #F0FDF4 !important; }
       `}</style>
 
       {/* ── Header ── */}
-      <div style={{ background: G.dark, padding: '0 28px', borderBottom: `4px solid ${G.olive}` }}>
-        <div style={{ height: 4, background: `linear-gradient(90deg,${G.mint},${G.lime},${G.leaf},${G.mint})` }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ background: '#FFFFFF', padding: '24px 28px 16px', borderBottom: '1px solid #E5E7EB' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: G.mint, letterSpacing: 1, textTransform: 'uppercase' }}>
-              🚜 AgriRent Machine List
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 24 }}>🚜</span> AgriRent Machine List
             </h1>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: G.sage }}>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>
               Full registry of all farming machines — published and internal
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="ag-btn" onClick={() => fetchTractors(true)} style={{
               display: 'flex', alignItems: 'center', gap: 7,
-              background: G.emerald, color: '#fff', border: `2px solid ${G.olive}`,
-              padding: '10px 18px', cursor: 'pointer', fontWeight: 800, fontSize: 12, textTransform: 'uppercase',
-              boxShadow: `0 5px 0 ${G.dark}`,
+              background: G.emerald, color: '#fff', border: 'none',
+              padding: '9px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 13, borderRadius: 6,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}>
               <RefreshCw size={14} style={{ animation: isRefreshing ? 'fmSpin 1s linear infinite' : 'none' }} /> Refresh
             </button>
             <button className="ag-btn" onClick={() => navigate('/car-renting/manager/tractor-fleet')} style={{
               display: 'flex', alignItems: 'center', gap: 7,
-              background: G.lime, color: G.dark, border: `2px solid ${G.olive}`,
-              padding: '10px 18px', cursor: 'pointer', fontWeight: 900, fontSize: 12, textTransform: 'uppercase',
-              boxShadow: `0 5px 0 ${G.dark}`,
+              background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB',
+              padding: '9px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 13, borderRadius: 6,
             }}>
               <ArrowLeft size={14} /> Back to Register
             </button>
@@ -109,35 +107,35 @@ const AgriRentList = () => {
 
       {/* ── KPI Strip ── */}
       <div style={{
-        background: G.forest, padding: '20px 28px', borderBottom: `3px solid ${G.olive}`,
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16,
+        background: '#F9FAFB', padding: '16px 28px', borderBottom: '1px solid #E5E7EB',
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12,
       }}>
         {[
-          { icon: Layers,      label: 'Total Machines',    value: tractors.length,       color: G.mint },
-          { icon: CheckCircle, label: 'Published (Live)',   value: publishedCount,        color: G.lime },
-          { icon: EyeOff,      label: 'Internal Only',     value: internalCount,         color: '#FFCC80' },
-          { icon: DollarSign,  label: 'Total Asset Value', value: `ETB ${totalValue.toLocaleString(undefined,{minimumFractionDigits:0})}`, color: G.mint },
+          { icon: Layers,      label: 'Total Machines',    value: tractors.length,       color: G.emerald },
+          { icon: CheckCircle, label: 'Published (Live)',   value: publishedCount,        color: '#16A34A' },
+          { icon: EyeOff,      label: 'Internal Only',     value: internalCount,         color: '#D97706' },
+          { icon: DollarSign,  label: 'Total Asset Value', value: `ETB ${totalValue.toLocaleString(undefined,{minimumFractionDigits:0})}`, color: G.dark },
         ].map((k, i) => (
           <div key={i} style={{
-            background: G.dark, border: `2px solid ${G.olive}`, borderTop: `4px solid ${k.color}`,
-            padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
-            boxShadow: `0 4px 0 ${G.olive}`,
+            background: '#FFFFFF', border: '1px solid #E5E7EB', borderLeft: `4px solid ${k.color}`,
+            padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
+            borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
           }}>
-            <div style={{ background: 'rgba(255,255,255,0.1)', padding: 10 }}>
+            <div style={{ background: `${k.color}15`, padding: 10, borderRadius: 8 }}>
               <k.icon size={20} color={k.color} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: G.sage, textTransform: 'uppercase', letterSpacing: 0.8 }}>{k.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.8 }}>{k.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#111827', lineHeight: 1.2 }}>{k.value}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* ── Search bar ── */}
-      <div style={{ padding: '20px 28px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: G.white, border: `2px solid ${G.sage}`, padding: '10px 16px', maxWidth: 420 }}>
-          <Search size={16} color={G.olive} />
+      <div style={{ padding: '16px 28px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F9FAFB', border: '1px solid #D1D5DB', padding: '9px 16px', maxWidth: 420, borderRadius: 8 }}>
+          <Search size={16} color='#9CA3AF' />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -148,10 +146,10 @@ const AgriRentList = () => {
       </div>
 
       {/* ── Table ── */}
-      <div style={{ padding: '20px 28px' }}>
-        <div style={{ background: G.white, border: `2px solid ${G.sage}`, overflow: 'hidden', boxShadow: `0 6px 0 ${G.sage}` }}>
-          <div style={{ background: G.dark, padding: '14px 20px', borderBottom: `3px solid ${G.olive}` }}>
-            <span style={{ fontSize: 13, fontWeight: 900, color: G.mint, textTransform: 'uppercase', letterSpacing: 1 }}>
+      <div style={{ padding: '16px 28px 28px' }}>
+        <div style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', overflow: 'hidden', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: '#F9FAFB', padding: '12px 20px', borderBottom: '2px solid #E5E7EB' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
               📋 All AgriRent Machines — {filtered.length} machine{filtered.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -173,13 +171,13 @@ const AgriRentList = () => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: '#E8F5E9', borderBottom: `2px solid ${G.sage}` }}>
+                  <tr style={{ background: '#F3F4F6', borderBottom: '2px solid #E5E7EB' }}>
                     {['#', 'Machine', 'Type', 'Transmission', 'Fuel', 'Daily Rate (ETB)', 'Asset Value (ETB)', 'Availability', 'Status'].map((h, i) => (
                       <th key={h} style={{
-                        padding: '12px 16px', textAlign: 'left',
-                        fontSize: 11, fontWeight: 900, color: G.dark,
+                        padding: '11px 16px', textAlign: 'left',
+                        fontSize: 11, fontWeight: 700, color: '#374151',
                         textTransform: 'uppercase', letterSpacing: 0.8,
-                        borderRight: i < 8 ? `1px solid ${G.sage}` : 'none',
+                        borderRight: i < 8 ? '1px solid #E5E7EB' : 'none',
                         whiteSpace: 'nowrap',
                       }}>{h}</th>
                     ))}
@@ -269,7 +267,7 @@ const AgriRentList = () => {
           )}
         </div>
 
-        <div style={{ marginTop: 16, fontSize: 12, color: G.emerald, fontWeight: 600 }}>
+        <div style={{ marginTop: 14, fontSize: 12, color: '#6B7280', fontWeight: 500 }}>
           💡 Finance can set asset values from the Finance Dashboard → Tractor Assets.
         </div>
       </div>
