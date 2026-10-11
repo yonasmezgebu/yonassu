@@ -48,6 +48,7 @@ const STATUS_TABS = [
   { key: 'APPROVED',         label: 'Approved',    Icon: CheckSquare },
   { key: 'ACTIVE',           label: 'Active',      Icon: PlaySquare },
   { key: 'COMPLETED',        label: 'Completed',   Icon: CheckSquare },
+  { key: 'CANCELLED',        label: 'Cancelled',   Icon: XSquare },
 ];
 
 const TERMINAL_STATUSES = ['COMPLETED', 'REJECTED', 'CANCELLED', 'ABANDONED',
@@ -119,12 +120,21 @@ export default function CustomerRentals() {
     const { id } = confirmDelete;
     setConfirmDelete(null);
     try {
-      await apiClient.delete(`/rentals/my-orders/${id}/hide`);
+      try {
+        await apiClient.delete(`/rental-orders/my-orders/${id}/hide`);
+      } catch (firstErr) {
+        // Fallback to /my-orders/:id or carService
+        try {
+          await apiClient.delete(`/rental-orders/my-orders/${id}`);
+        } catch {
+          await carService.deleteMyRentalOrder(id);
+        }
+      }
       setOrders(prev => prev.filter(o => o.id !== id));
       if (selected?.id === id) setSelected(null);
       showToast('Order removed from your dashboard.', 'success');
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to remove order.', 'error');
+      showToast(err.response?.data?.message || err.message || 'Failed to remove order.', 'error');
     }
   };
 
@@ -199,7 +209,11 @@ export default function CustomerRentals() {
     setSelectedFile(null);
   };
 
-  const filtered = activeTab === 'ALL' ? orders : orders.filter(o => o.status === activeTab);
+  const filtered = activeTab === 'ALL'
+    ? orders
+    : activeTab === 'CANCELLED'
+      ? orders.filter(o => o.status === 'CANCELLED' || o.isCancellationRequested || o.is_cancellation_requested)
+      : orders.filter(o => o.status === activeTab);
 
   /* ═══════════════════════════════════════════════════════════
      DETAIL VIEW — single panel, all sections + dividers
@@ -210,7 +224,9 @@ export default function CustomerRentals() {
     const pst     = o.paymentStatus ? PAYMENT_STATUS[o.paymentStatus] : null;
     const imgUrl  = getImageUrl(o.carImage);
     const proofUrl = getImageUrl(o.paymentProofUrl);
-    const canCancel = ['PENDING_APPROVAL', 'APPROVED'].includes(o.status);
+    const isCancelPending = !!(o.isCancellationRequested || o.is_cancellation_requested);
+    const canCancel = ['PENDING_APPROVAL', 'APPROVED'].includes(o.status) && !isCancelPending;
+    const canDel    = TERMINAL_STATUSES.includes(o.status);
     const canUpload = o.status === 'APPROVED' && o.paymentStatus !== 'PAID';
     const canExtend = o.status === 'ACTIVE';
     const hasFees   = o.extensionFee > 0 || o.damageFee > 0 || o.fuelFee > 0 || o.lateFee > 0;
@@ -220,20 +236,55 @@ export default function CustomerRentals() {
         <ToastContainer />
         <div className={styles.wrap}>
 
-          {/* Back button + cancel at top */}
+          {/* Back button + actions at top */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <button className={styles.backBtn} onClick={() => setSelected(null)}>
               <ArrowLeft size={16} /> Back to Rentals
             </button>
-            {canCancel && !cancelOpen && (
-              <button className={styles.btnDanger} onClick={() => setCancelOpen(true)}>
-                <XSquare size={16} /> Cancel Rental
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {canCancel && !cancelOpen && (
+                <button className={styles.btnDanger} onClick={() => setCancelOpen(true)}>
+                  <XSquare size={16} /> Cancel Rental
+                </button>
+              )}
+              {canDel && (
+                <button
+                  className={styles.btnDanger}
+                  style={{ background: 'hsl(var(--status-cancelled-bg))', color: 'hsl(var(--danger))', border: '1px solid hsl(var(--danger) / 0.35)' }}
+                  onClick={(e) => handleHideOrder(e, o.id, o.carName || `Booking #${o.id}`)}
+                >
+                  <Trash2 size={16} /> Remove from Dashboard
+                </button>
+              )}
+            </div>
           </div>
 
           {/* ── Single-page detail panel ── */}
           <div className={styles.detailPanel}>
+
+            {/* Cancellation Status Banner */}
+            {o.status === 'CANCELLED' && (
+              <div style={{ margin: '1.25rem 1.5rem 0', padding: '1rem 1.25rem', borderRadius: 'var(--radius)', background: 'hsl(0 86% 97%)', border: '1px solid hsl(0 72% 85%)', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                <XCircle size={22} style={{ color: 'hsl(var(--danger))', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, color: 'hsl(var(--danger))', fontSize: '0.9375rem' }}>Booking Cancelled</div>
+                  <div style={{ fontSize: '0.85rem', color: 'hsl(var(--foreground))', marginTop: '0.2rem' }}>
+                    This rental order has been cancelled.{o.cancellationReason ? ` Reason: "${o.cancellationReason}"` : ''}
+                  </div>
+                </div>
+              </div>
+            )}
+            {o.status !== 'CANCELLED' && isCancelPending && (
+              <div style={{ margin: '1.25rem 1.5rem 0', padding: '1rem 1.25rem', borderRadius: 'var(--radius)', background: 'hsl(38 92% 95%)', border: '1px solid hsl(38 92% 75%)', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                <AlertTriangle size={22} style={{ color: 'hsl(38 92% 40%)', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, color: 'hsl(38 92% 35%)', fontSize: '0.9375rem' }}>Cancellation Requested</div>
+                  <div style={{ fontSize: '0.85rem', color: 'hsl(var(--foreground))', marginTop: '0.2rem' }}>
+                    Your cancellation request has been submitted and is pending review by the Rental Manager.{o.cancellationReason ? ` Reason: "${o.cancellationReason}"` : ''}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Hero strip */}
             <div className={styles.detailHero}>
@@ -675,9 +726,21 @@ export default function CustomerRentals() {
                         <span className={styles.textPrice}>{fmtMoney(order.totalAmount)} ETB</span>
                       </div>
 
-                      <div className={styles.tableCol} style={{ gap: '0.375rem' }}>
-                        <BadgeFromConfig cfg={ost} />
-                        {pst && <BadgeFromConfig cfg={pst} />}
+                      <div className={styles.tableCol} style={{ gap: '0.375rem', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                          <BadgeFromConfig cfg={ost} />
+                          {pst && <BadgeFromConfig cfg={pst} />}
+                        </div>
+                        {(order.isCancellationRequested || order.is_cancellation_requested) && (
+                          <span className={`${styles.badge} ${styles.statusCancelled}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                            <AlertTriangle size={11} /> Cancel Requested
+                          </span>
+                        )}
+                        {(order.isCancellationRequested || order.is_cancellation_requested || order.status === 'CANCELLED') && (order.cancellationReason || order.cancellation_reason) && (
+                          <span style={{ fontSize: '0.75rem', color: 'hsl(var(--danger))', fontStyle: 'italic', maxWidth: '170px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={order.cancellationReason || order.cancellation_reason}>
+                            &ldquo;{order.cancellationReason || order.cancellation_reason}&rdquo;
+                          </span>
+                        )}
                       </div>
 
                       <div className={styles.tableCol} style={{ alignItems: 'flex-end' }}>
@@ -685,7 +748,7 @@ export default function CustomerRentals() {
                           <button
                             onClick={(e) => handleHideOrder(e, order.id, order.carName || `Booking #${order.id}`)}
                             className={`${styles.btnIcon} ${styles.btnIconDanger}`}
-                            title="Remove from dashboard"
+                            title={order.status === 'CANCELLED' ? "Remove cancelled order from dashboard" : "Remove from dashboard"}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -716,9 +779,16 @@ export default function CustomerRentals() {
                           <div className={styles.cardTitle}>{order.carName || 'Vehicle'}</div>
                           <div className={styles.cardSub}>#{order.orderNumber || order.id}</div>
                         </div>
-                        <div className={styles.cardBadges}>
-                          <BadgeFromConfig cfg={ost} />
-                          {pst && <BadgeFromConfig cfg={pst} />}
+                        <div className={styles.cardBadges} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <BadgeFromConfig cfg={ost} />
+                            {pst && <BadgeFromConfig cfg={pst} />}
+                          </div>
+                          {(order.isCancellationRequested || order.is_cancellation_requested) && (
+                            <span className={`${styles.badge} ${styles.statusCancelled}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <AlertTriangle size={11} /> Cancel Requested
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -737,13 +807,19 @@ export default function CustomerRentals() {
                         </div>
                       </div>
 
+                      {(order.isCancellationRequested || order.is_cancellation_requested || order.status === 'CANCELLED') && (order.cancellationReason || order.cancellation_reason) && (
+                        <div style={{ padding: '0.4rem 0.6rem', margin: '0.5rem 0', background: 'hsl(0 86% 97%)', borderRadius: 'var(--radius)', fontSize: '0.75rem', color: 'hsl(var(--danger))', fontStyle: 'italic' }}>
+                          Reason: &ldquo;{order.cancellationReason || order.cancellation_reason}&rdquo;
+                        </div>
+                      )}
+
                       <div className={styles.cardFooter}>
                         <div className={styles.textPrice} style={{ fontSize: '1rem' }}>{fmtMoney(order.totalAmount)} ETB</div>
                         {canDel && (
                           <button
                             onClick={(e) => handleHideOrder(e, order.id, order.carName || `Booking #${order.id}`)}
                             className={`${styles.btnIcon} ${styles.btnIconDanger}`}
-                            title="Remove from dashboard"
+                            title={order.status === 'CANCELLED' ? "Remove cancelled order from dashboard" : "Remove from dashboard"}
                           >
                             <Trash2 size={16} />
                           </button>
