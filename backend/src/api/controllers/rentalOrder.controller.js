@@ -242,7 +242,7 @@ exports.createOrder = async (req, res, next) => {
         title: '🚗 New Online Order',
         message: `New car rental order ${orderData.orderNumber} placed for ETB ${rentalAmount.toLocaleString()}.`,
         type: 'info',
-        link: '/car-renting/orders'
+        link: '/car-renting/manager/orders'
       });
     } catch(e) {}
     
@@ -259,6 +259,13 @@ exports.createOrder = async (req, res, next) => {
 
 exports.getAllOrders = async (req, res, next) => {
   try {
+    // Automatically move any completed, cancelled or rejected orders to history
+    await db('rental_orders')
+      .whereIn('status', ['COMPLETED', 'CANCELLED', 'REJECTED'])
+      .whereNull('archived_at')
+      .whereNull('deleted_at')
+      .update({ archived_at: db.fn.now() });
+
     const orders = await rentalOrderRepository.findAll();
     res.status(200).json({
       status: 'success',
@@ -276,11 +283,9 @@ const RENTAL_TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
 exports.getArchivedOrders = async (req, res, next) => {
   try {
     const orders = await rentalOrderRepository.findAll({ archived: true });
-    // Manual (walk-in) orders live in the rental list already — don't duplicate them in history.
-    const nonManual = orders.filter(o => !o.isManual && !o.is_manual);
     res.status(200).json({
       status: 'success',
-      data: nonManual.map(o => o.toJSON())
+      data: orders.map(o => o.toJSON())
     });
   } catch (error) {
     logger.error('Error fetching archived rental orders:', error);
@@ -470,10 +475,13 @@ exports.getCustomerOrders = async (req, res, next) => {
   try {
     // Orders belonging to this account (by user id), or recorded under the same
     // email (manual/walk-in orders) must also appear on the customer dashboard.
+    // includeArchived: true ensures customers still see their completed & cancelled orders
+    // until they explicitly click the delete icon.
     const allOrders = await rentalOrderRepository.findAll({
-      filters: { customerId: req.user.id, customerEmail: req.user.email }
+      filters: { customerId: req.user.id, customerEmail: req.user.email },
+      includeArchived: true
     });
-    const orders = allOrders.filter(o => !o.is_deleted_by_customer);
+    const orders = allOrders.filter(o => !o.is_deleted_by_customer && !o.isDeletedByCustomer);
     res.status(200).json({
       status: 'success',
       data: orders.map(o => o.toJSON ? o.toJSON() : o)
@@ -489,7 +497,7 @@ exports.updateOrderStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status, managerNote } = req.body;
 
-    const order = await rentalOrderRepository.findById(id);
+    const order = await rentalOrderRepository.findById(id, { includeArchived: true });
     if (!order) {
       return res.status(404).json({ status: 'error', message: 'Order not found' });
     }
@@ -498,8 +506,24 @@ exports.updateOrderStatus = async (req, res, next) => {
     if (managerNote) extraData.manager_note = managerNote;
     
     if (status === 'APPROVED') extraData.approved_at = new Date();
-    if (status === 'REJECTED') extraData.rejected_at = new Date();
-    if (status === 'ACTIVE' && !order.rentalStartTime) extraData.rental_start_time = new Date();
+    if (status === 'REJECTED') {
+      extraData.rejected_at = new Date();
+      extraData.archived_at = db.fn.now();
+    }
+    if (status === 'COMPLETED' || status === 'CANCELLED') {
+      extraData.archived_at = db.fn.now();
+    }
+    if (status === 'ACTIVE') {
+      const payStatus = order.paymentStatus || order.payment_status;
+      const isPaid = ['PAID', 'Confirmed', 'CONFIRMED'].includes(payStatus);
+      if (!isPaid) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Cannot start rental / set to Active: Payment must be completed/confirmed before the vehicle can be handed over.'
+        });
+      }
+      if (!order.rentalStartTime) extraData.rental_start_time = new Date();
+    }
 
     const updated = await rentalOrderRepository.updateStatus(id, status, extraData);
 
@@ -513,6 +537,36 @@ exports.updateOrderStatus = async (req, res, next) => {
        await carRepository.update(order.carId, { availability: 'Booked' });
     } else if (['COMPLETED', 'CLOSED', 'CANCELLED', 'REJECTED'].includes(status)) {
        await carRepository.update(order.carId, { availability: 'Available' });
+    }
+
+    // If cancelled or rejected, void any pending finance income submission
+    if (['CANCELLED', 'REJECTED'].includes(status)) {
+      try {
+        await db('finance_income_submissions')
+          .where(function() {
+            this.where('department', 'Car Rental')
+              .andWhere(function() {
+                this.where('reference_no', `CAR-PROOF-${order.orderNumber}`)
+                  .orWhere('reference_no', `CAR-${order.orderNumber}`)
+                  .orWhere('reference_no', `CASH-${order.orderNumber}`)
+                  .orWhere('reference_no', 'like', `%${order.orderNumber}%`);
+                if (order.paymentReference) {
+                  this.orWhere('reference_no', order.paymentReference);
+                }
+              });
+          })
+          .orWhere(function() {
+            this.where('department', 'Car Rental')
+              .andWhere(function() {
+                this.where('manual_details', 'like', `%"order_id":"${id}"%`)
+                  .orWhere('manual_details', 'like', `%"order_id":${id}%`)
+                  .orWhere('manual_details', 'like', `%"orderNumber":"${order.orderNumber}"%`);
+              });
+          })
+          .delete();
+      } catch (finErr) {
+        logger.error('Failed to void finance income submission on status change:', finErr.message);
+      }
     }
 
     res.status(200).json({
@@ -541,6 +595,15 @@ exports.startRental = async (req, res, next) => {
     }
     if (order.status === 'ACTIVE') {
       return res.status(400).json({ status: 'error', message: 'This rental is already active' });
+    }
+
+    const payStatus = order.paymentStatus || order.payment_status;
+    const isPaid = ['PAID', 'Confirmed', 'CONFIRMED'].includes(payStatus);
+    if (!isPaid) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Cannot start rental: Payment must be completed/confirmed before starting the rental.'
+      });
     }
 
     const extra = {};
@@ -590,12 +653,14 @@ exports.uploadPaymentProof = async (req, res) => {
     }
 
     const isFinanceStaff = req.user.roles && req.user.roles.some(r => ['Finance', 'Admin', 'CEO'].includes(r));
-    
-    if (order.customerId !== req.user.id && !isFinanceStaff) {
+    const isManager = req.user.roles && req.user.roles.some(r => ['Car Renting Manager', 'Rental Manager', 'Agri Rental Manager'].includes(r));
+    const payRejected = String(order.paymentStatus || order.payment_status || '').toLowerCase().includes('reject');
+
+    if (order.customerId !== req.user.id && !isFinanceStaff && !isManager) {
       return res.status(403).json({ status: 'error', message: 'Not authorized' });
     }
 
-    if (!isFinanceStaff && order.status !== 'APPROVED' && order.additionalOwed <= 0) {
+    if (!isFinanceStaff && !payRejected && order.status !== 'APPROVED' && order.additionalOwed <= 0) {
       return res.status(400).json({ status: 'error', message: 'Payment proof not required for this order currently' });
     }
 
@@ -684,7 +749,9 @@ exports.createManualOrder = async (req, res) => {
       proofUrl = `/uploads/receipts/${req.file.filename}`;
     }
 
-    if (!isScheduleLater && !paymentReference && !proofUrl) {
+    const isCashPayment = String(paymentMethod || '').trim().toLowerCase() === 'cash';
+
+    if (!isScheduleLater && !isCashPayment && !paymentReference && !proofUrl) {
       return res.status(400).json({ status: 'error', message: 'Either payment reference or screenshot is required' });
     }
 
@@ -731,8 +798,8 @@ exports.createManualOrder = async (req, res) => {
       customer_name:    customerName,
       customer_phone:   customerPhone,
       customer_email:   customerEmail || null,
-      driver_name:      driverName || customerName,
-      driver_license:   driverLicense || null,
+      driver_name:      (driverName && String(driverName).trim()) ? String(driverName).trim() : customerName,
+      driver_license:   (driverLicense && String(driverLicense).trim()) ? String(driverLicense).trim() : 'N/A',
       order_number:     orderNumber,
       pickup_date:      pickup,
       return_date:      returnDate,
@@ -746,13 +813,13 @@ exports.createManualOrder = async (req, res) => {
       pickup_location:  pickupLocation || null,
       special_requests: notes || null,
       payment_method:   paymentMethod || 'Bank/Telebirr',
-      payment_reference: paymentReference || null,
+      payment_reference: paymentReference || (isCashPayment ? `CASH-${orderNumber}` : null),
       payment_proof_url: proofUrl,
-      payment_status:   isScheduleLater ? 'UNPAID' : (proofUrl || paymentReference ? 'PENDING_VERIFICATION' : 'UNPAID'),
+      payment_status:   isScheduleLater ? 'UNPAID' : (proofUrl || paymentReference || isCashPayment ? 'PENDING_VERIFICATION' : 'UNPAID'),
       status:           'APPROVED', // manager-created = already approved
       is_manual:        true,
       scheduled_later:  isScheduleLater ? true : false,
-      waitlist_id:      waitlistId || null,
+      waitlist_id:      waitlistId ? parseInt(waitlistId) : null,
       approved_at:      new Date(),
       created_at:       new Date(),
       updated_at:       new Date()
@@ -793,14 +860,14 @@ exports.createManualOrder = async (req, res) => {
           department:   'Car Rental',
           submitted_by: req.user.fullName || req.user.full_name || 'Car Renting Manager',
           amount:       totalAmount,
-          reference_no: paymentReference || (proofUrl ? `CAR-PROOF-${orderNumber}` : `CAR-${orderNumber}`),
-          description:  `Car Rental Order ${orderNumber} – ${customerName}`,
+          reference_no: paymentReference || (isCashPayment ? `CASH-${orderNumber}` : (proofUrl ? `CAR-PROOF-${orderNumber}` : `CAR-${orderNumber}`)),
+          description:  `Car Rental Order ${orderNumber} – ${customerName} (${paymentMethod || 'Manual'})`,
           status:       'Pending',
           manual_details: JSON.stringify({
             order_id:         String(orderId),
             orderNumber,
             paymentMethod:    paymentMethod || 'Bank/Telebirr',
-            paymentReference: paymentReference || null,
+            paymentReference: paymentReference || (isCashPayment ? `CASH-${orderNumber}` : null),
             proofImagePath:   proofUrl,
             amount:           totalAmount,
             receivedFrom:     customerName,
@@ -815,7 +882,7 @@ exports.createManualOrder = async (req, res) => {
             returnDate:   endDate,
             totalDays,
             dailyRate,
-            driverName:   driverName || customerName,
+            driverName:   (driverName && String(driverName).trim()) ? String(driverName).trim() : customerName,
             pickupLocation: pickupLocation || null
           }),
           created_at: new Date(),
@@ -825,14 +892,64 @@ exports.createManualOrder = async (req, res) => {
         logger.error('Failed to submit manual Car Rental to finance live income:', err.message);
       }
 
+      // Mark car as Booked if dates confirmed
+      if (carId) {
+        try {
+          await db('cars').where({ id: parseInt(carId) }).update({ availability: 'Booked' });
+        } catch (carErr) {
+          logger.error('Failed to update car availability:', carErr.message);
+        }
+      }
+
       // Notify Finance
       sendFinanceNotification({
         title: 'New Income Submission',
-        message: `ETB ${Number(totalAmount || 0).toLocaleString()} Car Rental order income submitted for verification (Ref: ${paymentReference || `CAR-${orderNumber}`}).`,
+        message: `ETB ${Number(totalAmount || 0).toLocaleString()} Car Rental order income submitted for verification (Ref: ${paymentReference || (isCashPayment ? `CASH-${orderNumber}` : `CAR-${orderNumber}`)}).`,
         type: 'finance',
         link: '/finance/pharmacy-sales?tab=list',
         related_entity_id: orderNumber
       }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+    }
+
+    // Convert or link availability request (car_waitlist)
+    let wId = waitlistId ? parseInt(waitlistId) : null;
+    if (!wId && carId && (customerPhone || customerEmail)) {
+      try {
+        const matchingWaitlist = await db('car_waitlist')
+          .where({ car_id: parseInt(carId) })
+          .whereIn('status', ['waiting', 'notified'])
+          .andWhere(function() {
+            if (customerPhone) this.where('customer_phone', customerPhone);
+            if (customerEmail) this.orWhere('customer_email', customerEmail);
+          })
+          .first();
+        if (matchingWaitlist) wId = matchingWaitlist.id;
+      } catch (_) {}
+    }
+    if (wId) {
+      try {
+        await db('car_waitlist').where({ id: wId }).update({
+          status: isScheduleLater ? 'waiting' : 'converted',
+          converted_order_id: orderId,
+          converted_at: isScheduleLater ? null : new Date(),
+          updated_at: new Date()
+        });
+
+        if (!isScheduleLater) {
+          const waitlistEntry = await db('car_waitlist').where({ id: wId }).first();
+          if (waitlistEntry && waitlistEntry.user_id) {
+            sendCustomerNotification({
+              user_id: waitlistEntry.user_id,
+              title: 'Your car is reserved',
+              message: `Great news — your reservation order (${orderNumber}) has been created for ${carName || 'your vehicle'}.`,
+              type: 'car',
+              link: '/customer'
+            }, req.app?.get('io')).catch(e => console.error('Failed to notify customer:', e.message));
+          }
+        }
+      } catch (wlErr) {
+        logger.error('Failed to update car_waitlist status:', wlErr.message);
+      }
     }
 
     carRentalAudit.log(req, isScheduleLater
@@ -1114,7 +1231,7 @@ exports.verifyPayment = async (req, res) => {
             ? `Finance verified payment for order ${order.orderNumber}`
             : `Finance rejected payment for order ${order.orderNumber}`,
           type: isVerified ? 'REQUEST_APPROVED' : 'REQUEST_REJECTED',
-          link: '/car-renting/orders'
+          link: '/car-renting/manager/orders'
         });
       } catch(e) {}
     }
@@ -1252,13 +1369,43 @@ exports.cancelOrder = async (req, res) => {
       // Manager directly cancels the order
       updated = await rentalOrderRepository.update(id, {
         status: 'CANCELLED',
-        cancellation_reason: reason
+        cancellation_reason: reason,
+        archived_at: db.fn.now()
       });
       carRentalAudit.log(req, 'Rental Order Cancelled', order.orderNumber, order.toJSON(), updated.toJSON());
       // Release the car back to Available
       if (order.carId) {
         await carRepository.update(order.carId, { availability: 'Available' });
       }
+
+      // Automatically remove/void finance income submission for this order
+      try {
+        await db('finance_income_submissions')
+          .where(function() {
+            this.where('department', 'Car Rental')
+              .andWhere(function() {
+                this.where('reference_no', `CAR-PROOF-${order.orderNumber}`)
+                  .orWhere('reference_no', `CAR-${order.orderNumber}`)
+                  .orWhere('reference_no', `CASH-${order.orderNumber}`)
+                  .orWhere('reference_no', 'like', `%${order.orderNumber}%`);
+                if (order.paymentReference) {
+                  this.orWhere('reference_no', order.paymentReference);
+                }
+              });
+          })
+          .orWhere(function() {
+            this.where('department', 'Car Rental')
+              .andWhere(function() {
+                this.where('manual_details', 'like', `%"order_id":"${id}"%`)
+                  .orWhere('manual_details', 'like', `%"order_id":${id}%`)
+                  .orWhere('manual_details', 'like', `%"orderNumber":"${order.orderNumber}"%`);
+              });
+          })
+          .delete();
+      } catch (finErr) {
+        logger.error('Failed to void finance income submission on manager cancellation:', finErr.message);
+      }
+
       await notificationRepository.create({
         userId: order.customerId,
         title: 'Order Cancelled by Manager',
@@ -1270,7 +1417,12 @@ exports.cancelOrder = async (req, res) => {
         is_cancellation_requested: true,
         cancellation_reason: reason
       });
-      await sendNotification('Car Renting Manager', null, { title: 'Cancellation Request', message: `Customer ${order.customerName} requested to cancel Order ${order.orderNumber}. Reason: ${reason}`, type: 'info', link: '/car-renting/orders' });
+      await sendNotification('Car Renting Manager', null, { 
+        title: 'Cancellation Request', 
+        message: `Customer ${order.customerName} requested to cancel Order ${order.orderNumber}. Reason: ${reason}`, 
+        type: 'info', 
+        link: '/car-renting/manager/orders' 
+      });
     }
 
     res.status(200).json({ status: 'success', data: updated.toJSON() });
@@ -1285,7 +1437,7 @@ exports.approveCancellation = async (req, res) => {
     const { id } = req.params;
     const { isApproved } = req.body;
 
-    const order = await rentalOrderRepository.findById(id);
+    const order = await rentalOrderRepository.findById(id, { includeArchived: true });
     if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
 
     if (!isApproved) {
@@ -1304,7 +1456,8 @@ exports.approveCancellation = async (req, res) => {
 
     const updateData = { 
       status: 'CANCELLED',
-      is_cancellation_requested: false 
+      is_cancellation_requested: false,
+      archived_at: db.fn.now()
     };
     
     if (order.paymentStatus === 'PAID') {
@@ -1319,8 +1472,38 @@ exports.approveCancellation = async (req, res) => {
     }
 
     const updated = await rentalOrderRepository.update(id, updateData);
-    await carRepository.update(order.carId, { availability: 'Available' });
+    if (order.carId) {
+      await carRepository.update(order.carId, { availability: 'Available' });
+    }
     carRentalAudit.log(req, 'Rental Order Cancellation Approved', order.orderNumber, order.toJSON(), updated.toJSON());
+
+    // Automatically remove/void finance income submission for this cancelled order
+    try {
+      await db('finance_income_submissions')
+        .where(function() {
+          this.where('department', 'Car Rental')
+            .andWhere(function() {
+              this.where('reference_no', `CAR-PROOF-${order.orderNumber}`)
+                .orWhere('reference_no', `CAR-${order.orderNumber}`)
+                .orWhere('reference_no', `CASH-${order.orderNumber}`)
+                .orWhere('reference_no', 'like', `%${order.orderNumber}%`);
+              if (order.paymentReference) {
+                this.orWhere('reference_no', order.paymentReference);
+              }
+            });
+        })
+        .orWhere(function() {
+          this.where('department', 'Car Rental')
+            .andWhere(function() {
+              this.where('manual_details', 'like', `%"order_id":"${id}"%`)
+                .orWhere('manual_details', 'like', `%"order_id":${id}%`)
+                .orWhere('manual_details', 'like', `%"orderNumber":"${order.orderNumber}"%`);
+            });
+        })
+        .delete();
+    } catch (finErr) {
+      logger.error('Failed to void finance income submission on cancellation approval:', finErr.message);
+    }
 
     await notificationRepository.create({
       userId: order.customerId,
@@ -1351,7 +1534,7 @@ exports.extendOrder = async (req, res) => {
 
     const extensionFee = days * order.dailyRate;
     
-    await sendNotification('Car Renting Manager', null, { title: 'Extension Request', message: `Customer ${order.customerId} requested a ${days}-day extension for Order ${order.orderNumber}.`, type: 'info', link: '/car-renting/orders' });
+    await sendNotification('Car Renting Manager', null, { title: 'Extension Request', message: `Customer ${order.customerId} requested a ${days}-day extension for Order ${order.orderNumber}.`, type: 'info', link: '/car-renting/manager/orders' });
 
     res.status(200).json({ status: 'success', message: 'Extension requested successfully' });
   } catch (error) {
@@ -1457,14 +1640,16 @@ exports.processReturn = async (req, res) => {
       actual_return_odometer: odometer,
       additional_owed: netDue,
       refund_amount: refund,
-      manager_note: notes
+      manager_note: notes,
+      archived_at: db.fn.now()
     });
 
     carRentalAudit.log(req, 'Rental Order Return Processed', order.orderNumber, {
       status: order.status, additional_owed: order.additionalOwed, security_deposit: order.securityDeposit
     }, {
       status: 'COMPLETED', damage_fee: damageFee || 0, fuel_fee: fuelFee || 0, late_fee: lateFee || 0,
-      actual_return_odometer: odometer, additional_owed: netDue, refund_amount: refund, manager_note: notes
+      actual_return_odometer: odometer, additional_owed: netDue, refund_amount: refund, manager_note: notes,
+      archived_at: new Date()
     });
 
     await carRepository.update(order.carId, { availability: 'Available' });
@@ -1496,12 +1681,41 @@ exports.markNoShow = async (req, res) => {
     const updated = await rentalOrderRepository.update(id, {
       status: 'CANCELLED',
       manager_note: 'Manually marked as No-Show by Manager',
-      refund_amount: Math.max(0, refundAmount)
+      refund_amount: Math.max(0, refundAmount),
+      archived_at: db.fn.now()
     });
 
     carRentalAudit.log(req, 'Rental Order No-Show', order.orderNumber, order.toJSON(), updated.toJSON());
 
     await carRepository.update(order.carId, { availability: 'Available' });
+
+    // Void any finance income submission on cancellation
+    try {
+      await db('finance_income_submissions')
+        .where(function() {
+          this.where('department', 'Car Rental')
+            .andWhere(function() {
+              this.where('reference_no', `CAR-PROOF-${order.orderNumber}`)
+                .orWhere('reference_no', `CAR-${order.orderNumber}`)
+                .orWhere('reference_no', `CASH-${order.orderNumber}`)
+                .orWhere('reference_no', 'like', `%${order.orderNumber}%`);
+              if (order.paymentReference) {
+                this.orWhere('reference_no', order.paymentReference);
+              }
+            });
+        })
+        .orWhere(function() {
+          this.where('department', 'Car Rental')
+            .andWhere(function() {
+              this.where('manual_details', 'like', `%"order_id":"${id}"%`)
+                .orWhere('manual_details', 'like', `%"order_id":${id}%`)
+                .orWhere('manual_details', 'like', `%"orderNumber":"${order.orderNumber}"%`);
+            });
+        })
+        .delete();
+    } catch (finErr) {
+      logger.error('Failed to void finance income submission on no-show cancellation:', finErr.message);
+    }
     
     await notificationRepository.create({
       userId: order.customerId,
