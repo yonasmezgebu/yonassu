@@ -348,6 +348,7 @@ exports.createManualOrder = async (req, res) => {
       tractorId, customerName, customerPhone, customerEmail,
       startDate, endDate, dailyRateOverride, fieldLocation,
       fieldSizeHectares, farmingPurpose, specialInstructions,
+      hectareRate, purposeFee,
       paymentMethod, paymentReference, paymentStatus,
       scheduleLater, waitlistId,
       paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType
@@ -387,9 +388,15 @@ exports.createManualOrder = async (req, res) => {
         const tractor = await db('tractors').where({ id: tractorId }).first();
         if (tractor) dailyRate = parseFloat(tractor.dailyRate || tractor.daily_rate || 0);
       }
-      const vatCalc = await vatConfigService.computeVatForItem('agrirent', tractorId || null, dailyRate * totalDays);
+      const hectares = parseFloat(fieldSizeHectares) || 0;
+      const perHectare = parseFloat(hectareRate) || 0;
+      const purposeFeeVal = parseFloat(purposeFee) || 0;
+      const dayComponent = dailyRate * totalDays;
+      const hectareComponent = perHectare * hectares;
+      subtotal = parseFloat((dayComponent + hectareComponent + purposeFeeVal).toFixed(2));
+      const vatCalc = await vatConfigService.computeVatForItem('agrirent', tractorId || null, subtotal);
       vatAmount = parseFloat(vatCalc.vat.toFixed(2));
-      totalAmount = dailyRate * totalDays + vatAmount;
+      totalAmount = parseFloat((subtotal + vatAmount).toFixed(2));
     } else {
       // Dates come later — keep the machine unaffected. It is already booked by
       // the CURRENT order, so the normal availability guard would reject us;
@@ -423,6 +430,8 @@ exports.createManualOrder = async (req, res) => {
       end_date: isScheduleLater ? null : endDate,
       total_days: totalDays,
       daily_rate: dailyRate,
+      hectare_rate: isScheduleLater ? 0 : (parseFloat(hectareRate) || 0),
+      purpose_fee: isScheduleLater ? 0 : (parseFloat(purposeFee) || 0),
       subtotal: subtotal,
       vat_amount: vatAmount,
       total_amount: totalAmount,
@@ -437,12 +446,25 @@ exports.createManualOrder = async (req, res) => {
       status: 'approved', // manual = auto-approved
       is_manual: true,
       scheduled_later: isScheduleLater ? true : false,
-      waitlist_id: waitlistId || null,
+      waitlist_id: waitlistId ? parseInt(waitlistId) : null,
       created_by: req.user.id,
       approved_at: new Date(),
       created_at: new Date(),
       updated_at: new Date()
     });
+
+    if (waitlistId) {
+      try {
+        await db('agrirent_waitlist').where({ id: parseInt(waitlistId) }).update({
+          status: isScheduleLater ? 'waiting' : 'converted',
+          converted_order_id: id,
+          converted_at: isScheduleLater ? null : new Date(),
+          updated_at: new Date()
+        });
+      } catch (wlErr) {
+        logger.error('Failed to update agrirent_waitlist status:', wlErr.message);
+      }
+    }
 
     // Reserve the machine immediately so it cannot be re-booked before release —
     // but NOT for a schedule-later hold (that machine is already booked by the
@@ -493,7 +515,7 @@ exports.createManualOrder = async (req, res) => {
 
     // Automatically send to Finance Live Income for verification. Skip for
     // schedule-later holds (no amount yet).
-    if (!isScheduleLater && (paymentMethod !== 'Cash' || paymentReference || paymentScreenshot)) {
+    if (!isScheduleLater && (paymentReference || paymentScreenshot)) {
       try {
         await db('finance_income_submissions').insert({
           department: 'AgriRent',
@@ -508,6 +530,13 @@ exports.createManualOrder = async (req, res) => {
             paymentReference: paymentReference || null,
             proofImagePath: paymentScreenshot,
             amount: totalAmount,
+            dailyRate,
+            totalDays,
+            hectareRate: parseFloat(hectareRate) || 0,
+            fieldSizeHectares: parseFloat(fieldSizeHectares) || 0,
+            purposeFee: parseFloat(purposeFee) || 0,
+            subtotal,
+            vatAmount,
             receivedFrom: customerName,
             bankName: destAcct.bankName,
             accountNumber: destAcct.accountNumber,
@@ -608,6 +637,240 @@ exports.getMyOrders = async (req, res) => {
   }
 };
 
+// ── CUSTOMER: Resubmit a rejected / unpaid order's payment ────────────────────
+exports.resubmitMyOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      paymentMethod, paymentReference,
+      paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType
+    } = req.body;
+
+    const order = await db('agrirent_orders')
+      .where({ id })
+      .where(function () {
+        this.where('customer_id', req.user.id)
+          .orWhere('customer_email', req.user.email || '');
+      })
+      .first();
+
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+
+    if (String(order.status || '').toLowerCase() === 'cancelled') {
+      return res.status(400).json({ status: 'error', message: 'This order was cancelled and can no longer be paid.' });
+    }
+
+    const pay = String(order.payment_status || '').toLowerCase();
+    if (!['rejected', 'pending_verification', 'pending'].includes(pay)) {
+      return res.status(400).json({ status: 'error', message: 'Only rejected or unpaid orders can be resubmitted' });
+    }
+
+    let paymentScreenshot = order.payment_screenshot || null;
+    if (req.file) {
+      paymentScreenshot = `/uploads/temp/${req.file.filename}`;
+    } else if (String(req.body.removeScreenshot || '') === 'true') {
+      paymentScreenshot = null;
+    }
+
+    const reference = paymentReference !== undefined ? paymentReference : order.payment_reference;
+    if (!reference && !paymentScreenshot) {
+      return res.status(400).json({ status: 'error', message: 'Either payment reference or a new screenshot is required' });
+    }
+
+    const destAcct = buildDestinationAccount({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType });
+    const memberName = order.customer_name || req.user.fullName || req.user.full_name || 'Customer';
+
+    await db('agrirent_orders').where({ id }).update({
+      payment_method: paymentMethod || order.payment_method || 'Telebirr',
+      payment_reference: reference || null,
+      payment_screenshot: paymentScreenshot,
+      payment_status: 'Pending',
+      finance_notes: null,
+      updated_at: new Date()
+    });
+
+    try {
+      const submissions = await db('finance_income_submissions')
+        .where({ department: 'AgriRent' })
+        .orderBy('created_at', 'desc');
+
+      let target = null;
+      for (const s of submissions) {
+        let md;
+        try {
+          md = typeof s.manual_details === 'string' ? JSON.parse(s.manual_details) : (s.manual_details || {});
+        } catch (e) { md = {}; }
+        if (String(md.order_id) === String(id)) { target = { row: s, md }; break; }
+      }
+
+      const prior = (target && target.md) || {};
+      const manualDetails = JSON.stringify({
+        order_id: id,
+        paymentMethod: paymentMethod || order.payment_method || 'Telebirr',
+        paymentReference: reference || null,
+        proofImagePath: paymentScreenshot,
+        amount: parseFloat(order.total_amount) || 0,
+        receivedFrom: memberName,
+        bankName: destAcct.bankName || prior.bankName || null,
+        accountNumber: destAcct.accountNumber || prior.accountNumber || null,
+        telebirrNumber: destAcct.telebirrNumber || prior.telebirrNumber || null,
+        paymentAccount: destAcct.paymentAccount || prior.paymentAccount || null
+      });
+
+      if (target) {
+        await db('finance_income_submissions').where({ id: target.row.id }).update({
+          status: 'Pending',
+          rejection_reason: null,
+          reference_no: reference || target.row.reference_no || 'SCREENSHOT_UPLOADED',
+          description: `AgriRent Order ${order.order_number} - ${memberName}`,
+          amount: parseFloat(order.total_amount) || 0,
+          manual_details: manualDetails,
+          updated_at: new Date()
+        });
+      } else {
+        await db('finance_income_submissions').insert({
+          department: 'AgriRent',
+          submitted_by: memberName,
+          amount: parseFloat(order.total_amount) || 0,
+          reference_no: reference || 'SCREENSHOT_UPLOADED',
+          description: `AgriRent Order ${order.order_number} - ${memberName}`,
+          status: 'Pending',
+          manual_details: manualDetails,
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+      }
+
+      sendFinanceNotification({
+        title: 'Income Resubmitted',
+        message: `AgriRent order ${order.order_number} payment resubmitted for verification (${memberName}).`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list',
+        related_entity_id: id
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+    } catch (err) {
+      logger.error('Failed to resubmit AgriRent to finance live income:', err.message);
+    }
+
+    try {
+      await notificationRepository.create({
+        roleTarget: 'Car Renting Manager',
+        title: '🚜 AgriRent Payment Resubmitted',
+        message: `Order ${order.order_number} payment was resubmitted by ${memberName} after rejection.`
+      });
+    } catch (e) { /* non-fatal */ }
+
+    const updated = await db('agrirent_orders').where({ id }).first();
+    res.status(200).json({ status: 'success', message: 'Payment resubmitted for verification', data: updated });
+  } catch (error) {
+    logger.error('Error resubmitting agrirent order payment:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to resubmit payment' });
+  }
+};
+
+// ── CUSTOMER: Cancel an order that is not yet confirmed / active ──────────────
+// Drop any Pending Finance income submissions linked to this order so a
+// cancelled order no longer appears in Finance's Revenue Live Income list.
+const removePendingFinanceSubmissions = async (orderId) => {
+  try {
+    const subs = await db('finance_income_submissions')
+      .where({ department: 'AgriRent', status: 'Pending' });
+    const ids = [];
+    for (const s of subs) {
+      let md;
+      try { md = typeof s.manual_details === 'string' ? JSON.parse(s.manual_details) : (s.manual_details || {}); } catch (e) { md = {}; }
+      if (md && String(md.order_id) === String(orderId)) ids.push(s.id);
+    }
+    if (ids.length) await db('finance_income_submissions').whereIn('id', ids).del();
+    return ids.length;
+  } catch (e) {
+    logger.error('Failed to remove pending finance submissions for AgriRent order:', e.message);
+    return 0;
+  }
+};
+
+exports.cancelMyOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await db('agrirent_orders')
+      .where({ id })
+      .where(function () {
+        this.where('customer_id', req.user.id)
+          .orWhere('customer_email', req.user.email || '');
+      })
+      .first();
+
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+
+    const current = String(order.status || '').toLowerCase();
+    if (current === 'cancelled') {
+      return res.status(400).json({ status: 'error', message: 'This order is already cancelled' });
+    }
+    if (!['pending', 'approved'].includes(current)) {
+      return res.status(400).json({ status: 'error', message: 'This order can no longer be cancelled. Please contact support.' });
+    }
+
+    const cancelUpdate = {
+      status: 'cancelled',
+      cancelled_at: new Date(),
+      updated_at: new Date(),
+      // Auto-file the cancelled order into history so it leaves the manager's
+      // active list and can be witnessed there correctly.
+      archived_at: new Date()
+    };
+    const autoArchived = true;
+
+    await db('agrirent_orders').where({ id }).update(cancelUpdate);
+
+    // Pull the order's pending income out of Finance's Revenue Live Income.
+    await removePendingFinanceSubmissions(order.id);
+
+    // Machine is back in the yard — wake up customers waiting for it.
+    if (order.tractor_id) {
+      await db('tractors').where({ id: order.tractor_id }).update({ availability: 'Available' });
+      notifyWaitlistForTractor(order.tractor_id, req.app?.get('io'));
+    }
+
+    const memberName = order.customer_name || req.user.fullName || req.user.full_name || 'Customer';
+
+    if (order.customer_id) {
+      try {
+        await sendCustomerNotification({
+          user_id: order.customer_id,
+          title: `AgriRent Order ${order.order_number}`,
+          message: 'Your AgriRent order was cancelled.',
+          type: 'agri',
+          link: '/customer/farming-orders',
+          related_entity_id: order.id
+        }, req.app?.get('io'));
+      } catch (e) { /* non-fatal */ }
+    }
+
+    try {
+      await notificationRepository.create({
+        roleTarget: 'Car Renting Manager',
+        title: '🚜 AgriRent Order Cancelled',
+        message: `Order ${order.order_number} was cancelled by ${memberName}${autoArchived ? ' and moved to history.' : '.'}`
+      });
+    } catch (e) { /* non-fatal */ }
+
+    const updated = await db('agrirent_orders').where({ id }).first();
+    carRentalAudit.log(req, 'AgriRent Order cancelled', order.order_number,
+      { status: order.status },
+      { status: 'cancelled', archived_at: cancelUpdate.archived_at || null }
+    );
+    res.status(200).json({ status: 'success', message: 'Order cancelled successfully', data: updated });
+  } catch (error) {
+    logger.error('Error cancelling agrirent order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to cancel order' });
+  }
+};
+
 // ── MANAGER: Get all orders ───────────────────────────────────────────────────
 exports.getAllOrders = async (req, res) => {
   try {
@@ -621,7 +884,8 @@ exports.getAllOrders = async (req, res) => {
         't.name as tractor_name',
         't.tractor_type as tractor_type_label'
       )
-      .whereNull('ao.deleted_at');
+      .whereNull('ao.deleted_at')
+      .whereNull('ao.archived_at');
 
     if (status) query = query.where('ao.status', status);
     if (paymentStatus) query = query.where('ao.payment_status', paymentStatus);
@@ -797,10 +1061,10 @@ const agriOrderSelect = () => db('agrirent_orders as ao')
 
 exports.getArchivedOrders = async (req, res) => {
   try {
-    // Manual (walk-in) orders live in the rental list already — don't duplicate them in history.
+    // Any order that has been filed (completed/cancelled) leaves the active list
+    // and is witnessed here, including walk-in orders cancelled by the customer.
     const orders = await agriOrderSelect()
       .whereNotNull('ao.archived_at')
-      .whereNot('ao.is_manual', true)
       .orderBy('ao.created_at', 'desc');
     res.status(200).json({ status: 'success', data: orders });
   } catch (error) {
@@ -963,6 +1227,10 @@ exports.updateOrderStatus = async (req, res) => {
     const order = await db('agrirent_orders').where({ id }).first();
     if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
 
+    if (status === 'active' && !isPaidStatus(order.payment_status)) {
+      return res.status(400).json({ status: 'error', message: 'Payment must be confirmed by Finance before the machine can be released.' });
+    }
+
     const updateData = {
       status,
       manager_note: managerNote || order.manager_note,
@@ -971,9 +1239,18 @@ exports.updateOrderStatus = async (req, res) => {
     if (status === 'approved') updateData.approved_at = new Date();
     if (status === 'active' && !order.released_at) updateData.released_at = new Date();
     if (status === 'completed') updateData.completed_at = new Date();
-    if (status === 'cancelled') updateData.cancelled_at = new Date();
+    if (status === 'cancelled') {
+      updateData.cancelled_at = new Date();
+      // Auto-file the cancelled order into AgriRent history.
+      updateData.archived_at = new Date();
+    }
 
     await db('agrirent_orders').where({ id }).update(updateData);
+
+    // Pull the order's pending income out of Finance's Revenue Live Income.
+    if (status === 'cancelled') {
+      await removePendingFinanceSubmissions(order.id);
+    }
 
     // Update tractor availability
     if (order.tractor_id) {
