@@ -10,12 +10,20 @@ const FINANCE_ROLES = ['Finance Manager', 'Admin', 'CEO'];
 // Public (authenticated customer) — supports screenshot upload
 router.post('/', authenticate, uploads.generic.single('paymentScreenshot'), handleUploadError, ctrl.createOrder);
 router.get('/my-orders', authenticate, ctrl.getMyOrders);
+router.patch('/my-orders/:id/resubmit', authenticate, uploads.generic.single('paymentScreenshot'), handleUploadError, ctrl.resubmitMyOrder);
+router.patch('/my-orders/:id/cancel', authenticate, ctrl.cancelMyOrder);
 router.delete('/my-orders/:id', authenticate, async (req, res) => {
   const { db } = require('../../config/database');
-  const order = await db('agrirent_orders').where({ id: req.params.id, customer_id: req.user.id }).first();
+  const order = await db('agrirent_orders')
+    .where({ id: req.params.id })
+    .where(function () {
+      this.where('customer_id', req.user.id).orWhere('customer_email', req.user.email || '');
+    })
+    .first();
   if (!order) return res.status(404).json({ message: 'Order not found' });
-  if (order.status !== 'COMPLETED' && order.status !== 'completed') return res.status(400).json({ message: 'Only completed orders can be removed' });
-  await db('agrirent_orders').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
+  const st = String(order.status || '').toLowerCase();
+  if (!['completed', 'cancelled'].includes(st)) return res.status(400).json({ message: 'Only completed or cancelled orders can be removed' });
+  await db('agrirent_orders').where({ id: req.params.id }).update({ is_deleted_by_customer: true, updated_at: new Date() });
   res.json({ message: 'Order removed from your dashboard' });
 });
 
