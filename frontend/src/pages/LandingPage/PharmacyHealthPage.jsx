@@ -7,7 +7,7 @@ import axios from '../../services/apiClient';
 import {
   Search, Pill, Package, UploadCloud, X, ShoppingCart,
   ChevronDown, ChevronUp, Phone, Clock, MapPin, Star,
-  Shield, Award, Truck, CreditCard, Heart, AlertCircle, Wallet
+  Shield, Award, Truck, CreditCard, Heart, AlertCircle, Wallet, ShieldAlert, LogOut
 } from 'lucide-react';
 import pharmacyHero from '../../assets/hero-section/pharmacy.jpg';
 import licFikerte from '../../assets/license_fikerte.jpg';
@@ -1124,6 +1124,7 @@ const PharmacyHealthPage = () => {
 
   /* Modal */
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [roleWarning, setRoleWarning] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [refillQuantity, setRefillQuantity] = useState(1);
   const [deliveryOption, setDeliveryOption] = useState('pickup');
@@ -1183,8 +1184,12 @@ const PharmacyHealthPage = () => {
   /* Auto-open refill from location state */
   useEffect(() => {
     if (location.state?.refillMedicine && authService.isAuthenticated()) {
-      setSelectedMedicine(location.state.refillMedicine);
-      setIsModalOpen(true);
+      if (!authService.hasRole('customer')) {
+        setRoleWarning(true);
+      } else {
+        setSelectedMedicine(location.state.refillMedicine);
+        setIsModalOpen(true);
+      }
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -1203,10 +1208,14 @@ const PharmacyHealthPage = () => {
   const handleRequestRefill = (med) => {
     if (!authService.isAuthenticated()) {
       navigate('/login', { state: { from: '/services/pharmacy', refillMedicine: med } });
-    } else {
-      setSelectedMedicine(med);
-      setIsModalOpen(true);
+      return;
     }
+    if (!authService.hasRole('customer')) {
+      setRoleWarning(true);
+      return;
+    }
+    setSelectedMedicine(med);
+    setIsModalOpen(true);
   };
 
   const closeModal = () => {
@@ -1863,6 +1872,29 @@ const PharmacyHealthPage = () => {
             alt="Preview"
             onClick={e => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {roleWarning && (
+        <div onClick={() => setRoleWarning(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1.5rem' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '1rem', maxWidth: '28rem', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: '2.5rem 2rem', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: 'linear-gradient(90deg,#2563EB,#fbbf24,#a855f7)' }} />
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: '#2563EB' }}>
+              <ShieldAlert size={48} strokeWidth={1.8} />
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#111827', margin: '0 0 0.75rem' }}>Customer Account Required</h2>
+            <p style={{ fontSize: '0.9rem', color: '#4b5563', margin: '0 0 1.75rem', lineHeight: 1.625 }}>
+              You are currently signed in as <strong>{currentUser?.fullName || currentUser?.full_name || currentUser?.name || 'a staff account'}</strong>.
+              Requesting a medication refill is available only to <strong>Customer</strong> accounts.
+              Please <strong>log out</strong> and sign in with your customer account to continue with this order.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '18rem', margin: '0 auto' }}>
+              <button type="button" onClick={() => authService.logout()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', background: '#2563EB', color: '#fff', fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer' }}>
+                <LogOut size={16} /> Log Out &amp; Switch to Customer
+              </button>
+              <button type="button" onClick={() => setRoleWarning(false)} style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid #e5e7eb', background: '#f3f4f6', color: '#111827', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}>Not Now</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
