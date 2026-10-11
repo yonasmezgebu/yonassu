@@ -152,7 +152,7 @@ export default function CustomerAllOrders() {
                 typeLabel: "Car Rental",
                 orderNumber: o.orderNumber,
                 date: o.createdAt || o.created_at,
-                status: o.status,
+                status: (o.isCancellationRequested || o.is_cancellation_requested) ? 'Cancellation Requested' : o.status,
                 amount: o.totalAmount,
                 description: `${o.carName || ""}`,
                 navPath: "/customer/rentals",
