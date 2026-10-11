@@ -232,14 +232,21 @@ export default function CEOAgriAndCarRental({ isApprovalMode = false }) {
 
   const fleetStats   = data.fleetStats   || { total: 0, cars: 0, agri: 0, available: 0, rented: 0, maintenance: 0, totalValue: 0 };
   const activeOrders = data.activeOrders || [];
+  const agriActiveOrders = data.agriActiveOrders || [];
   const maintenance  = data.maintenance  || [];
 
   const statuses = ['available', 'rented', 'maintenance'];
   const statusColors = { 'available': 'var(--color-success)', 'rented': 'var(--color-warning)', 'maintenance': 'var(--color-danger)' };
   const maxStatusCount = Math.max(...statuses.map(s => fleetStats[s] || 0), 1);
 
+  const lineBreakdown = [
+    { key: 'car',  label: 'Car Rental', icon: <Car size={16} />,    available: fleetStats.carAvailable,  onField: fleetStats.carOnField,  maintenance: fleetStats.carMaintenance },
+    { key: 'agri', label: 'AgriRent',   icon: <Tractor size={16} />, available: fleetStats.agriAvailable, onField: fleetStats.agriOnField, maintenance: fleetStats.agriMaintenance },
+  ];
+
   const recentActivity = [
-      ...activeOrders.map(o => ({ id: `ord-${o.id}`, type: 'Rental', title: o.order_number, sub: `Active order`, date: o.start_datetime })),
+      ...activeOrders.map(o => ({ id: `ord-${o.id}`, type: 'Car Rental', title: o.order_number, sub: 'Active rental', date: o.start_datetime || o.pickup_date || o.created_at })),
+      ...agriActiveOrders.map(o => ({ id: `agr-${o.id}`, type: 'AgriRent', title: o.order_number, sub: 'On field', date: o.start_date || o.created_at })),
       ...maintenance.map(m => ({ id: `mnt-${m.id}`, type: 'Maintenance', title: m.description, sub: m.asset_name, date: m.scheduled_date }))
   ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
 
@@ -396,6 +403,33 @@ export default function CEOAgriAndCarRental({ isApprovalMode = false }) {
               );
             })}
           </div>
+
+          {/* Machine Status by Line */}
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Machine Status by Line</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 16 }}>
+              {lineBreakdown.map(line => (
+                <div key={line.key} style={{ background: 'var(--color-bg-page)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <span style={{ color: 'var(--color-primary)' }}>{line.icon}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{line.label}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                    {[
+                      { label: 'Available',   val: line.available,   c: 'var(--color-success)' },
+                      { label: 'On Field',    val: line.onField,     c: 'var(--color-warning)' },
+                      { label: 'Maintenance', val: line.maintenance, c: 'var(--color-danger)' },
+                    ].map(s => (
+                      <div key={s.label} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '22px', fontWeight: 800, color: s.c }}>{s.val || 0}</div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Recent Activity Feed */}
@@ -411,10 +445,9 @@ export default function CEOAgriAndCarRental({ isApprovalMode = false }) {
                 <div style={{ color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 500 }}>No recent activity</div>
               </div>
             ) : recentActivity.map((l) => {
-              const isRental = l.type === 'Rental';
-              const c = isRental ? 'var(--color-success)' : 'var(--color-warning)';
-              const bg = isRental ? 'var(--color-success-bg)' : 'var(--color-warning-bg)';
-              const IconComp = isRental ? Car : Wrench;
+              const c = l.type === 'AgriRent' ? 'var(--color-warning)' : l.type === 'Maintenance' ? 'var(--color-danger)' : 'var(--color-success)';
+              const bg = l.type === 'AgriRent' ? 'var(--color-warning-bg)' : l.type === 'Maintenance' ? 'var(--color-danger-bg)' : 'var(--color-success-bg)';
+              const IconComp = l.type === 'AgriRent' ? Tractor : l.type === 'Maintenance' ? Wrench : Car;
               
               return (
                 <div key={l.id} className="car-activity-row">
