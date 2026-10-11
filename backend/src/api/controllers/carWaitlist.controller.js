@@ -127,11 +127,16 @@ exports.listWaitlist = async (req, res) => {
     const { status, carId, search } = req.query;
 
     let q = db('car_waitlist as w')
-      .leftJoin('cars as c', 'w.car_id', 'c.id')
-      .whereNot('w.status', 'removed')
-      .orderByRaw(`array_position(ARRAY['waiting', 'notified', 'converted'], w.status) ASC, w.created_at DESC`);
+      .leftJoin('cars as c', 'w.car_id', 'c.id');
 
-    if (status && VALID_STATUSES.includes(status)) q = q.where('w.status', status);
+    if (status && VALID_STATUSES.includes(status)) {
+      q = q.where('w.status', status);
+    } else {
+      q = q.whereNotIn('w.status', ['removed', 'converted']);
+    }
+
+    q = q.orderByRaw(`array_position(ARRAY['waiting', 'notified', 'converted'], w.status) ASC, w.created_at DESC`);
+
     if (carId) q = q.where('w.car_id', carId);
     if (search) {
       q = q.where((b) => {
@@ -152,7 +157,7 @@ exports.listWaitlist = async (req, res) => {
       'c.daily_rate as car_daily_rate'
     );
 
-    const counts = await db('car_waitlist').whereNot('status', 'removed')
+    const counts = await db('car_waitlist').whereNotIn('status', ['removed', 'converted'])
       .select('status').count('* as total').groupBy('status')
       .then(rows2 => rows2.reduce((a, r) => ({ ...a, [r.status]: Number(r.total) }), {}));
     const waitingTotal = Number(counts.waiting || 0);
