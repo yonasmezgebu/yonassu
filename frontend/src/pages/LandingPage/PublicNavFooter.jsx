@@ -71,8 +71,10 @@ const SERVICES = [
   { label: 'Retail Store',        path: '/services/retail',    img: imgRetail     },
 ];
 
-const ServicesMegaDropdown = ({ isOpen, onOpen, onClose, isActive, onClose: closeAll }) => {
+const ServicesMegaDropdown = ({ isOpen, onOpen, onClose, isActive, onClose: closeAll, location }) => {
   const navigate = useNavigate();
+  const activePath = location?.pathname || '';
+
   return (
     <div
       className={`pub-dropdown-wrapper${isOpen ? ' pub-dropdown-wrapper--open' : ''}`}
@@ -88,33 +90,67 @@ const ServicesMegaDropdown = ({ isOpen, onOpen, onClose, isActive, onClose: clos
         <div className="svc-mega-panel">
           {/* Top row: 3 cards */}
           <div className="svc-mega-row svc-mega-row--3">
-            {SERVICES.slice(0, 3).map(svc => (
-              <Link key={svc.path} to={svc.path} className="svc-card" onClick={closeAll}>
-                <div className="svc-card-img-wrap">
-                  <img src={svc.img} alt={svc.label} className="svc-card-img" />
-                  <div className="svc-card-top-label">{svc.label}</div>
-                  <div className="svc-card-overlay" />
-                </div>
-                <div className="svc-card-footer">
-                  <span className="svc-card-name">{svc.label}</span>
-                </div>
-              </Link>
-            ))}
+            {SERVICES.slice(0, 3).map(svc => {
+              const isCurrent = activePath === svc.path || activePath.startsWith(svc.path + '/');
+              return (
+                <Link key={svc.path} to={svc.path} className="svc-card" onClick={closeAll}>
+                  <div className="svc-card-img-wrap">
+                    <img src={svc.img} alt={svc.label} className="svc-card-img" />
+                    <div className="svc-card-top-label">{svc.label}</div>
+                    <div className="svc-card-overlay" />
+                  </div>
+                  <div className="svc-card-footer">
+                    <span className="svc-card-name" style={isCurrent ? {
+                      borderBottom: '2.5px solid #D4AF37',
+                      paddingBottom: '2px',
+                      color: '#D4AF37'
+                    } : {}}>
+                      {svc.label}
+                    </span>
+                    {isCurrent && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, color: '#D4AF37',
+                        background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.4)',
+                        padding: '1px 7px', borderRadius: 999, marginLeft: 8,
+                        letterSpacing: '0.05em', textTransform: 'uppercase'
+                      }}>Active</span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
           {/* Bottom row: 2 cards */}
           <div className="svc-mega-row svc-mega-row--2">
-            {SERVICES.slice(3).map(svc => (
-              <Link key={svc.path} to={svc.path} className="svc-card" onClick={closeAll}>
-                <div className="svc-card-img-wrap">
-                  <img src={svc.img} alt={svc.label} className="svc-card-img" />
-                  <div className="svc-card-top-label">{svc.label}</div>
-                  <div className="svc-card-overlay" />
-                </div>
-                <div className="svc-card-footer">
-                  <span className="svc-card-name">{svc.label}</span>
-                </div>
-              </Link>
-            ))}
+            {SERVICES.slice(3).map(svc => {
+              const isCurrent = activePath === svc.path || activePath.startsWith(svc.path + '/');
+              return (
+                <Link key={svc.path} to={svc.path} className="svc-card" onClick={closeAll}>
+                  <div className="svc-card-img-wrap">
+                    <img src={svc.img} alt={svc.label} className="svc-card-img" />
+                    <div className="svc-card-top-label">{svc.label}</div>
+                    <div className="svc-card-overlay" />
+                  </div>
+                  <div className="svc-card-footer">
+                    <span className="svc-card-name" style={isCurrent ? {
+                      borderBottom: '2.5px solid #D4AF37',
+                      paddingBottom: '2px',
+                      color: '#D4AF37'
+                    } : {}}>
+                      {svc.label}
+                    </span>
+                    {isCurrent && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, color: '#D4AF37',
+                        background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.4)',
+                        padding: '1px 7px', borderRadius: 999, marginLeft: 8,
+                        letterSpacing: '0.05em', textTransform: 'uppercase'
+                      }}>Active</span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
@@ -344,6 +380,7 @@ export const PublicNav = () => {
             onClose={() => setServicesOpen(false)}
             isActive={isActiveAt('/services') || isActiveAt('/fleet-gallery')}
             onClose={closeAll}
+            location={location}
           />
 
 
