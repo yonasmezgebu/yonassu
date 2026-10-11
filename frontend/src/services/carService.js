@@ -155,6 +155,11 @@ const carService = {
   updatePickupRemarks: async (id, remarks) => {
     const res = await api.patch(`/rental-orders/${id}/pickup-remarks`, { remarks });
     return res.data;
+  },
+
+  deleteMyRentalOrder: async (id) => {
+    const res = await api.delete(`/rental-orders/my-orders/${id}/hide`);
+    return res.data;
   }
 };
 
