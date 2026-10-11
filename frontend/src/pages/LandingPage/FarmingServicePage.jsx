@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { PublicNav } from './PublicNavFooter';
 import authService from '../../services/authService';
 import axios from '../../services/apiClient';
-import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Shield, Droplets, Wrench, FileText, Phone, Mail, PhoneCall, HelpCircle, Tractor, Clock, CreditCard, Wallet, Fuel, Upload, CheckCircle2, Bell } from 'lucide-react';
+import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Shield, ShieldAlert, LogOut, Droplets, Wrench, FileText, Phone, Mail, PhoneCall, HelpCircle, Tractor, Clock, CreditCard, Wallet, Fuel, Upload, CheckCircle2, Bell } from 'lucide-react';
 import tractorService from '../../services/tractorService';
 import PrescriptionViewer from '../shared/PrescriptionViewer';
 import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
@@ -73,6 +73,7 @@ const FarmingServicePage = () => {
 
   // ── Auth / User ─────────────────────────────
   const [currentUser, setCurrentUser] = useState(null);
+  const [roleWarning, setRoleWarning] = useState(false);
 
   // ── Order Modal State ─────────────────────────────
   const [orderModal, setOrderModal] = useState({ open: false, tractor: null });
@@ -161,12 +162,16 @@ const FarmingServicePage = () => {
       if (tractor) {
         const user = authService.getCurrentUser();
         setCurrentUser(user);
-        setOrderModal({ open: true, tractor: tractor });
-        setOrderForm({ startDate: '', endDate: '', fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '', specialInstructions: '', paymentMethod: '', paymentReference: '' });
-        setOrderFile(null);
-        setOrderError('');
-        setOrderSuccess(null);
-        loadFinanceAccounts();
+        if (!authService.hasRole('customer')) {
+          setRoleWarning(true);
+        } else {
+          setOrderModal({ open: true, tractor: tractor });
+          setOrderForm({ startDate: '', endDate: '', fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '', specialInstructions: '', paymentMethod: '', paymentReference: '' });
+          setOrderFile(null);
+          setOrderError('');
+          setOrderSuccess(null);
+          loadFinanceAccounts();
+        }
       }
       window.history.replaceState({}, document.title);
     }
@@ -179,15 +184,19 @@ const FarmingServicePage = () => {
       if (tractor) {
         const user = authService.getCurrentUser();
         setCurrentUser(user);
-        setWaitlistModal({ open: true, tractor: tractor });
-        setWaitlistForm({
-          fullName: user?.fullName || user?.full_name || user?.name || '',
-          phone: user?.phone || '', email: user?.email || '',
-          fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '',
-          preferredStartDate: '', preferredEndDate: '', message: ''
-        });
-        setWaitlistError('');
-        setWaitlistSuccess(null);
+        if (!authService.hasRole('customer')) {
+          setRoleWarning(true);
+        } else {
+          setWaitlistModal({ open: true, tractor: tractor });
+          setWaitlistForm({
+            fullName: user?.fullName || user?.full_name || user?.name || '',
+            phone: user?.phone || '', email: user?.email || '',
+            fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '',
+            preferredStartDate: '', preferredEndDate: '', message: ''
+          });
+          setWaitlistError('');
+          setWaitlistSuccess(null);
+        }
       }
       window.history.replaceState({}, document.title);
     }
@@ -220,6 +229,10 @@ const FarmingServicePage = () => {
       navigate('/login', { state: { openFarmingOrder: true, tractor: product, from: '/services/farming' } });
       return;
     }
+    if (!authService.hasRole('customer')) {
+      setRoleWarning(true);
+      return;
+    }
     const user = authService.getCurrentUser();
     setCurrentUser(user);
     setOrderModal({ open: true, tractor: product });
@@ -239,6 +252,10 @@ const FarmingServicePage = () => {
   const openWaitlistModal = (product) => {
     if (!authService.isAuthenticated()) {
       navigate('/login', { state: { openAgriWaitlist: true, tractor: product, from: '/services/farming' } });
+      return;
+    }
+    if (!authService.hasRole('customer')) {
+      setRoleWarning(true);
       return;
     }
     const user = authService.getCurrentUser();
@@ -1150,6 +1167,29 @@ ${orderSuccess.orderNumber?`<p style="font-family:monospace;letter-spacing:3px;f
           .fsp-modal { max-height: calc(100vh - 100px); }
         }
       `}</style>
+
+      {roleWarning && (
+        <div onClick={() => setRoleWarning(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1.5rem' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'hsl(var(--background))', borderRadius: 'var(--radius)', maxWidth: '28rem', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: '2.5rem 2rem', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: 'linear-gradient(90deg, hsl(var(--primary)), #fbbf24, #a855f7)' }} />
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'hsl(var(--primary))' }}>
+              <ShieldAlert size={48} strokeWidth={1.8} />
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'hsl(var(--foreground))', margin: '0 0 0.75rem' }}>Customer Account Required</h2>
+            <p style={{ fontSize: '0.9rem', color: 'hsl(var(--muted-foreground))', margin: '0 0 1.75rem', lineHeight: 1.625 }}>
+              You are currently signed in as <strong>{currentUser?.fullName || currentUser?.full_name || currentUser?.name || 'a staff account'}</strong>.
+              Booking a machine is available only to <strong>Customer</strong> accounts.
+              Please <strong>log out</strong> and sign in with your customer account to continue with this order.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '18rem', margin: '0 auto' }}>
+              <button type="button" onClick={() => authService.logout()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius)', border: 'none', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer' }}>
+                <LogOut size={16} /> Log Out &amp; Switch to Customer
+              </button>
+              <button type="button" onClick={() => setRoleWarning(false)} className="fsp-btn-outline">Not Now</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
