@@ -223,10 +223,16 @@ export default function TopNavBar() {
                   ) : (
                     notifications.slice(0, 8).map(n => {
                       const getLink = () => {
-                        if (n._link) return n._link;
+                        if (n._link) {
+                          if (n._link === '/car-renting/orders' || n._link.startsWith('/car-renting/orders')) {
+                            return '/car-renting/manager/orders';
+                          }
+                          return n._link;
+                        }
                         const t = (n._type || '').toLowerCase();
                         const title = (n.title || '').toLowerCase();
                         const msg   = (n.message || '').toLowerCase();
+                        if (title.includes('rental') || title.includes('cancellation') || msg.includes('rental order') || msg.includes('car renting')) return '/car-renting/manager/orders';
                         if (t === 'pharmacy' || title.includes('prescription') || title.includes('pharmacy')) return '/ceo/pharmacy-requests';
                         if (t === 'printing_material' || t === 'printing' || title.includes('printing') || title.includes('material request') || msg.includes('printing')) return '/ceo/printing?tab=material';
                         if (t === 'purchase' || title.includes('purchase') || title.includes('procurement')) return '/ceo/purchase';
