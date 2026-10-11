@@ -20,7 +20,11 @@ class NotificationRepository {
       let query = db('notifications').where('user_id', userId);
       if (roleTarget) {
         query = query.orWhere(function() {
-          this.whereRaw('LOWER(role_target) = LOWER(?)', [roleTarget]);
+          if (String(roleTarget).toLowerCase().includes('rent')) {
+            this.whereIn(db.raw('LOWER(role_target)'), ['car renting manager', 'rental manager', 'car rental manager', 'manager']);
+          } else {
+            this.whereRaw('LOWER(role_target) = LOWER(?)', [roleTarget]);
+          }
           if (allowedTypes && allowedTypes.length) {
             this.whereIn('type', allowedTypes);
           }
@@ -34,10 +38,15 @@ class NotificationRepository {
       return rows.map(Notification.fromDatabase);
     } catch (_) {
       // Fallback: if type column doesn't exist yet, return unfiltered
-      const rows = await db('notifications')
-        .where('user_id', userId)
-        .orWhereRaw('LOWER(role_target) = LOWER(?)', [roleTarget])
-        .orderBy('created_at', 'desc');
+      let fallbackQuery = db('notifications').where('user_id', userId);
+      if (roleTarget) {
+        if (String(roleTarget).toLowerCase().includes('rent')) {
+          fallbackQuery = fallbackQuery.orWhereIn(db.raw('LOWER(role_target)'), ['car renting manager', 'rental manager', 'car rental manager', 'manager']);
+        } else {
+          fallbackQuery = fallbackQuery.orWhereRaw('LOWER(role_target) = LOWER(?)', [roleTarget]);
+        }
+      }
+      const rows = await fallbackQuery.orderBy('created_at', 'desc');
       return rows.map(Notification.fromDatabase);
     }
   }
@@ -55,7 +64,11 @@ class NotificationRepository {
       let query = db('notifications').where('user_id', userId);
       if (roleTarget) {
         query = query.orWhere(function() {
-          this.whereRaw('LOWER(role_target) = LOWER(?)', [roleTarget]);
+          if (String(roleTarget).toLowerCase().includes('rent')) {
+            this.whereIn(db.raw('LOWER(role_target)'), ['car renting manager', 'rental manager', 'car rental manager', 'manager']);
+          } else {
+            this.whereRaw('LOWER(role_target) = LOWER(?)', [roleTarget]);
+          }
           if (allowedTypes && allowedTypes.length) {
             this.whereIn('type', allowedTypes);
           }
@@ -67,10 +80,15 @@ class NotificationRepository {
       await query.update({ is_read: true });
     } catch (_) {
       // Fallback
-      await db('notifications')
-        .where('user_id', userId)
-        .orWhereRaw('LOWER(role_target) = LOWER(?)', [roleTarget])
-        .update({ is_read: true });
+      let fallbackQuery = db('notifications').where('user_id', userId);
+      if (roleTarget) {
+        if (String(roleTarget).toLowerCase().includes('rent')) {
+          fallbackQuery = fallbackQuery.orWhereIn(db.raw('LOWER(role_target)'), ['car renting manager', 'rental manager', 'car rental manager', 'manager']);
+        } else {
+          fallbackQuery = fallbackQuery.orWhereRaw('LOWER(role_target) = LOWER(?)', [roleTarget]);
+        }
+      }
+      await fallbackQuery.update({ is_read: true });
     }
   }
 }
