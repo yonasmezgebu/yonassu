@@ -56,6 +56,7 @@ router.use('/reports', reportRoutes);
 router.use('/cars', carRoutes);
 router.use('/tractors', tractorRoutes);
 router.use('/rental-orders', rentalOrderRoutes);
+router.use('/rentals', rentalOrderRoutes);
 router.use('/agrirent-orders', agrirentOrderRoutes);
 router.use('/agrirent-waitlist', agriRentWaitlistRoutes);
 router.use('/car-waitlist', carWaitlistRoutes);
