@@ -107,8 +107,7 @@ const AgriRentOrdersHistory = () => {
     try {
       setLoading(true);
       const res = await axios.get('/agrirent-orders/history');
-      const rows = (res.data || []).filter(o => !o.is_manual);
-      setOrders(rows);
+      setOrders(res.data || []);
     } catch (err) {
       console.error(err);
       toast('Failed to load history. Please try again.', 'error');
