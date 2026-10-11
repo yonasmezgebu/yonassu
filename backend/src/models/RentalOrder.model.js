@@ -61,6 +61,8 @@ class RentalOrder {
     this.actualReturnTime = data.actual_return_time || data.actualReturnTime || null;
     this.actualReturnOdometer = data.actual_return_odometer || data.actualReturnOdometer || null;
     this.extendedReturnDate = data.extended_return_date || data.extendedReturnDate || null;
+    this.archivedAt = data.archived_at || data.archivedAt || null;
+    this.isDeletedByCustomer = !!(data.is_deleted_by_customer || data.isDeletedByCustomer);
   }
 
   static generateOrderNumber() {
@@ -128,6 +130,8 @@ class RentalOrder {
       actualReturnTime: this.actualReturnTime,
       actualReturnOdometer: this.actualReturnOdometer,
       extendedReturnDate: this.extendedReturnDate,
+      archivedAt: this.archivedAt,
+      isDeletedByCustomer: this.isDeletedByCustomer,
     };
   }
 
