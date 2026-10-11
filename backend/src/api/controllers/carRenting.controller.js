@@ -55,15 +55,28 @@ exports.getDashboardStats = catchAsync(async (req, res) => {
   let bookedCount = 0;
   let maintenanceCount = 0;
   let totalValue = 0;
+  const lineStats = {
+    car: { available: 0, rented: 0, maintenance: 0 },
+    agri: { available: 0, rented: 0, maintenance: 0 }
+  };
 
   allAssets.forEach(a => {
     totalValue += Number(a.asset_value) || 0;
     const status = (a.availability || '').toLowerCase();
-    if (status === 'available') availableCount++;
-    else if (status === 'booked' || status === 'rented') bookedCount++;
-    else if (status === 'maintenance') maintenanceCount++;
-    else availableCount++; // Default to available
+    const line = a.asset_type === 'car' ? lineStats.car : lineStats.agri;
+    if (status === 'booked' || status === 'rented') { bookedCount++; line.rented++; }
+    else if (status === 'maintenance') { maintenanceCount++; line.maintenance++; }
+    else { availableCount++; line.available++; }
   });
+
+  const RENTAL_ACTIVE_STATUSES = ['ACTIVE', 'ON_TRIP'];
+  const [{ count: carOnField }] = await db('rental_orders')
+    .whereIn('status', RENTAL_ACTIVE_STATUSES)
+    .count('id as count');
+  const [{ count: agriOnField }] = await db('agrirent_orders')
+    .whereNull('deleted_at')
+    .where('status', 'active')
+    .count('id as count');
 
   const fleetStats = {
     total: totalFleet,
@@ -72,12 +85,27 @@ exports.getDashboardStats = catchAsync(async (req, res) => {
     available: availableCount,
     rented: bookedCount,
     maintenance: maintenanceCount,
-    totalValue: totalValue
+    totalValue: totalValue,
+    carAvailable: lineStats.car.available,
+    carRented: lineStats.car.rented,
+    carMaintenance: lineStats.car.maintenance,
+    carOnField: Number(carOnField) || 0,
+    agriAvailable: lineStats.agri.available,
+    agriRented: lineStats.agri.rented,
+    agriMaintenance: lineStats.agri.maintenance,
+    agriOnField: Number(agriOnField) || 0,
+    onField: (Number(carOnField) || 0) + (Number(agriOnField) || 0)
   };
 
   // Active Orders (Rental Orders)
   const activeOrders = await db('rental_orders')
-    .whereIn('status', ['Active', 'In Progress', 'active', 'in_progress', 'Approved'])
+    .whereIn('status', [...RENTAL_ACTIVE_STATUSES, 'Active', 'In Progress', 'active', 'in_progress', 'Approved'])
+    .orderBy('created_at', 'desc')
+    .limit(10);
+
+  const agriActiveOrders = await db('agrirent_orders')
+    .whereNull('deleted_at')
+    .where('status', 'active')
     .orderBy('created_at', 'desc')
     .limit(10);
 
@@ -92,6 +120,7 @@ exports.getDashboardStats = catchAsync(async (req, res) => {
     data: {
       fleetStats,
       activeOrders,
+      agriActiveOrders,
       maintenance: activeMaintenance,
       assets: allAssets
     }
