@@ -143,14 +143,20 @@ const RentalDashboard = () => {
 
   if (!data) return <div>Loading...</div>;
 
-  const { fleetStats, activeOrders, maintenance } = data;
+  const { fleetStats, activeOrders, agriActiveOrders = [], maintenance } = data;
 
   const statuses = ['available', 'rented', 'maintenance'];
   const statusColors = { 'available': G.emerald, 'rented': G.orange, 'maintenance': G.red };
   const maxStatusCount = Math.max(...statuses.map(s => fleetStats[s] || 0), 1);
 
+  const lineBreakdown = [
+    { key: 'car',  label: 'Car Rental', icon: '🚕', available: fleetStats.carAvailable,   onField: fleetStats.carOnField,   maintenance: fleetStats.carMaintenance },
+    { key: 'agri', label: 'AgriRent',   icon: '🚜', available: fleetStats.agriAvailable,  onField: fleetStats.agriOnField,  maintenance: fleetStats.agriMaintenance },
+  ];
+
   const recentActivity = [
-      ...activeOrders.map(o => ({ id: `ord-${o.id}`, type: 'Rental', title: o.order_number, sub: `Active order`, date: o.start_datetime })),
+      ...activeOrders.map(o => ({ id: `ord-${o.id}`, type: 'Car Rental', title: o.order_number, sub: 'Active rental', date: o.start_datetime || o.pickup_date || o.created_at })),
+      ...agriActiveOrders.map(o => ({ id: `agr-${o.id}`, type: 'AgriRent', title: o.order_number, sub: 'On field', date: o.start_date || o.created_at })),
       ...maintenance.map(m => ({ id: `mnt-${m.id}`, type: 'Maintenance', title: m.description, sub: m.asset_name, date: m.scheduled_date }))
   ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
 
@@ -273,6 +279,33 @@ const RentalDashboard = () => {
               </div>
             );
           })}
+
+          {/* Machine Status by Line */}
+          <div style={{ marginTop: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Machine Status by Line</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+              {lineBreakdown.map(line => (
+                <div key={line.key} style={{ border: `1.5px solid ${G.emerald}22`, borderRadius: 0, padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <span style={{ fontSize: 16 }}>{line.icon}</span>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: G.dark }}>{line.label}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                    {[
+                      { label: 'Available',   val: line.available,   c: G.emerald },
+                      { label: 'On Field',    val: line.onField,     c: G.orange },
+                      { label: 'Maintenance', val: line.maintenance, c: G.red },
+                    ].map(s => (
+                      <div key={s.label} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 900, color: s.c }}>{s.val || 0}</div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Recent Activity Feed */}
@@ -287,8 +320,8 @@ const RentalDashboard = () => {
                 <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No activity yet
               </div>
             ) : recentActivity.map((l) => {
-              const c = l.type === 'Rental' ? G.emerald : G.orange;
-              const icon = l.type === 'Rental' ? '🤝' : '🔧';
+              const c = l.type === 'AgriRent' ? G.orange : l.type === 'Maintenance' ? G.red : G.emerald;
+              const icon = l.type === 'AgriRent' ? '🚜' : l.type === 'Maintenance' ? '🔧' : '🤝';
               return (
                 <div key={l.id} className="top-row">
                   <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
