@@ -38,7 +38,7 @@ const resolveNotificationScope = (roles = []) => {
     return { roleTarget: 'MANAGER', allowedTypes: ['general', 'farming'], requireLink: false };
   }
   if (lowerRoles.some(r => r.includes('renting') || r.includes('rental'))) {
-    return { roleTarget: 'MANAGER', allowedTypes: ['general'], requireLink: false };
+    return { roleTarget: 'Car Renting Manager', allowedTypes: null, requireLink: false };
   }
   if (lowerRoles.some(r => ['finance manager', 'finance officer', 'finance'].includes(r))) {
     return { roleTarget: 'FINANCE', allowedTypes: ['general', 'finance'], requireLink: false };
