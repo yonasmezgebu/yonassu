@@ -32,6 +32,16 @@ const STATUS_MOD = {
   REJECTED:         'danger',
 };
 
+const PAY_STATUS_LABELS = {
+  PAID: 'Payment Confirmed',
+  Confirmed: 'Payment Confirmed',
+  PENDING_VERIFICATION: 'Pending Verification',
+  PAYMENT_REJECTED: 'Payment Rejected',
+  REJECTED: 'Payment Rejected',
+  Rejected: 'Payment Rejected',
+  UNPAID: 'Unpaid',
+};
+
 const TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
 const STARTABLE_STATUSES = ['APPROVED', 'CONFIRMED'];
 const DAY_MS = 86400000;
@@ -83,7 +93,7 @@ const PayBadge = ({ status }) => {
   let label = 'Awaiting Payment';
   let Icon = Clock;
   if (status === 'PAID' || status === 'Confirmed') { mod = 'success'; label = 'Payment Confirmed'; Icon = BadgeCheck; }
-  else if (status === 'REJECTED' || status === 'Rejected') { mod = 'danger'; label = 'Payment Rejected'; Icon = Ban; }
+  else if (String(status || '').toUpperCase().includes('REJECT')) { mod = 'danger'; label = 'Payment Rejected'; Icon = Ban; }
   return (
     <span className={`ro2-badge ro2-badge--${mod}`}>
       <Icon size={12} /> {label}
@@ -134,6 +144,7 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const [actLoading, setActLoading] = useState('');
   const [toasts, setToasts] = useState([]);
   const [modal, setModal] = useState(null); // null | { type }
+  const [resubmitFile, setResubmitFile] = useState(null);
   const [form, setForm] = useState({
     reason: '', status: '', statusNote: '', startNote: '',
     odometer: '', damageFee: '', fuelFee: '', lateFee: '', notes: '',
@@ -192,11 +203,12 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
         fuelFee: form.fuelFee ? Number(form.fuelFee) : 0,
         lateFee: form.lateFee ? Number(form.lateFee) : 0,
         notes: form.notes.trim() || undefined,
-      }), 'Rental completed — car released.');
+      }), 'Rental completed & moved to history — car released.');
     } else if (type === 'start') {
       await doAction('start', () => axios.post(`/rental-orders/${orderId}/start`, { note: form.startNote.trim() || undefined }), 'Rental started — car is now rented.');
     } else if (type === 'status') {
-      await doAction('status', () => carService.updateRentalOrderStatus(orderId, { status: form.status, note: form.statusNote.trim() || undefined }), 'Order status updated.');
+      const isTerminal = ['COMPLETED', 'CANCELLED', 'REJECTED'].includes(form.status);
+      await doAction('status', () => carService.updateRentalOrderStatus(orderId, { status: form.status, note: form.statusNote.trim() || undefined }), isTerminal ? 'Order status updated — moved to history.' : 'Order status updated.');
     } else if (type === 'archive') {
       await doAction('archive', () => axios.post(`/rental-orders/${orderId}/archive`), 'Order moved to history.');
     } else if (type === 'delete') {
@@ -208,6 +220,26 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const handleApprove = () => doAction('approve', () => carService.updateRentalOrderStatus(orderId, { status: 'APPROVED' }), 'Order approved.');
   const handleConfirmPayment = () => doAction('pay_confirm', () => carService.verifyPayment(orderId, { isVerified: true, verifiedAmount: order.totalAmount, notes: 'Confirmed from details' }), 'Payment confirmed.');
   const handleRejectPayment = () => doAction('pay_reject', () => carService.verifyPayment(orderId, { isVerified: false, notes: form.reason.trim() || 'Rejected from details' }), 'Payment rejected.');
+
+  const handleResubmitProof = async () => {
+    if (!resubmitFile) { toast('Choose a payment proof file first.', 'error'); return; }
+    try {
+      setActLoading('pay_resubmit');
+      const fd = new FormData();
+      fd.append('proof', resubmitFile);
+      await axios.post(`/rental-orders/${orderId}/payment-proof`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast('New payment proof resubmitted to Finance.', 'success');
+      setModal(null);
+      setResubmitFile(null);
+      await load();
+    } catch (e) {
+      toast(e?.response?.data?.message || e.message || 'Failed to resubmit proof.', 'error');
+    } finally {
+      setActLoading('');
+    }
+  };
 
   const handlePrint = () => {
     if (!printRef.current) return;
@@ -262,6 +294,8 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
 
   /* ── Derived data (fixed field mapping) ── */
   const paid = order.paymentStatus === 'PAID' || order.paymentStatus === 'Confirmed';
+  const payRejected = String(order.paymentStatus || order.payment_status || '').toLowerCase().includes('reject');
+  const financeReason = f(order, 'financeNotes', 'finance_notes');
   const isTerminal = TERMINAL_STATUSES.includes(order.status);
   const startable = STARTABLE_STATUSES.includes(order.status);
 
@@ -512,8 +546,21 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
                 <Row label="Security Deposit" value={`ETB ${fmt(deposit)}`} />
                 <Row label="Payment Method" value={payMethod} />
                 <Row label="Payment Reference" value={paymentRef} accent />
-                <Row label="Payment Status" value={STATUS_LABELS[order.paymentStatus] || order.paymentStatus} />
+                <Row label="Payment Status" value={PAY_STATUS_LABELS[order.paymentStatus] || order.paymentStatus} />
               </div>
+              {payRejected && (
+                <div style={{ marginTop: '0.85rem', padding: '0.85rem 1rem', borderRadius: 12, background: 'hsl(var(--danger-soft))', border: '1px solid hsl(var(--danger))' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: 'hsl(var(--danger))' }}>
+                    <Ban size={16} /> Payment Rejected by Finance
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: '0.85rem', color: 'hsl(var(--fg))' }}>
+                    Reason: <strong>{financeReason || 'No reason provided'}</strong>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: '0.78rem', color: 'hsl(var(--muted-strong))' }}>
+                    Ask the customer to fix the details, or upload a corrected proof — it goes back to Finance for re-verification.
+                  </div>
+                </div>
+              )}
               {proofUrl && (
                 <div className="d2-proof">
                   <div className="d2-row__label" style={{ color: 'hsl(var(--muted-strong))' }}>Attached Payment Proof</div>
@@ -605,6 +652,18 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
                 </button>
                 <button className="ro2-btn ro2-btn--danger ro2-btn--block" disabled={actLoading === 'pay_reject'} onClick={() => openModal('pay_reject')}>
                   {actLoading === 'pay_reject' ? <SegmentedSpinner size={13} /> : <Ban size={15} />} Reject Payment
+                </button>
+              </div>
+            </div>
+          )}
+
+          {payRejected && (
+            <div className="d2-section">
+              <SectionHead icon={<Ban size={15} />} title="Rejected Payment" />
+              {financeReason && <p className="ro2-hint">Finance reason: <strong>{financeReason}</strong></p>}
+              <div className="d2-panel__actions">
+                <button className="ro2-btn ro2-btn--primary ro2-btn--block" onClick={() => { setResubmitFile(null); setModal({ type: 'pay_resubmit' }); }}>
+                  <RefreshCw size={15} /> Fix &amp; Resubmit Proof
                 </button>
               </div>
             </div>
@@ -733,6 +792,17 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
             <label className="ro2-label">Reason (required)</label>
             <textarea className="ro2-textarea" rows="3" autoFocus placeholder="e.g. Screenshot invalid, amount mismatch, wrong reference..."
               value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} />
+          </div>
+        </ActionModal>
+      )}
+
+      {modal?.type === 'pay_resubmit' && (
+        <ActionModal title="Resubmit Payment Proof" icon={<RefreshCw size={15} />} confirmLabel="Resubmit to Finance"
+          confirmDisabled={!resubmitFile} loading={actLoading === 'pay_resubmit'} onConfirm={handleResubmitProof} onClose={() => setModal(null)}>
+          <p>Upload a corrected payment proof for <strong>{order.orderNumber}</strong>. It is sent to Finance for re-verification.</p>
+          <div className="ro2-field">
+            <label className="ro2-label">Payment Proof Image (required)</label>
+            <input className="ro2-input" type="file" accept="image/*" onChange={e => setResubmitFile(e.target.files?.[0] || null)} />
           </div>
         </ActionModal>
       )}
