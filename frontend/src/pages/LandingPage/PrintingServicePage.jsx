@@ -15,7 +15,7 @@ import {
   ChevronUp, X, CheckCircle, UploadCloud, CreditCard, Truck,
   Phone, Mail, Shield, Info, CheckCircle2, User, Palette,
   Layers, AlignLeft, Calendar, AlertTriangle, Zap, Star,
-  ArrowRight, UserPlus, LogIn, Sparkles, Wallet
+  ArrowRight, UserPlus, LogIn, Sparkles, Wallet, ShieldAlert, LogOut
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════
@@ -955,6 +955,7 @@ export default function PrintingServicePage() {
   const [selectedService, setSelectedService] = useState(null);
   const [isLoggedIn, setIsLoggedIn]           = useState(false);
   const [currentUser, setCurrentUser]         = useState(null);
+  const [roleWarning, setRoleWarning]         = useState(false);
 
   // Form fields
   const [productType, setProductType]         = useState('Book');
@@ -1020,13 +1021,19 @@ export default function PrintingServicePage() {
   useEffect(() => {
     if (location.state?.openPrintingOrder && authService.isAuthenticated()) {
       const svc = location.state.service;
-      if (svc) {
-        setSelectedService(svc);
-        setProductType(svc.code);
+      if (!authService.hasRole('customer')) {
+        setCurrentUser(authService.getCurrentUser());
+        setIsLoggedIn(true);
+        setRoleWarning(true);
+      } else {
+        if (svc) {
+          setSelectedService(svc);
+          setProductType(svc.code);
+        }
+        setCurrentUser(authService.getCurrentUser());
+        setIsLoggedIn(true);
+        setIsModalOpen(true);
       }
-      setCurrentUser(authService.getCurrentUser());
-      setIsLoggedIn(true);
-      setIsModalOpen(true);
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -1064,9 +1071,13 @@ export default function PrintingServicePage() {
     if (!authService.isAuthenticated()) {
       // redirect to login with state to come back
       navigate('/login', { state: { from: '/services/printing', openPrintingOrder: true, service: svc } });
-    } else {
-      openOrder(svc);
+      return;
     }
+    if (!authService.hasRole('customer')) {
+      setRoleWarning(true);
+      return;
+    }
+    openOrder(svc);
   };
 
   const handleSubmit = async (e) => {
@@ -1784,6 +1795,29 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
       )}
 
       {isCalcOpen && <LiveCalculator onClose={() => setIsCalcOpen(false)} paperTypes={paperTypes} bindingTypes={bindingTypes} />}
+
+      {roleWarning && (
+        <div onClick={() => setRoleWarning(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1.5rem' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '1rem', maxWidth: '28rem', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: '2.5rem 2rem', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: 'linear-gradient(90deg,#2563EB,#fbbf24,#a855f7)' }} />
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: '#2563EB' }}>
+              <ShieldAlert size={48} strokeWidth={1.8} />
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#111827', margin: '0 0 0.75rem' }}>Customer Account Required</h2>
+            <p style={{ fontSize: '0.9rem', color: '#4b5563', margin: '0 0 1.75rem', lineHeight: 1.625 }}>
+              You are currently signed in as <strong>{currentUser?.fullName || currentUser?.full_name || currentUser?.name || 'a staff account'}</strong>.
+              Placing a printing order is available only to <strong>Customer</strong> accounts.
+              Please <strong>log out</strong> and sign in with your customer account to continue with this order.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '18rem', margin: '0 auto' }}>
+              <button type="button" onClick={() => authService.logout()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', background: '#2563EB', color: '#fff', fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer' }}>
+                <LogOut size={16} /> Log Out &amp; Switch to Customer
+              </button>
+              <button type="button" onClick={() => setRoleWarning(false)} style={{ padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid #e5e7eb', background: '#f3f4f6', color: '#111827', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}>Not Now</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
