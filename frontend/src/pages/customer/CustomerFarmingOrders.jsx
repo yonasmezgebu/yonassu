@@ -4,7 +4,7 @@ import axios from '../../services/apiClient';
 import {
   Tractor, Clock, CheckSquare, PlaySquare, RefreshCw,
   ArrowLeft, Calendar, MapPin, DollarSign, Image as ImageIcon,
-  Activity, Eye, Trash2
+  Activity, Eye, Trash2, XCircle
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './CustomerFarmingOrders.module.css';
@@ -31,6 +31,22 @@ const PAY_STATUS_CONFIG = {
   Pending:   { label: 'Awaiting Payment', bg: 'hsl(28 40% 88%)',  color: 'hsl(28 50% 30%)' },
   Confirmed: { label: 'Payment Confirmed', bg: 'hsl(142 55% 86%)', color: 'hsl(142 60% 24%)' },
   Rejected:  { label: 'Payment Rejected',  bg: 'hsl(0 72% 92%)',   color: 'hsl(0 72% 38%)' },
+};
+
+const normalizePayStatus = (s) => {
+  const k = String(s || '').toLowerCase();
+  if (k === 'confirmed' || k === 'paid' || k === 'payment_verified') return 'Confirmed';
+  if (k.includes('reject')) return 'Rejected';
+  return 'Pending';
+};
+
+const isRejectedPay = (s) => String(s || '').toLowerCase().includes('reject');
+
+const resolveAccountMethod = (acc) => {
+  const name = `${acc.account_type || ''} ${acc.bank_provider || ''}`.toLowerCase();
+  if (name.includes('cash')) return 'Cash';
+  if (name.includes('wallet') || name.includes('mobile') || name.includes('telebirr')) return 'Telebirr';
+  return `${acc.bank_provider || 'Bank'} Bank`;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -73,6 +89,12 @@ export default function CustomerFarmingOrders() {
   const [refreshing, setRefreshing]       = useState(false);
   const [notification, setNotification]   = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null); // { id, label }
+  const [confirmCancelOrder, setConfirmCancelOrder] = useState(null); // { id, label }
+  const [resubmitOrder, setResubmitOrder] = useState(null);
+  const [resubmitForm, setResubmitForm]   = useState({ paymentMethod: '', paymentReference: '', account: '' });
+  const [resubmitFile, setResubmitFile]   = useState(null);
+  const [resubmitSubmitting, setResubmitSubmitting] = useState(false);
+  const [financeAccounts, setFinanceAccounts] = useState([]);
   const navigate = useNavigate();
 
   const showNotification = (msg, type = 'success') => {
@@ -125,9 +147,68 @@ export default function CustomerFarmingOrders() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  const handleCancel = async (id) => {
+  const openResubmit = async (order) => {
+    setResubmitOrder(order);
+    setResubmitFile(null);
+    setResubmitForm({
+      paymentMethod: order.payment_method || '',
+      paymentReference: order.payment_reference || '',
+      account: '',
+    });
     try {
-      await axios.patch(`/agrirent-orders/${id}/status`, { status: 'cancelled' });
+      const res = await axios.get('/finance-bank');
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      setFinanceAccounts(list.filter(a => String(a.status || '').toLowerCase() === 'active'));
+    } catch (err) {
+      setFinanceAccounts([]);
+    }
+  };
+
+  const handleResubmitAccount = (e) => {
+    const val = e.target.value;
+    const acc = financeAccounts.find(a => String(a.id) === String(val));
+    if (!acc) { setResubmitForm(f => ({ ...f, account: val })); return; }
+    setResubmitForm(f => ({ ...f, account: val, paymentMethod: resolveAccountMethod(acc) }));
+  };
+
+  const submitResubmit = async () => {
+    if (!resubmitOrder) return;
+    const ref = (resubmitForm.paymentReference || '').trim();
+    if (!ref && !resubmitFile) {
+      showNotification('Provide a new payment reference or upload a new screenshot.', 'error');
+      return;
+    }
+    setResubmitSubmitting(true);
+    try {
+      const acc = financeAccounts.find(a => String(a.id) === String(resubmitForm.account));
+      const fd = new FormData();
+      fd.append('paymentMethod', resubmitForm.paymentMethod || resubmitOrder.payment_method || 'Telebirr');
+      fd.append('paymentReference', ref);
+      if (acc) {
+        fd.append('paymentAccountName', acc.account_name || '');
+        fd.append('paymentAccountNumber', acc.account_number || '');
+        fd.append('paymentProvider', acc.bank_provider || '');
+        fd.append('paymentAccountType', acc.account_type || '');
+      }
+      if (resubmitFile) fd.append('paymentScreenshot', resubmitFile);
+      await axios.patch(`/agrirent-orders/my-orders/${resubmitOrder.id}/resubmit`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      showNotification('Payment resubmitted. Finance will review it again.', 'success');
+      setResubmitOrder(null);
+      setSelectedOrder(null);
+      await fetchOrders();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to resubmit payment.', 'error');
+    } finally {
+      setResubmitSubmitting(false);
+    }
+  };
+
+  const handleCancel = async (id) => {
+    setConfirmCancelOrder(null);
+    try {
+      await axios.patch(`/agrirent-orders/my-orders/${id}/cancel`);
       showNotification('Order cancelled successfully.', 'success');
       fetchOrders();
       setSelectedOrder(null);
@@ -151,7 +232,10 @@ export default function CustomerFarmingOrders() {
   if (selectedOrder) {
     const o          = selectedOrder;
     const cfg        = STATUS_CONFIG[o.status] || STATUS_CONFIG.pending;
-    const payCfg     = PAY_STATUS_CONFIG[o.payment_status] || PAY_STATUS_CONFIG.Pending;
+    const payKey     = normalizePayStatus(o.payment_status);
+    const payCfg     = PAY_STATUS_CONFIG[payKey] || PAY_STATUS_CONFIG.Pending;
+    const rejected   = payKey === 'Rejected';
+    const unpaid     = payKey === 'Pending' && !o.payment_reference && !o.payment_screenshot && String(o.status || '').toLowerCase() !== 'cancelled';
     const r          = o.status === 'active' ? rentalStats(o) : null;
     const tractorImg = getImageUrl(o.tractor_image);
 
@@ -192,6 +276,49 @@ export default function CustomerFarmingOrders() {
               </span>
             </div>
           </div>
+
+          {rejected && (
+            <div style={{
+              marginTop: '1rem', padding: '1rem 1.2rem', borderRadius: 12,
+              background: 'hsl(0 72% 96%)', border: '1px solid hsl(0 72% 80%)',
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: 'hsl(0 72% 38%)' }}>
+                <XCircle size={18} /> Payment Rejected by Finance
+              </div>
+              <div style={{ fontSize: '0.9rem', color: 'hsl(0 60% 30%)' }}>
+                Reason: <strong>{o.finance_notes || o.notes || 'No reason provided'}</strong>
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'hsl(0 40% 40%)' }}>
+                Please correct the payment details below and resubmit — Finance will review it again.
+              </div>
+              <div>
+                <button className={styles.btnPrimary} onClick={() => openResubmit(o)}>
+                  Fix &amp; Resubmit Payment
+                </button>
+              </div>
+            </div>
+          )}
+
+          {unpaid && (
+            <div style={{
+              marginTop: '1rem', padding: '1rem 1.2rem', borderRadius: 12,
+              background: 'hsl(38 90% 96%)', border: '1px solid hsl(38 80% 70%)',
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: 'hsl(30 70% 30%)' }}>
+                <DollarSign size={18} /> Payment Required
+              </div>
+              <div style={{ fontSize: '0.9rem', color: 'hsl(30 50% 25%)' }}>
+                Total due: <strong>{parseFloat(o.total_amount || 0).toFixed(2)} ETB</strong>. Pay this order, then add the transaction reference or a payment screenshot so Finance can verify it.
+              </div>
+              <div>
+                <button className={styles.btnPrimary} onClick={() => openResubmit(o)}>
+                  Pay &amp; Upload Proof
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Machine Information card */}
           <div className={styles.card}>
@@ -277,6 +404,20 @@ export default function CustomerFarmingOrders() {
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Transaction Ref</span>
                   <span className={styles.infoValue}>{o.payment_reference || 'N/A'}</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Payment Screenshot</span>
+                  <span className={styles.infoValue}>
+                    {o.payment_screenshot ? (
+                      <img
+                        src={getImageUrl(o.payment_screenshot)}
+                        alt="Payment screenshot"
+                        onClick={() => setSelectedImage(getImageUrl(o.payment_screenshot))}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        style={{ maxWidth: 140, maxHeight: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0', cursor: 'zoom-in', display: 'block' }}
+                      />
+                    ) : 'N/A'}
+                  </span>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Status</span>
@@ -387,11 +528,7 @@ export default function CustomerFarmingOrders() {
                   </p>
                   <button
                     className={styles.btnDanger}
-                    onClick={() => {
-                      if (window.confirm('Are you sure you want to cancel this order?')) {
-                        handleCancel(o.id);
-                      }
-                    }}
+                    onClick={() => setConfirmCancelOrder({ id: o.id, label: o.order_number })}
                   >
                     Cancel Order
                   </button>
@@ -409,6 +546,122 @@ export default function CustomerFarmingOrders() {
                 Close ✕
               </button>
               <img src={selectedImage} alt="Full View" className={styles.modalImg} />
+            </div>
+          </div>
+        )}
+
+        {/* Fix & Resubmit Payment Modal */}
+        {resubmitOrder && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: '1.75rem', maxWidth: 460, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+              <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>{isRejectedPay(resubmitOrder.payment_status) ? 'Fix & Resubmit Payment' : 'Pay & Upload Proof'}</h3>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: '#64748b', lineHeight: 1.5 }}>
+                Order <strong>{resubmitOrder.order_number}</strong> · {parseFloat(resubmitOrder.total_amount || 0).toFixed(2)} ETB.
+                {isRejectedPay(resubmitOrder.payment_status)
+                  ? ' Update the payment details and send it back to Finance.'
+                  : ' Pay the amount, then add the reference or upload a screenshot for Finance to verify.'}
+              </p>
+
+              {(resubmitOrder.finance_notes || resubmitOrder.notes) && (
+                <div style={{ marginBottom: 14, padding: '0.6rem 0.8rem', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: '0.8rem' }}>
+                  Finance reason: <strong>{resubmitOrder.finance_notes || resubmitOrder.notes}</strong>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  Destination Account
+                  <select
+                    value={resubmitForm.account}
+                    onChange={handleResubmitAccount}
+                    style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem', background: '#fff' }}
+                  >
+                    <option value="">Keep current ({resubmitOrder.payment_method || 'as before'})</option>
+                    {financeAccounts.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.account_type}{a.bank_provider ? ` · ${a.bank_provider}` : ''}{a.account_number ? ` · ${a.account_number}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  Payment Method
+                  <input
+                    type="text"
+                    value={resubmitForm.paymentMethod}
+                    onChange={e => setResubmitForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                    placeholder="e.g. Telebirr / CBE Bank"
+                    style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                  />
+                </label>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  Transaction Reference
+                  <input
+                    type="text"
+                    value={resubmitForm.paymentReference}
+                    onChange={e => setResubmitForm(f => ({ ...f, paymentReference: e.target.value }))}
+                    placeholder="Telebirr / bank transaction number"
+                    style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                  />
+                </label>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  New Payment Screenshot {resubmitFile ? '(selected)' : '(optional)'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => setResubmitFile(e.target.files?.[0] || null)}
+                    style={{ display: 'block', width: '100%', marginTop: 5, fontSize: '0.8rem' }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.35rem' }}>
+                <button
+                  onClick={() => { setResubmitOrder(null); setResubmitFile(null); }}
+                  disabled={resubmitSubmitting}
+                  style={{ padding: '0.6rem 1.3rem', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitResubmit}
+                  disabled={resubmitSubmitting}
+                  style={{ padding: '0.6rem 1.3rem', borderRadius: 10, border: 'none', background: '#0f766e', color: '#fff', fontWeight: 700, cursor: resubmitSubmitting ? 'wait' : 'pointer', fontSize: '0.85rem', opacity: resubmitSubmitting ? 0.7 : 1 }}
+                >
+                  {resubmitSubmitting ? 'Submitting…' : (isRejectedPay(resubmitOrder.payment_status) ? 'Resubmit to Finance' : 'Submit Payment')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── In-app cancel confirmation dialog ── */}
+        {confirmCancelOrder && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: '2rem', maxWidth: 380, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: '0.75rem' }}>⚠️</div>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Cancel This Order?</h3>
+              <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+                Order <strong>{confirmCancelOrder.label}</strong> will be cancelled.<br />
+                This cannot be undone and the order will no longer be released.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setConfirmCancelOrder(null)}
+                  style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Keep Order
+                </button>
+                <button
+                  onClick={() => handleCancel(confirmCancelOrder.id)}
+                  style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: 'none', background: '#e53e3e', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Yes, Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -502,7 +755,7 @@ export default function CustomerFarmingOrders() {
               <tbody>
                 {filtered.map((order) => {
                   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-                  const payCfg = PAY_STATUS_CONFIG[order.payment_status] || PAY_STATUS_CONFIG.Pending;
+                  const payCfg = PAY_STATUS_CONFIG[normalizePayStatus(order.payment_status)] || PAY_STATUS_CONFIG.Pending;
                   const rs = order.status === 'active' ? rentalStats(order) : null;
                   return (
                     <tr
@@ -552,11 +805,16 @@ export default function CustomerFarmingOrders() {
                           >
                             {payCfg.label}
                           </span>
+                          {isRejectedPay(order.payment_status) && (order.finance_notes || order.notes) && (
+                            <span style={{ fontSize: '0.7rem', color: 'hsl(0 72% 38%)', maxWidth: 180 }}>
+                              {order.finance_notes || order.notes}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className={styles.colRight}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
-                          {(order.status === 'COMPLETED' || order.status === 'completed') && (
+                          {['completed', 'cancelled'].includes(String(order.status || '').toLowerCase()) && (
                             <button 
                               onClick={(e) => handleHideOrder(e, order.id, order.tractor_name || `Order #${order.id}`)}
                               style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
