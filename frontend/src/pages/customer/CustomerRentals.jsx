@@ -4,7 +4,7 @@ import {
   Car, Clock, CheckSquare, XSquare, PlaySquare, RefreshCw,
   ArrowLeft, Calendar, DollarSign, Image as ImageIcon,
   Upload, Plus, XCircle, User, Phone, Mail, CreditCard,
-  FileText, MapPin, Wrench, AlertTriangle, Trash2
+  FileText, MapPin, Wrench, AlertTriangle, Trash2, Edit3, X
 } from 'lucide-react';
 import carService from '../../services/carService';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
@@ -80,6 +80,8 @@ export default function CustomerRentals() {
   const [imgError, setImgError]     = useState(false);
   const [lightbox, setLightbox]     = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleting, setDeleting]           = useState(false);
+  const [editModal, setEditModal]         = useState(null); // { order, form, saving, error }
 
   // action states
   const [selectedFile, setSelectedFile] = useState(null);
@@ -118,23 +120,17 @@ export default function CustomerRentals() {
   const confirmHideOrder = async () => {
     if (!confirmDelete) return;
     const { id } = confirmDelete;
-    setConfirmDelete(null);
+    setDeleting(true);
     try {
-      try {
-        await apiClient.delete(`/rental-orders/my-orders/${id}/hide`);
-      } catch (firstErr) {
-        // Fallback to /my-orders/:id or carService
-        try {
-          await apiClient.delete(`/rental-orders/my-orders/${id}`);
-        } catch {
-          await carService.deleteMyRentalOrder(id);
-        }
-      }
-      setOrders(prev => prev.filter(o => o.id !== id));
-      if (selected?.id === id) setSelected(null);
+      await carService.deleteMyRentalOrder(id);
+      setOrders(prev => prev.filter(o => String(o.id) !== String(id)));
+      if (String(selected?.id) === String(id)) setSelected(null);
+      setConfirmDelete(null);
       showToast('Order removed from your dashboard.', 'success');
     } catch (err) {
       showToast(err.response?.data?.message || err.message || 'Failed to remove order.', 'error');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -199,6 +195,428 @@ export default function CustomerRentals() {
     }
   };
 
+  /* ── helper: can the order be updated by customer? ── */
+  // Before payment approved: Allowed!
+  // After payment approved: update button must be lost/hidden!
+  const isOrderUpdatable = (order) => {
+    if (!order) return false;
+    const pStat = (order.paymentStatus || order.payment_status || '').toUpperCase();
+    const isPaymentApproved = ['PAID', 'CONFIRMED'].includes(pStat);
+    if (isPaymentApproved) return false;
+
+    const isTerminal = ['COMPLETED', 'CANCELLED', 'REJECTED', 'ABANDONED', 'completed', 'cancelled', 'rejected', 'abandoned'].includes(order.status);
+    if (isTerminal) return false;
+
+    const isActive = ['ACTIVE', 'active', 'ON_TRIP'].includes(order.status);
+    if (isActive) return false;
+
+    const isCancelRequested = !!(order.isCancellationRequested || order.is_cancellation_requested);
+    if (isCancelRequested) return false;
+
+    return ['PENDING_APPROVAL', 'APPROVED'].includes(order.status);
+  };
+
+  const openEditModal = (order) => {
+    const toDateInput = (val) => {
+      if (!val) return '';
+      try {
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+      } catch {
+        return '';
+      }
+    };
+
+    setEditModal({
+      order,
+      form: {
+        pickupDate: toDateInput(order.pickupDate || order.pickup_date),
+        returnDate: toDateInput(order.returnDate || order.return_date),
+        driverName: order.driverName || order.driver_name || '',
+        driverLicense: order.driverLicense || order.driver_license || '',
+        customerPhone: order.customerPhone || order.customer_phone || '',
+        pickupLocation: order.pickupLocation || order.pickup_location || '',
+        specialRequests: order.specialRequests || order.special_requests || '',
+        paymentMethod: order.paymentMethod || order.payment_method || 'Cash',
+        paymentReference: order.paymentReference || order.payment_reference || '',
+      },
+      proofFile: null,
+      saving: false,
+      error: ''
+    });
+  };
+
+  const handleSaveOrderUpdate = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!editModal) return;
+    const { order, form, proofFile } = editModal;
+
+    if (form.pickupDate && form.returnDate) {
+      const p = new Date(form.pickupDate);
+      const r = new Date(form.returnDate);
+      if (r <= p) {
+        setEditModal(prev => ({ ...prev, error: 'Return date must be at least 1 day after pickup date.' }));
+        return;
+      }
+    }
+
+    setEditModal(prev => ({ ...prev, saving: true, error: '' }));
+    try {
+      // 1. Update order details (dates, contact, location, paymentMethod, paymentReference)
+      const res = await carService.updateMyRentalOrder(order.id, form);
+      let updated = res.data || res;
+
+      // 2. If user also attached/replaced payment proof, upload it together!
+      if (proofFile) {
+        try {
+          const fd = new FormData();
+          fd.append('proof', proofFile);
+          const proofRes = await carService.uploadPaymentProof(order.id, fd);
+          if (proofRes?.data) {
+            updated = { ...updated, ...proofRes.data };
+          } else {
+            updated = {
+              ...updated,
+              paymentProofUrl: proofRes?.paymentProofUrl || updated.paymentProofUrl,
+              paymentStatus: 'PENDING_VERIFICATION'
+            };
+          }
+        } catch (proofErr) {
+          console.warn('Failed to upload proof during update:', proofErr);
+        }
+      }
+
+      // Asynchronously update order in local state without page refresh
+      const targetId = String(updated.id || order.id);
+      setOrders(prev => prev.map(o => String(o.id) === targetId ? {
+        ...o,
+        ...updated,
+        carName: updated.carName || o.carName,
+        carImage: updated.carImage || o.carImage,
+        paymentMethod: form.paymentMethod || updated.paymentMethod || o.paymentMethod,
+        paymentReference: form.paymentReference || updated.paymentReference || o.paymentReference
+      } : o));
+      if (selected && String(selected.id) === targetId) {
+        setSelected(prev => ({
+          ...prev,
+          ...updated,
+          carName: updated.carName || prev.carName,
+          carImage: updated.carImage || prev.carImage,
+          paymentMethod: form.paymentMethod || updated.paymentMethod || prev.paymentMethod,
+          paymentReference: form.paymentReference || updated.paymentReference || prev.paymentReference
+        }));
+      }
+      setEditModal(null);
+      showToast('Rental order and payment details updated successfully!', 'success');
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to update order.';
+      setEditModal(prev => ({ ...prev, saving: false, error: msg }));
+      showToast(msg, 'error');
+    }
+  };
+
+  const getEditEstimates = () => {
+    if (!editModal || !editModal.form.pickupDate || !editModal.form.returnDate) return null;
+    const p = new Date(editModal.form.pickupDate);
+    const r = new Date(editModal.form.returnDate);
+    const days = Math.ceil((r - p) / (1000 * 60 * 60 * 24));
+    if (days <= 0 || isNaN(days)) return { days: 0, valid: false };
+    const rate = editModal.order.dailyRate || editModal.order.daily_rate || 0;
+    const rentalAmount = rate * days;
+    const deposit = editModal.order.securityDeposit !== undefined
+      ? editModal.order.securityDeposit
+      : (editModal.order.security_deposit !== undefined ? editModal.order.security_deposit : 5000);
+    const vat = parseFloat((rentalAmount * 0.15).toFixed(2));
+    const total = rentalAmount + vat + deposit;
+    return { days, rentalAmount, total, deposit, vat, valid: true };
+  };
+
+  /* ── Dialog Renderers ── */
+  const renderConfirmDelete = () => {
+    if (!confirmDelete) return null;
+    return (
+      <div className={styles.confirmOverlay} onClick={() => !deleting && setConfirmDelete(null)}>
+        <div className={styles.confirmBox} onClick={e => e.stopPropagation()}>
+          <div className={styles.confirmIcon}>🗑️</div>
+          <h3 className={styles.confirmTitle}>Remove Order?</h3>
+          <p className={styles.confirmDesc}>
+            <strong>{confirmDelete.label}</strong> will be removed from your dashboard.<br />
+            This only hides it for you — the rental team still has your booking.
+          </p>
+          <div className={styles.confirmActions}>
+            <button className={styles.btnSecondary} onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancel</button>
+            <button className={styles.btnDanger} onClick={confirmHideOrder} disabled={deleting}>
+              {deleting ? 'Removing…' : 'Yes, Remove'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEditModal = () => {
+    if (!editModal) return null;
+    const { order, form, saving, error } = editModal;
+    const est = getEditEstimates();
+    const carTitle = order.carName || (order.car ? `${order.car.brand || ''} ${order.car.model || ''}`.trim() : `Booking #${order.id}`);
+
+    return (
+      <div className={styles.confirmOverlay} onClick={() => !saving && setEditModal(null)}>
+        <div className={styles.editModalBox} onClick={e => e.stopPropagation()}>
+          <div className={styles.editModalHeader}>
+            <div>
+              <h3 className={styles.editModalTitle}>Update Order</h3>
+              <p className={styles.editModalSub}>
+                <strong>{order.orderNumber ? `#${order.orderNumber}` : `#${order.id}`}</strong> · {carTitle}
+              </p>
+            </div>
+            <button
+              className={styles.btnIcon}
+              onClick={() => !saving && setEditModal(null)}
+              disabled={saving}
+              title="Close"
+              type="button"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {error && (
+            <div style={{
+              background: 'hsl(var(--status-cancelled-bg))',
+              color: 'hsl(var(--danger))',
+              border: '1px solid hsl(var(--danger) / 0.3)',
+              borderRadius: 'var(--radius)',
+              padding: '0.65rem 0.85rem',
+              marginBottom: '1rem',
+              fontSize: '0.85rem'
+            }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSaveOrderUpdate}>
+            <div className={styles.editGrid}>
+              <div>
+                <label className={styles.formLabel}>Pickup Date *</label>
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={form.pickupDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => setEditModal(prev => ({
+                    ...prev,
+                    error: '',
+                    form: { ...prev.form, pickupDate: e.target.value }
+                  }))}
+                  required
+                  disabled={saving}
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Return Date *</label>
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={form.returnDate}
+                  min={form.pickupDate || new Date().toISOString().split('T')[0]}
+                  onChange={e => setEditModal(prev => ({
+                    ...prev,
+                    error: '',
+                    form: { ...prev.form, returnDate: e.target.value }
+                  }))}
+                  required
+                  disabled={saving}
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Driver Name</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  placeholder="Driver full name"
+                  value={form.driverName}
+                  onChange={e => setEditModal(prev => ({
+                    ...prev,
+                    form: { ...prev.form, driverName: e.target.value }
+                  }))}
+                  disabled={saving}
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Driver License</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  placeholder="Driver license number"
+                  value={form.driverLicense}
+                  onChange={e => setEditModal(prev => ({
+                    ...prev,
+                    form: { ...prev.form, driverLicense: e.target.value }
+                  }))}
+                  disabled={saving}
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Contact Phone</label>
+                <input
+                  type="tel"
+                  className={styles.input}
+                  placeholder="+251 9..."
+                  value={form.customerPhone}
+                  onChange={e => setEditModal(prev => ({
+                    ...prev,
+                    form: { ...prev.form, customerPhone: e.target.value }
+                  }))}
+                  disabled={saving}
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Pickup Location</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  placeholder="City, office, or airport"
+                  value={form.pickupLocation}
+                  onChange={e => setEditModal(prev => ({
+                    ...prev,
+                    form: { ...prev.form, pickupLocation: e.target.value }
+                  }))}
+                  disabled={saving}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: '1rem' }}>
+              <label className={styles.formLabel}>Special Requests / Notes</label>
+              <textarea
+                rows={2}
+                className={styles.input}
+                placeholder="Any special instructions or preferences…"
+                value={form.specialRequests}
+                onChange={e => setEditModal(prev => ({
+                  ...prev,
+                  form: { ...prev.form, specialRequests: e.target.value }
+                }))}
+                disabled={saving}
+              />
+            </div>
+
+            {/* ── Payment Information Section ── */}
+            <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontWeight: 600, fontSize: '0.9375rem' }}>
+                <CreditCard size={16} style={{ color: 'hsl(var(--primary))' }} />
+                <span>Payment Information</span>
+              </div>
+
+              <div className={styles.editGrid}>
+                <div>
+                  <label className={styles.formLabel}>Payment Method</label>
+                  <select
+                    className={styles.input}
+                    value={form.paymentMethod || 'Cash'}
+                    onChange={e => setEditModal(prev => ({
+                      ...prev,
+                      form: { ...prev.form, paymentMethod: e.target.value }
+                    }))}
+                    disabled={saving}
+                  >
+                    <option value="Cash">Cash on Pickup</option>
+                    <option value="Bank Transfer">Bank Transfer (CBE / Awash / Dashen)</option>
+                    <option value="Telebirr">Telebirr</option>
+                    <option value="CBE Birr">CBE Birr</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={styles.formLabel}>
+                    Payment Reference / Txn #{form.paymentMethod !== 'Cash' ? ' (Receipt/ID)' : ' (N/A)'}
+                  </label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    placeholder={form.paymentMethod === 'Cash' ? 'Pay upon arrival' : 'e.g. FT2619472910, ref #'}
+                    value={form.paymentReference || ''}
+                    onChange={e => setEditModal(prev => ({
+                      ...prev,
+                      form: { ...prev.form, paymentReference: e.target.value }
+                    }))}
+                    disabled={saving}
+                  />
+                </div>
+              </div>
+
+              {form.paymentMethod !== 'Cash' && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <label className={styles.formLabel}>
+                    Upload / Replace Payment Proof (Receipt or Screenshot)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    className={styles.input}
+                    onChange={e => {
+                      const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                      setEditModal(prev => ({ ...prev, proofFile: file }));
+                    }}
+                    disabled={saving}
+                  />
+                  {(order.paymentProofUrl || order.payment_proof_url) && !editModal.proofFile && (
+                    <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginTop: '0.25rem', display: 'block' }}>
+                      Current proof file is already attached. Upload a new file only if you need to replace it.
+                    </span>
+                  )}
+                  {editModal.proofFile && (
+                    <span style={{ fontSize: '0.75rem', color: 'hsl(var(--success))', marginTop: '0.25rem', display: 'block', fontWeight: 600 }}>
+                      ✓ Selected file: {editModal.proofFile.name} (will be uploaded together upon saving)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {est && est.valid && (
+              <div className={styles.editEstimateBanner}>
+                <div>
+                  <span style={{ fontWeight: 600 }}>Estimated: {est.days} day(s)</span>
+                  <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.5rem' }}>
+                    ({fmtMoney(est.rentalAmount)} ETB + 15% VAT + Deposit)
+                  </span>
+                </div>
+                <div style={{ fontWeight: 700, color: 'hsl(var(--primary))', fontSize: '1rem' }}>
+                  {fmtMoney(est.total)} ETB
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => setEditModal(null)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className={styles.btnPrimary}
+                disabled={saving || (est && !est.valid)}
+              >
+                {saving ? 'Saving Changes…' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   const openDetail = (order) => {
     setSelected(order);
     setImgError(false);
@@ -228,6 +646,7 @@ export default function CustomerRentals() {
     const canCancel = ['PENDING_APPROVAL', 'APPROVED'].includes(o.status) && !isCancelPending;
     const canDel    = TERMINAL_STATUSES.includes(o.status);
     const canUpload = o.status === 'APPROVED' && o.paymentStatus !== 'PAID';
+    const canUpdate = isOrderUpdatable(o);
     const canExtend = o.status === 'ACTIVE';
     const hasFees   = o.extensionFee > 0 || o.damageFee > 0 || o.fuelFee > 0 || o.lateFee > 0;
 
@@ -242,6 +661,16 @@ export default function CustomerRentals() {
               <ArrowLeft size={16} /> Back to Rentals
             </button>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {canUpdate && (
+                <button
+                  className={styles.btnSecondary}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'hsl(var(--primary))', borderColor: 'hsl(var(--primary) / 0.4)' }}
+                  onClick={() => openEditModal(o)}
+                  title="Modify rental dates, driver details or requests"
+                >
+                  <Edit3 size={15} /> Update Order
+                </button>
+              )}
               {canCancel && !cancelOpen && (
                 <button className={styles.btnDanger} onClick={() => setCancelOpen(true)}>
                   <XSquare size={16} /> Cancel Rental
@@ -539,12 +968,30 @@ export default function CustomerRentals() {
                 </>
               )}
 
-              {/* SECTION 5 — Actions (upload proof / extend / cancel) */}
-              {(canUpload || canExtend || (canCancel && cancelOpen)) && (
+              {/* SECTION 5 — Actions (upload proof / update / extend / cancel) */}
+              {(canUpload || canUpdate || canExtend || (canCancel && cancelOpen)) && (
                 <>
                   <hr className={styles.divider} />
                   <h2 className={styles.sectionTitle}><CheckSquare size={18} /> Actions</h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+                    {canUpdate && (
+                      <div className={styles.actionBox}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                          <div>
+                            <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                              <Edit3 size={16} /> Update Rental Reservation
+                            </h3>
+                            <p style={{ fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))', marginTop: '0.25rem', marginBottom: 0 }}>
+                              Need to adjust pickup dates, driver info, phone number or special requests? You can update this booking before payment is approved.
+                            </p>
+                          </div>
+                          <button className={styles.btnPrimary} onClick={() => openEditModal(o)}>
+                            <Edit3 size={14} /> Update Order
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {canUpload && (
                       <div className={styles.actionBox}>
@@ -630,6 +1077,12 @@ export default function CustomerRentals() {
             <img src={lightbox} alt="Full view" className={styles.modalImg} onClick={e => e.stopPropagation()} />
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        {renderConfirmDelete()}
+
+        {/* Edit Modal Dialog */}
+        {renderEditModal()}
       </div>
     );
   }
@@ -743,7 +1196,16 @@ export default function CustomerRentals() {
                         )}
                       </div>
 
-                      <div className={styles.tableCol} style={{ alignItems: 'flex-end' }}>
+                      <div className={styles.tableCol} style={{ alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'flex-end', gap: '0.375rem' }}>
+                        {isOrderUpdatable(order) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
+                            className={styles.btnIcon}
+                            title="Update booking details"
+                          >
+                            <Edit3 size={15} />
+                          </button>
+                        )}
                         {canDel && (
                           <button
                             onClick={(e) => handleHideOrder(e, order.id, order.carName || `Booking #${order.id}`)}
@@ -815,15 +1277,26 @@ export default function CustomerRentals() {
 
                       <div className={styles.cardFooter}>
                         <div className={styles.textPrice} style={{ fontSize: '1rem' }}>{fmtMoney(order.totalAmount)} ETB</div>
-                        {canDel && (
-                          <button
-                            onClick={(e) => handleHideOrder(e, order.id, order.carName || `Booking #${order.id}`)}
-                            className={`${styles.btnIcon} ${styles.btnIconDanger}`}
-                            title={order.status === 'CANCELLED' ? "Remove cancelled order from dashboard" : "Remove from dashboard"}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
+                          {isOrderUpdatable(order) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openEditModal(order); }}
+                              className={styles.btnIcon}
+                              title="Update booking details"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+                          )}
+                          {canDel && (
+                            <button
+                              onClick={(e) => handleHideOrder(e, order.id, order.carName || `Booking #${order.id}`)}
+                              className={`${styles.btnIcon} ${styles.btnIconDanger}`}
+                              title={order.status === 'CANCELLED' ? "Remove cancelled order from dashboard" : "Remove from dashboard"}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -835,22 +1308,10 @@ export default function CustomerRentals() {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      {confirmDelete && (
-        <div className={styles.confirmOverlay} onClick={() => setConfirmDelete(null)}>
-          <div className={styles.confirmBox} onClick={e => e.stopPropagation()}>
-            <div className={styles.confirmIcon}>🗑️</div>
-            <h3 className={styles.confirmTitle}>Remove Order?</h3>
-            <p className={styles.confirmDesc}>
-              <strong>{confirmDelete.label}</strong> will be removed from your dashboard.<br />
-              This only hides it for you — the rental team still has your booking.
-            </p>
-            <div className={styles.confirmActions}>
-              <button className={styles.btnSecondary} onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className={styles.btnDanger} onClick={confirmHideOrder}>Yes, Remove</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderConfirmDelete()}
+
+      {/* Edit Modal Dialog */}
+      {renderEditModal()}
     </>
   );
 }
