@@ -126,7 +126,12 @@ exports.listWaitlist = async (req, res) => {
       .whereNot('w.status', 'removed')
       .orderByRaw(`array_position(ARRAY['waiting', 'notified', 'converted'], w.status) ASC, w.created_at DESC`);
 
-    if (status && VALID_STATUSES.includes(status)) q = q.where('w.status', status);
+    if (status && VALID_STATUSES.includes(status)) {
+      q = q.where('w.status', status);
+    } else {
+      q = q.whereNotIn('w.status', ['converted']).whereNull('w.converted_order_id');
+    }
+
     if (tractorId) q = q.where('w.tractor_id', tractorId);
     if (search) {
       q = q.where((b) => {
@@ -147,7 +152,10 @@ exports.listWaitlist = async (req, res) => {
       't.asset_value as tractor_asset_value'
     );
 
-    const counts = await db('agrirent_waitlist').whereNot('status', 'removed')
+    const counts = await db('agrirent_waitlist')
+      .whereNot('status', 'removed')
+      .whereNotIn('status', ['converted'])
+      .whereNull('converted_order_id')
       .select('status').count('* as total').groupBy('status')
       .then(rows2 => rows2.reduce((a, r) => ({ ...a, [r.status]: Number(r.total) }), {}));
     const waitingTotal = Number(counts.waiting || 0);
