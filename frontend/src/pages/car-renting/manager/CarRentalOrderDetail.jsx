@@ -6,6 +6,7 @@ import {
   ArrowLeft, RefreshCw, Printer, Car, User, Calendar, Clock,
   DollarSign, Download, BadgeCheck, Receipt, Play, RotateCcw,
   Ban, ListChecks, Archive, Trash2, FileText, Hash,
+  CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 import './CarRentalOrderDetail.css';
@@ -148,6 +149,7 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const [form, setForm] = useState({
     reason: '', status: '', statusNote: '', startNote: '',
     odometer: '', damageFee: '', fuelFee: '', lateFee: '', notes: '',
+    carCondition: '', conditionReason: '',
   });
 
   const toast = (message, type = 'info') => {
@@ -189,7 +191,7 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
     }
   };
 
-  const openModal = type => { setForm({ reason: '', status: '', statusNote: '', startNote: '', odometer: '', damageFee: '', fuelFee: '', lateFee: '', notes: '' }); setModal({ type }); };
+  const openModal = type => { setForm({ reason: '', status: '', statusNote: '', startNote: '', odometer: '', damageFee: '', fuelFee: '', lateFee: '', notes: '', carCondition: '', conditionReason: '' }); setModal({ type }); };
 
   const handleConfirm = async () => {
     const { type } = modal || {};
@@ -202,6 +204,8 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
         damageFee: form.damageFee ? Number(form.damageFee) : 0,
         fuelFee: form.fuelFee ? Number(form.fuelFee) : 0,
         lateFee: form.lateFee ? Number(form.lateFee) : 0,
+        carCondition: form.carCondition,
+        conditionReason: form.conditionReason.trim() || undefined,
         notes: form.notes.trim() || undefined,
       }), 'Rental completed & moved to history — car released.');
     } else if (type === 'start') {
@@ -293,7 +297,7 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   );
 
   /* ── Derived data (fixed field mapping) ── */
-  const paid = order.paymentStatus === 'PAID' || order.paymentStatus === 'Confirmed';
+  const paid = ['PAID', 'CONFIRMED'].includes(String(order.paymentStatus || order.payment_status || '').toUpperCase());
   const payRejected = String(order.paymentStatus || order.payment_status || '').toLowerCase().includes('reject');
   const financeReason = f(order, 'financeNotes', 'finance_notes');
   const isTerminal = TERMINAL_STATUSES.includes(order.status);
@@ -326,6 +330,21 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const fuelFee = Number(f(order, 'fuelFee', 'fuel_fee') || 0);
   const lateFee = Number(f(order, 'lateFee', 'late_fee') || 0);
   const refundAmt = Number(f(order, 'refundAmount', 'refund_amount') || 0);
+  const carCondition = f(order, 'carCondition', 'car_condition');
+  const conditionReason = f(order, 'conditionReason', 'condition_reason');
+
+  const setCondition = cond => setForm(p => ({
+    ...p,
+    carCondition: cond,
+    damageFee: cond === 'fine' ? '' : p.damageFee,
+    conditionReason: cond === 'fine' ? '' : p.conditionReason,
+  }));
+  const deductionPreview = (form.carCondition === 'damaged' && form.damageFee ? Number(form.damageFee) : 0)
+    + (form.fuelFee ? Number(form.fuelFee) : 0)
+    + (form.lateFee ? Number(form.lateFee) : 0);
+  const refundPreview = Math.max(0, deposit - deductionPreview);
+  const returnValid = form.carCondition === 'fine'
+    || (form.carCondition === 'damaged' && Number(form.damageFee) > 0 && form.conditionReason.trim().length > 0);
 
   const proofUrl   = getImgUrl(f(order, 'paymentProofUrl', 'payment_proof_url', 'paymentProof', 'payment_screenshot'));
   const paymentRef = f(order, 'paymentReference', 'payment_reference');
@@ -547,6 +566,10 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
                 <Row label="Payment Method" value={payMethod} />
                 <Row label="Payment Reference" value={paymentRef} accent />
                 <Row label="Payment Status" value={PAY_STATUS_LABELS[order.paymentStatus] || order.paymentStatus} />
+                {carCondition && (
+                  <Row label="Return Inspection" value={carCondition === 'damaged' ? 'Damaged / Penalty' : 'Car fine'} accent={carCondition === 'damaged'} />
+                )}
+                {conditionReason && <Row label="Penalty Reason" value={conditionReason} />}
               </div>
               {payRejected && (
                 <div style={{ marginTop: '0.85rem', padding: '0.85rem 1rem', borderRadius: 12, background: 'hsl(var(--danger-soft))', border: '1px solid hsl(var(--danger))' }}>
@@ -721,17 +744,37 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
 
       {modal?.type === 'return' && (
         <ActionModal title="Complete & Release Car" icon={<RotateCcw size={15} />} confirmLabel="Complete Return"
-          loading={actLoading === 'return'} onConfirm={handleConfirm} onClose={() => setModal(null)}>
-          <p>Finalize the rental return. The car will be released and marked <strong>Available</strong>.</p>
+          confirmDisabled={!returnValid} loading={actLoading === 'return'} onConfirm={handleConfirm} onClose={() => setModal(null)}>
+          <p>Record the vehicle inspection before releasing the car. It will be marked <strong>Available</strong>.</p>
+          <div className="ro2-field">
+            <label className="ro2-label">Vehicle Condition (required)</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" className={`ro2-btn ${form.carCondition === 'fine' ? 'ro2-btn--primary' : 'ro2-btn--ghost'}`} style={{ flex: 1, justifyContent: 'center' }} onClick={() => setCondition('fine')}>
+                <CheckCircle2 size={14} /> Car is fine
+              </button>
+              <button type="button" className={`ro2-btn ${form.carCondition === 'damaged' ? 'ro2-btn--primary' : 'ro2-btn--ghost'}`} style={{ flex: 1, justifyContent: 'center' }} onClick={() => setCondition('damaged')}>
+                <AlertTriangle size={14} /> Damaged / Penalty
+              </button>
+            </div>
+          </div>
+          {form.carCondition === 'damaged' && (
+            <>
+              <div className="ro2-field">
+                <label className="ro2-label">Reason for penalty (required)</label>
+                <textarea className="ro2-textarea" rows="2" placeholder="Describe the damage / issue..."
+                  value={form.conditionReason} onChange={e => setForm(p => ({ ...p, conditionReason: e.target.value }))} />
+              </div>
+              <div className="ro2-field">
+                <label className="ro2-label">Penalty — deducted from deposit (ETB, required)</label>
+                <input className="ro2-input" type="number" min="0" placeholder="0"
+                  value={form.damageFee} onChange={e => setForm(p => ({ ...p, damageFee: e.target.value }))} />
+              </div>
+            </>
+          )}
           <div className="ro2-field">
             <label className="ro2-label">Odometer Reading (km)</label>
             <input className="ro2-input" type="number" min="0" placeholder="e.g. 45230"
               value={form.odometer} onChange={e => setForm(p => ({ ...p, odometer: e.target.value }))} />
-          </div>
-          <div className="ro2-field">
-            <label className="ro2-label">Damage Fee (ETB)</label>
-            <input className="ro2-input" type="number" min="0" placeholder="0"
-              value={form.damageFee} onChange={e => setForm(p => ({ ...p, damageFee: e.target.value }))} />
           </div>
           <div className="ro2-field">
             <label className="ro2-label">Fuel Fee (ETB)</label>
@@ -745,8 +788,16 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
           </div>
           <div className="ro2-field">
             <label className="ro2-label">Return Notes (optional)</label>
-            <textarea className="ro2-textarea" rows="2" placeholder="Inspection results, fuel level, condition..."
+            <textarea className="ro2-textarea" rows="2" placeholder="Fuel level, additional condition notes..."
               value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+          </div>
+          <div className="ro2-field" style={{ background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Security Deposit</span><strong>{fmt(deposit)} ETB</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total Deduction</span><strong>− {fmt(deductionPreview)} ETB</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+              <span>{deductionPreview > deposit ? 'Additional Owed' : 'Refund to Customer'}</span>
+              <strong>{fmt(deductionPreview > deposit ? deductionPreview - deposit : refundPreview)} ETB</strong>
+            </div>
           </div>
         </ActionModal>
       )}
