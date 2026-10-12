@@ -7,19 +7,32 @@ const { uploads } = require('../middleware/upload.middleware');
 // Public/Customer routes
 router.post('/', authenticate, rentalOrderController.createOrder);
 router.get('/my-orders', authenticate, rentalOrderController.getCustomerOrders);
+router.patch('/my-orders/:id', authenticate, rentalOrderController.updateCustomerOrder);
+router.put('/my-orders/:id', authenticate, rentalOrderController.updateCustomerOrder);
 const handleCustomerHideOrder = async (req, res) => {
   try {
     const { db } = require('../../config/database');
-    const order = await db('rental_orders')
-      .where('id', req.params.id)
-      .andWhere(function () {
-        this.where('customer_id', req.user.id);
-        if (req.user.email) this.orWhere('customer_email', req.user.email);
-      })
-      .first();
+    const orderId = parseInt(req.params.id, 10);
+    if (isNaN(orderId)) {
+      return res.status(400).json({ status: 'error', message: 'Invalid order ID' });
+    }
+
+    // Find the order by ID only first (no ownership filter to avoid type mismatch)
+    const order = await db('rental_orders').where('id', orderId).first();
 
     if (!order) {
       return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+
+    // Verify ownership using loose comparison (handles int/string JWT mismatch)
+    const userId = req.user.id;
+    const userEmail = (req.user.email || '').toLowerCase();
+    const isOwner =
+      (order.customer_id != null && String(order.customer_id) === String(userId)) ||
+      (order.customer_email && order.customer_email.toLowerCase() === userEmail);
+
+    if (!isOwner) {
+      return res.status(403).json({ status: 'error', message: 'You are not authorized to remove this order' });
     }
 
     const terminalStatuses = ['COMPLETED', 'completed', 'REJECTED', 'rejected', 'CANCELLED', 'cancelled', 'ABANDONED', 'abandoned'];
@@ -31,7 +44,7 @@ const handleCustomerHideOrder = async (req, res) => {
     }
 
     await db('rental_orders')
-      .where({ id: req.params.id })
+      .where('id', orderId)
       .update({ is_deleted_by_customer: true, updated_at: db.fn.now() });
 
     res.status(200).json({ status: 'success', message: 'Order removed from your dashboard' });
