@@ -160,6 +160,11 @@ const carService = {
   deleteMyRentalOrder: async (id) => {
     const res = await api.delete(`/rental-orders/my-orders/${id}/hide`);
     return res.data;
+  },
+
+  updateMyRentalOrder: async (id, data) => {
+    const res = await api.patch(`/rental-orders/my-orders/${id}`, data);
+    return res.data;
   }
 };
 
