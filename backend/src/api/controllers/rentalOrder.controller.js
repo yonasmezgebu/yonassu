@@ -167,7 +167,7 @@ exports.createOrder = async (req, res, next) => {
     }
 
     const rentalAmount = car.dailyRate * totalDays;
-    const securityDeposit = 5000;
+    const securityDeposit = parseFloat(car.securityDeposit) || 5000;
     const vatCalc = await vatConfigService.computeVatForItem('car_rental', car.id, rentalAmount);
     const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
     const totalAmount = rentalAmount + vatAmount + securityDeposit;
@@ -282,6 +282,13 @@ const RENTAL_TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
 
 exports.getArchivedOrders = async (req, res, next) => {
   try {
+    // Automatically move any completed, cancelled or rejected orders to history
+    await db('rental_orders')
+      .whereIn('status', ['COMPLETED', 'CANCELLED', 'REJECTED'])
+      .whereNull('archived_at')
+      .whereNull('deleted_at')
+      .update({ archived_at: db.fn.now() });
+
     const orders = await rentalOrderRepository.findAll({ archived: true });
     res.status(200).json({
       status: 'success',
@@ -457,7 +464,7 @@ exports.bulkDeleteOrders = async (req, res, next) => {
 exports.getOrderById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const order = await rentalOrderRepository.findById(id);
+    const order = await rentalOrderRepository.findById(id, { includeArchived: true });
     if (!order) {
       return res.status(404).json({ status: 'error', message: 'Order not found' });
     }
@@ -492,6 +499,173 @@ exports.getCustomerOrders = async (req, res, next) => {
   }
 };
 
+// ── CUSTOMER: Update order details before payment is approved ──
+exports.updateCustomerOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const order = await rentalOrderRepository.findById(id, { includeArchived: true });
+
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+
+    // Verify ownership
+    const isOwner = (order.customerId && String(order.customerId) === String(req.user.id)) ||
+                    (order.customerEmail && order.customerEmail.toLowerCase() === (req.user.email || '').toLowerCase());
+    if (!isOwner) {
+      return res.status(403).json({ status: 'error', message: 'You are not authorized to update this order' });
+    }
+
+    // Strict check: Cannot update after payment is approved
+    const paymentStatus = (order.paymentStatus || order.payment_status || '').toUpperCase();
+    const isPaymentApproved = ['PAID', 'CONFIRMED'].includes(paymentStatus);
+    if (isPaymentApproved) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order cannot be updated after payment has been approved/confirmed.'
+      });
+    }
+
+    // Strict check: Status must be PENDING_APPROVAL or APPROVED
+    const allowedStatuses = ['PENDING_APPROVAL', 'APPROVED'];
+    if (!allowedStatuses.includes(order.status)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Order cannot be updated while in status "${order.status}".`
+      });
+    }
+
+    if (order.isCancellationRequested || order.is_cancellation_requested) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order cannot be updated while cancellation request is pending.'
+      });
+    }
+
+    const {
+      pickupDate,
+      returnDate,
+      driverName,
+      driverLicense,
+      customerPhone,
+      pickupLocation,
+      specialRequests,
+      paymentMethod,
+      paymentReference
+    } = req.body;
+
+    const updateData = { updated_at: db.fn.now() };
+
+    if (driverName !== undefined) updateData.driver_name = String(driverName).trim();
+    if (driverLicense !== undefined) updateData.driver_license = String(driverLicense).trim();
+    if (customerPhone !== undefined) updateData.customer_phone = String(customerPhone).trim();
+    if (pickupLocation !== undefined) updateData.pickup_location = String(pickupLocation).trim();
+    if (specialRequests !== undefined) updateData.special_requests = String(specialRequests).trim();
+    if (paymentMethod !== undefined) updateData.payment_method = paymentMethod;
+    if (paymentReference !== undefined) updateData.payment_reference = String(paymentReference).trim();
+
+    // Handle date changes and price recalculation
+    let datesChanged = false;
+    let newTotal = order.totalAmount;
+    let newDays = order.totalDays;
+
+    if (pickupDate || returnDate) {
+      const newPickup = pickupDate ? new Date(pickupDate) : new Date(order.pickupDate);
+      const newReturn = returnDate ? new Date(returnDate) : new Date(order.returnDate);
+      const totalDays = Math.ceil((newReturn - newPickup) / (1000 * 60 * 60 * 24));
+
+      if (totalDays <= 0 || isNaN(totalDays)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Return date must be at least 1 day after pickup date'
+        });
+      }
+
+      const dailyRate = order.dailyRate || 0;
+      const rentalAmount = dailyRate * totalDays;
+      const securityDeposit = order.securityDeposit !== undefined ? order.securityDeposit : 5000;
+      
+      const vatCalc = await vatConfigService.computeVatForItem('car_rental', order.carId, rentalAmount);
+      const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+      const totalAmount = rentalAmount + vatAmount + securityDeposit;
+
+      updateData.pickup_date = newPickup;
+      updateData.return_date = newReturn;
+      updateData.total_days = totalDays;
+      updateData.rental_amount = rentalAmount;
+      updateData.subtotal = rentalAmount;
+      updateData.vat_amount = vatAmount;
+      updateData.total_amount = totalAmount;
+
+      datesChanged = true;
+      newTotal = totalAmount;
+      newDays = totalDays;
+
+      // Update invoice if one exists
+      try {
+        const inv = await findInvoiceForOrder(db, 'car_rental', order.id);
+        if (inv) {
+          await db('invoice_documents').where('id', inv.id).update({
+            subtotal: rentalAmount,
+            tax_total: vatAmount,
+            total_amount: totalAmount,
+            lines: JSON.stringify([{
+              itemId: order.carId,
+              name: 'Car Rental',
+              qty: totalDays,
+              unitPrice: dailyRate,
+              amount: rentalAmount,
+              rate: vatCalc.rate,
+              treatment: vatCalc.treatment
+            }, {
+              itemId: 0,
+              name: 'Security Deposit',
+              qty: 1,
+              unitPrice: securityDeposit,
+              amount: securityDeposit,
+              rate: 0,
+              treatment: 'zero_rated'
+            }])
+          });
+        }
+      } catch (invErr) {
+        logger.warn('Failed to update invoice on customer order update:', invErr.message);
+      }
+
+      // Sync finance submission amount if pending
+      try {
+        await db('finance_income_submissions')
+          .where('reference_no', `CAR-PROOF-${order.orderNumber}`)
+          .orWhere('reference_no', `CAR-${order.orderNumber}`)
+          .update({ amount: totalAmount });
+      } catch (_) {}
+    }
+
+    const updated = await rentalOrderRepository.update(id, updateData);
+
+    carRentalAudit.log(req, 'Customer updated rental order', order.orderNumber, order.toJSON(), updated.toJSON());
+
+    // Notify Car Renting Manager
+    try {
+      await sendNotification('Car Renting Manager', null, {
+        title: '✏️ Order Updated by Customer',
+        message: `Customer ${order.customerName || req.user.fullName} updated Order ${order.orderNumber}${datesChanged ? ` (Duration: ${newDays}d, Total: ${newTotal.toLocaleString()} ETB)` : ''}.`,
+        type: 'info',
+        link: '/car-renting/manager/orders'
+      });
+    } catch (_) {}
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order updated successfully',
+      data: updated.toJSON()
+    });
+  } catch (error) {
+    logger.error('Error updating customer rental order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to update order', error: error.message });
+  }
+};
+
 exports.updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -513,7 +687,7 @@ exports.updateOrderStatus = async (req, res, next) => {
     if (status === 'COMPLETED' || status === 'CANCELLED') {
       extraData.archived_at = db.fn.now();
     }
-    if (status === 'ACTIVE') {
+    if (status === 'ACTIVE' || status === 'ON_TRIP') {
       const payStatus = order.paymentStatus || order.payment_status;
       const isPaid = ['PAID', 'Confirmed', 'CONFIRMED'].includes(payStatus);
       if (!isPaid) {
@@ -564,6 +738,17 @@ exports.updateOrderStatus = async (req, res, next) => {
               });
           })
           .delete();
+
+        // Also mark corresponding sales_invoices and sales_receipts as cancelled
+        await db('sales_invoices')
+          .where('source', 'car_rental')
+          .where('sale_id', id)
+          .update({ status: 'cancelled', updated_at: db.fn.now() });
+        await db('sales_receipts')
+          .whereIn('invoice_id', function() {
+            this.select('id').from('sales_invoices').where('source', 'car_rental').where('sale_id', id);
+          })
+          .update({ status: 'cancelled', updated_at: db.fn.now() });
       } catch (finErr) {
         logger.error('Failed to void finance income submission on status change:', finErr.message);
       }
@@ -656,11 +841,14 @@ exports.uploadPaymentProof = async (req, res) => {
     const isManager = req.user.roles && req.user.roles.some(r => ['Car Renting Manager', 'Rental Manager', 'Agri Rental Manager'].includes(r));
     const payRejected = String(order.paymentStatus || order.payment_status || '').toLowerCase().includes('reject');
 
-    if (order.customerId !== req.user.id && !isFinanceStaff && !isManager) {
+    const isOwner = (order.customerId && String(order.customerId) === String(req.user.id)) ||
+                    (order.customerEmail && order.customerEmail.toLowerCase() === (req.user.email || '').toLowerCase());
+
+    if (!isOwner && !isFinanceStaff && !isManager) {
       return res.status(403).json({ status: 'error', message: 'Not authorized' });
     }
 
-    if (!isFinanceStaff && !payRejected && order.status !== 'APPROVED' && order.additionalOwed <= 0) {
+    if (!isFinanceStaff && !payRejected && !['APPROVED', 'PENDING_APPROVAL'].includes(order.status) && order.additionalOwed <= 0) {
       return res.status(400).json({ status: 'error', message: 'Payment proof not required for this order currently' });
     }
 
@@ -718,6 +906,23 @@ exports.uploadPaymentProof = async (req, res) => {
   }
 };
 
+const digitsOnly = (v) => String(v || '').replace(/\D/g, '');
+
+const findRegisteredRentalCustomer = async (email, phone) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) return null;
+  const account = await db('users')
+    .whereRaw('lower(email) = ?', [normalizedEmail])
+    .whereNull('deleted_at')
+    .first();
+  if (!account) return null;
+  const wanted = digitsOnly(phone);
+  const stored = digitsOnly(account.phone);
+  if (!wanted || !stored) return null;
+  const matches = wanted === stored || (wanted.length >= 9 && stored.length >= 9 && wanted.slice(-9) === stored.slice(-9));
+  return matches ? account : null;
+};
+
 // ── MANAGER: Create a manual / walk-in car rental order ──────────────────────
 // Mirrors AgriRent createManualOrder — used by CarRentalCreateOrder.jsx
 exports.createManualOrder = async (req, res) => {
@@ -732,6 +937,11 @@ exports.createManualOrder = async (req, res) => {
 
     if (!customerName || !customerPhone) {
       return res.status(400).json({ status: 'error', message: 'Customer name and phone are required' });
+    }
+
+    const customerAccount = await findRegisteredRentalCustomer(customerEmail, customerPhone);
+    if (!customerAccount) {
+      return res.status(400).json({ status: 'error', message: 'User not found with this account. Please create an account first.' });
     }
 
     const isScheduleLater = scheduleLater === true || scheduleLater === 'true' || (!startDate && !endDate);
@@ -1349,7 +1559,11 @@ exports.cancelOrder = async (req, res) => {
     const isManager = req.user.roles && req.user.roles.some(r =>
       ['Admin', 'CEO', 'Car Rental Manager', 'Car Renting Manager', 'Agri Rental Manager', 'Rental Manager'].includes(r)
     );
-    if (order.customerId !== req.user.id && req.user.departmentId !== 2 && !isManager) {
+    // A customer owns the order when it is linked to their account (customerId) or was
+    // recorded under their email (manual/walk-in orders have customerId null).
+    const isOwner = (order.customerId && String(order.customerId) === String(req.user.id)) ||
+                    (order.customerEmail && String(order.customerEmail).toLowerCase() === (req.user.email || '').toLowerCase());
+    if (!isOwner && req.user.departmentId !== 2 && !isManager) {
       return res.status(403).json({ status: 'error', message: 'Not authorized' });
     }
 
@@ -1501,6 +1715,17 @@ exports.approveCancellation = async (req, res) => {
             });
         })
         .delete();
+
+      // Also mark corresponding sales_invoices and sales_receipts as cancelled
+      await db('sales_invoices')
+        .where('source', 'car_rental')
+        .where('sale_id', id)
+        .update({ status: 'cancelled', updated_at: db.fn.now() });
+      await db('sales_receipts')
+        .whereIn('invoice_id', function() {
+          this.select('id').from('sales_invoices').where('source', 'car_rental').where('sale_id', id);
+        })
+        .update({ status: 'cancelled', updated_at: db.fn.now() });
     } catch (finErr) {
       logger.error('Failed to void finance income submission on cancellation approval:', finErr.message);
     }
@@ -1608,12 +1833,28 @@ exports.approveExtension = async (req, res) => {
 exports.processReturn = async (req, res) => {
   try {
     const { id } = req.params;
-    const { damageFee, fuelFee, lateFee, odometer, notes } = req.body;
+    const { damageFee, fuelFee, lateFee, odometer, notes, carCondition, conditionReason } = req.body;
 
     const order = await rentalOrderRepository.findById(id);
     if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
 
-    const extraCharges = parseFloat(damageFee || 0) + parseFloat(fuelFee || 0) + parseFloat(lateFee || 0);
+    const condition = String(carCondition || '').toLowerCase();
+    if (condition !== 'fine' && condition !== 'damaged') {
+      return res.status(400).json({ status: 'error', message: 'Vehicle inspection is required before completing the order: mark the car as fine or damaged.' });
+    }
+    const damageAmount = parseFloat(damageFee || 0) || 0;
+    if (condition === 'damaged') {
+      if (!String(conditionReason || '').trim()) {
+        return res.status(400).json({ status: 'error', message: 'Please provide the reason for the penalty/deduction.' });
+      }
+      if (!(damageAmount > 0)) {
+        return res.status(400).json({ status: 'error', message: 'Please provide the penalty amount deducted from the security deposit.' });
+      }
+    } else if (damageAmount > 0) {
+      return res.status(400).json({ status: 'error', message: 'Damage/penalty fee must be 0 when the car is marked as fine.' });
+    }
+
+    const extraCharges = damageAmount + parseFloat(fuelFee || 0) + parseFloat(lateFee || 0);
     const existingAdditional = parseFloat(order.additionalOwed || 0);
     const newAdditional = existingAdditional + extraCharges;
     
@@ -1633,9 +1874,11 @@ exports.processReturn = async (req, res) => {
 
     const updated = await rentalOrderRepository.update(id, {
       status: 'COMPLETED',
-      damage_fee: damageFee || 0,
+      damage_fee: damageAmount,
       fuel_fee: fuelFee || 0,
       late_fee: lateFee || 0,
+      car_condition: condition,
+      condition_reason: condition === 'damaged' ? String(conditionReason).trim() : null,
       actual_return_time: new Date(),
       actual_return_odometer: odometer,
       additional_owed: netDue,
@@ -1647,7 +1890,8 @@ exports.processReturn = async (req, res) => {
     carRentalAudit.log(req, 'Rental Order Return Processed', order.orderNumber, {
       status: order.status, additional_owed: order.additionalOwed, security_deposit: order.securityDeposit
     }, {
-      status: 'COMPLETED', damage_fee: damageFee || 0, fuel_fee: fuelFee || 0, late_fee: lateFee || 0,
+      status: 'COMPLETED', damage_fee: damageAmount, fuel_fee: fuelFee || 0, late_fee: lateFee || 0,
+      car_condition: condition, condition_reason: condition === 'damaged' ? String(conditionReason).trim() : null,
       actual_return_odometer: odometer, additional_owed: netDue, refund_amount: refund, manager_note: notes,
       archived_at: new Date()
     });
