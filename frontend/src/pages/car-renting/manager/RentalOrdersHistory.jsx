@@ -5,6 +5,7 @@ import {
   Car, User, Calendar, FileText, Archive, Trash2, RotateCcw, AlertTriangle,
 } from 'lucide-react';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import CarRentalOrderDetail from './CarRentalOrderDetail';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
@@ -99,6 +100,7 @@ const RentalOrdersHistory = () => {
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState([]);
   const [confirmAction, setConfirmAction] = useState(null); // { variant, id, orderNumber }
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   const toast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
@@ -136,6 +138,10 @@ const RentalOrdersHistory = () => {
       toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
     }
   };
+
+  if (selectedOrderId) {
+    return <CarRentalOrderDetail orderId={selectedOrderId} onBack={() => setSelectedOrderId(null)} />;
+  }
 
   return (
     <div className="ro-page" style={S.page}>
@@ -202,7 +208,13 @@ const RentalOrdersHistory = () => {
               const startD = order.startDate || order.start_date;
               const endD = order.endDate || order.end_date;
               return (
-                <tr key={order.id} style={{ background: idx % 2 === 0 ? C.white : C.lightGray }}>
+                <tr
+                  key={order.id}
+                  onClick={() => setSelectedOrderId(order.id)}
+                  style={{ background: idx % 2 === 0 ? C.white : C.lightGray, cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#E8F5E9'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? C.white : C.lightGray; }}
+                >
                   <td style={{ ...S.td, color: C.textSec, fontSize: 12, fontWeight: 700 }}>{idx + 1}</td>
 
                   <td style={S.td}>
@@ -251,7 +263,7 @@ const RentalOrdersHistory = () => {
                     </div>
                   </td>
 
-                  <td style={{ ...S.td, textAlign: 'center' }}>
+                  <td style={{ ...S.td, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
                       <button
                         onClick={() => setConfirmAction({ variant: 'restore', id: order.id, orderNumber: order.orderNumber || order.order_number })}
