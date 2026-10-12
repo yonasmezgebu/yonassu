@@ -158,7 +158,7 @@ const AssetRegister = () => {
   const [formData, setFormData] = useState({
     name: '', dailyRate: '', seats: 4, transmission: 'Manual',
     fuelType: 'Petrol', carType: '', description: '', availability: 'Available',
-    visibility: 'internal'
+    securityDeposit: '5000', visibility: 'internal'
   });
   const [images, setImages] = useState({ image1: null, image2: null, image3: null });
   const [existingImages, setExistingImages] = useState({ image1: null, image2: null, image3: null });
@@ -203,7 +203,7 @@ const AssetRegister = () => {
 
   /* ── Form Logic ── */
   const resetForm = () => {
-    setFormData({ name: '', dailyRate: '', seats: 4, transmission: 'Manual', fuelType: 'Petrol', carType: '', description: '', availability: 'Available', visibility: 'internal' });
+    setFormData({ name: '', dailyRate: '', seats: 4, transmission: 'Manual', fuelType: 'Petrol', carType: '', description: '', availability: 'Available', securityDeposit: '5000', visibility: 'internal' });
     setImages({ image1: null, image2: null, image3: null });
     setExistingImages({ image1: null, image2: null, image3: null });
   };
@@ -273,6 +273,7 @@ const AssetRegister = () => {
       name: car.name, dailyRate: car.dailyRate, seats: car.seats,
       transmission: car.transmission, fuelType: car.fuelType,
       carType: car.carType, description: car.description, availability: car.availability,
+      securityDeposit: car.securityDeposit !== undefined && car.securityDeposit !== null ? car.securityDeposit : '',
     });
     setImages({ image1: null, image2: null, image3: null });
     setExistingImages({ image1: car.image1, image2: car.image2, image3: car.image3 });
@@ -439,6 +440,7 @@ const AssetRegister = () => {
                     { label: 'Daily Rate (ETB) *', name: 'dailyRate', placeholder: 'e.g. 2500', type: 'number', req: true },
                     { label: 'Seats *', name: 'seats', placeholder: '4', type: 'number', req: true },
                     { label: 'Vehicle Type *', name: 'carType', placeholder: 'e.g. SUV, Sedan, Tractor', type: 'text', req: true },
+                    { label: 'Security Deposit (ETB)', name: 'securityDeposit', placeholder: 'e.g. 5000', type: 'number', req: false },
                   ].map(f => (
                     <div key={f.name}>
                       <label style={lbl}>{f.label}</label>
