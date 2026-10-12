@@ -92,6 +92,7 @@ exports.createCar = async (req, res) => {
       image2: carModel.image2,
       image3: carModel.image3,
       image4: carModel.image4,
+      security_deposit: carModel.securityDeposit,
       deleted_at: req.body.visibility === 'internal' ? new Date() : null
     };
 
@@ -135,6 +136,7 @@ exports.updateCar = async (req, res) => {
       car_type: carModel.carType,
       description: carModel.description,
       availability: carModel.availability,
+      security_deposit: carModel.securityDeposit,
       ...(carModel.image1 && { image1: carModel.image1 }),
       ...(carModel.image2 && { image2: carModel.image2 }),
       ...(carModel.image3 && { image3: carModel.image3 }),
