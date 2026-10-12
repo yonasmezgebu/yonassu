@@ -845,6 +845,21 @@ const CEOFinance = () => {
   const equityNetIn    = equityContrib - equityWithdraw;
 
   const netProfit  = parseFloat(profitSummary?.summary?.netProfit ?? profitSummary?.netProfit ?? 0);
+  const grossProfit = rcvList.length > 0
+    ? rcvList.reduce((s, r) => s + parseFloat(r.gross_profit || 0), 0)
+    : parseFloat(profitSummary?.summary?.grossProfit ?? profitSummary?.grossProfit ?? 0);
+
+  const carRentalDeposit = parseFloat(
+    profitSummary?.summary?.carRentalRefundableDeposit ??
+    rcvList
+      .filter(r => (r.source === 'car_rental' || r.department_source === 'Car Rental') && !r.security_deposit_refunded)
+      .reduce((s, r) => s + parseFloat(r.security_deposit || 0), 0)
+  );
+
+  const outputVat = rcvList.length > 0
+    ? rcvList.reduce((s, r) => s + parseFloat(r.output_vat || 0), 0)
+    : parseFloat(profitSummary?.summary?.outputVat || 0);
+
   const totalOwed  = parseFloat(liabSummary?.totalOwed ?? liabSummary?.totalLiabilities ?? 0);
 
   const bankBookedRefs = new Set(
@@ -863,7 +878,9 @@ const CEOFinance = () => {
     parseFloat(bankBalance    || 0) +
     parseFloat(settledReceivable || 0) +
     parseFloat(equityNetIn    || 0) +
-    parseFloat(netProfit      || 0) -
+    parseFloat(grossProfit    || 0) +
+    parseFloat(outputVat      || 0) +
+    parseFloat(carRentalDeposit || 0) -
     parseFloat(expenseOut     || 0) +
     parseFloat(unbankedCRV    || 0) +
     parseFloat(assetGrand     || 0) -
@@ -954,7 +971,9 @@ const CEOFinance = () => {
                           { label: 'Unbanked Cash (CRV on Hand)',               val: unbankedCRV,       nav: null },
                           { label: 'Net Owner Flow (Equity)',                   val: equityNetIn,       nav: null },
                           { label: 'Collected / Paid So Far (Accts Receivable)',val: settledReceivable, nav: null },
-                          { label: 'Net Profit (Income Statement)',             val: netProfit,         nav: null },
+                          { label: 'Gross Profit (Revenue − COGS)',             val: grossProfit,       nav: null },
+                          { label: 'Output VAT (Tax Collected)',                val: outputVat,         nav: null },
+                          { label: 'Car Rental Refundable Deposit (Held)',      val: carRentalDeposit,  nav: null },
                           { label: 'Paid Out (Expenses)',                       val: -expenseOut,       nav: null },
                           { label: 'Total Assets (Non-Cash)',                   val: assetGrand,        nav: null },
                           { label: 'Total Liabilities (Owed)',                  val: -totalOwed,        nav: null },
