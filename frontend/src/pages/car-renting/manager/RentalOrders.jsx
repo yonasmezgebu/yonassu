@@ -35,6 +35,7 @@ const STATUS_MOD = {
 
 const TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
 const STARTABLE_STATUSES = ['APPROVED', 'CONFIRMED'];
+const isPaidPayment = (s) => ['PAID', 'CONFIRMED'].includes(String(s || '').toUpperCase());
 
 /* ─────────────── BADGE COMPONENTS ─────────────── */
 const StatusBadge = ({ code }) => (
@@ -241,6 +242,7 @@ const RentalOrders = () => {
       if (m.type === 'start') {
         const res = await axios.post(`/rental-orders/${id}/start`, { notes: form.startNote });
         toast(res.message || `${oNum} started`, 'success');
+        setOrders(prev => prev.map(o => String(o.id) === String(id) ? { ...o, status: 'ACTIVE' } : o));
       } else if (m.type === 'return') {
         const res = await axios.post(`/rental-orders/${id}/process-return`, {
           damageFee: form.damageFee || 0,
@@ -250,19 +252,30 @@ const RentalOrders = () => {
           notes:     form.notes     || '',
         });
         toast(res.message || `${oNum} completed & moved to history — car released`, 'success');
+        // Immediately remove from active orders list
+        setOrders(prev => prev.filter(o => String(o.id) !== String(id)));
       } else if (m.type === 'cancel') {
         const res = await axios.post(`/rental-orders/${id}/cancel`, { reason: form.cancelReason });
         toast(res.message || `${oNum} cancelled & moved to history`, 'success');
+        // Immediately remove from active orders list
+        setOrders(prev => prev.filter(o => String(o.id) !== String(id)));
       } else if (m.type === 'status') {
         const res = await axios.put(`/rental-orders/${id}/status`, { status: form.status, managerNote: form.statusNote });
         const movedToHist = ['COMPLETED', 'CANCELLED', 'REJECTED'].includes(form.status);
         toast(res.message || `Status updated to ${form.status}${movedToHist ? ' — moved to history' : ''}`, 'success');
+        if (movedToHist) {
+          setOrders(prev => prev.filter(o => String(o.id) !== String(id)));
+        } else {
+          setOrders(prev => prev.map(o => String(o.id) === String(id) ? { ...o, status: form.status } : o));
+        }
       } else if (m.type === 'archive') {
         const res = await axios.post(`/rental-orders/${id}/archive`);
         toast(res.message || `${oNum} moved to history`, 'success');
+        setOrders(prev => prev.filter(o => String(o.id) !== String(id)));
       } else if (m.type === 'delete') {
         const res = await axios.delete(`/rental-orders/${id}`);
         toast(res.message || `${oNum} deleted`, 'success');
+        setOrders(prev => prev.filter(o => String(o.id) !== String(id)));
       } else if (m.type === 'dates') {
         const res = await axios.patch(`/rental-orders/${id}/dates`, {
           startDate: form.startDate,
@@ -300,6 +313,18 @@ const RentalOrders = () => {
         res.message || (isApproved ? `${oNum} cancellation approved & moved to history` : `${oNum} cancellation rejected`),
         isApproved ? 'success' : 'info'
       );
+      if (isApproved) {
+        // Immediately remove approved cancelled order from active list
+        setOrders(prev => prev.filter(o => String(o.id) !== String(id)));
+      } else {
+        setOrders(prev => prev.map(o => String(o.id) === String(id) ? {
+          ...o,
+          isCancellationRequested: false,
+          is_cancellation_requested: false,
+          cancellationReason: null,
+          cancellation_reason: null
+        } : o));
+      }
       load(filter);
     } catch (err) {
       toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
@@ -737,7 +762,7 @@ const RentalOrders = () => {
             ) : filteredOrders.map((order, idx) => {
               const isManualOrder = !!(order.isManual || order.is_manual);
               const isTerminal = TERMINAL_STATUSES.includes(order.status);
-              const isStartable = STARTABLE_STATUSES.includes(order.status);
+              const isStartable = STARTABLE_STATUSES.includes(order.status) && isPaidPayment(order.paymentStatus || order.payment_status);
               const isCancelRequest = !!(order.isCancellationRequested || order.is_cancellation_requested);
               const r = rentalStats(order);
               const carName = order.carName || (order.car ? `${order.car.brand || ''} ${order.car.model || ''}`.trim() : 'N/A');
@@ -814,7 +839,7 @@ const RentalOrders = () => {
                         </button>
                       )}
                       {order.status === 'ACTIVE' && (
-                        <button className="ro2-btn ro2-btn--primary ro2-btn--sm" onClick={() => openModal('return', order)}>
+                        <button className="ro2-btn ro2-btn--primary ro2-btn--sm" onClick={() => { setSelectedId(order.id); setView('detail'); }}>
                           <RotateCcw size={13} /> Complete / Return
                         </button>
                       )}
