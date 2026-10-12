@@ -5,6 +5,7 @@ import {
   Leaf, User, Calendar, FileText, Archive, Trash2, RotateCcw, Tractor, MapPin, AlertTriangle,
 } from 'lucide-react';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import AgriRentOrderDetail from './AgriRentOrderDetail';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
@@ -95,6 +96,7 @@ const AgriRentOrdersHistory = () => {
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState([]);
   const [confirmAction, setConfirmAction] = useState(null); // { variant, id, orderNumber }
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   const toast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
@@ -132,6 +134,10 @@ const AgriRentOrdersHistory = () => {
       toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
     }
   };
+
+  if (selectedOrderId) {
+    return <AgriRentOrderDetail orderId={selectedOrderId} onBack={() => setSelectedOrderId(null)} />;
+  }
 
   return (
     <div className="aro-page" style={S.page}>
@@ -194,7 +200,13 @@ const AgriRentOrdersHistory = () => {
                 </td>
               </tr>
             ) : orders.map((order, idx) => (
-              <tr key={order.id} style={{ background: idx % 2 === 0 ? C.white : C.lightGray }}>
+              <tr
+                key={order.id}
+                onClick={() => setSelectedOrderId(order.id)}
+                style={{ background: idx % 2 === 0 ? C.white : C.lightGray, cursor: 'pointer', transition: 'background 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#E8F5E9'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? C.white : C.lightGray; }}
+              >
                 <td style={{ ...S.td, color: C.textSec, fontSize: 12, fontWeight: 700 }}>{idx + 1}</td>
 
                 <td style={S.td}>
@@ -249,7 +261,7 @@ const AgriRentOrdersHistory = () => {
                   </div>
                 </td>
 
-                <td style={{ ...S.td, textAlign: 'center' }}>
+                <td style={{ ...S.td, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
                     <button
                       onClick={() => setConfirmAction({ variant: 'restore', id: order.id, orderNumber: order.order_number })}
