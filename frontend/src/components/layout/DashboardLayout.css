@@ -622,3 +622,102 @@
   background: var(--color-danger);
   border-radius: 50%;
 }
+
+/* ══════════════════════════════════════════════
+   CUSTOMER TOPBAR NAV LINKS (Services & Marketplace)
+   Only rendered inside the customer dashboard navbar
+   ══════════════════════════════════════════════ */
+.dash-cust-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dash-cust-dropdown-wrap {
+  position: relative;
+}
+
+.dash-cust-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+.dash-cust-link-btn:hover,
+.dash-cust-link-btn.active {
+  background: #f0fdf4;
+  color: #047857;
+}
+.dash-cust-link-btn svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.dash-cust-link-btn.open svg.chevron {
+  transform: rotate(180deg);
+}
+
+/* Dropdown panel */
+.dash-cust-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px -6px rgba(0,0,0,0.12), 0 4px 12px -2px rgba(0,0,0,0.06);
+  min-width: 200px;
+  z-index: 200;
+  padding: 6px;
+  animation: dash-cust-menu-in 0.16s ease both;
+}
+@keyframes dash-cust-menu-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.dash-cust-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  transition: background 0.14s ease, color 0.14s ease;
+  white-space: nowrap;
+}
+.dash-cust-menu-item:hover {
+  background: #f0fdf4;
+  color: #047857;
+}
+.dash-cust-menu-item.bold {
+  font-weight: 700;
+  color: #047857;
+}
+
+.dash-cust-menu-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 6px;
+}
+
+/* Mobile: hide customer nav links on very small screens */
+@media (max-width: 640px) {
+  .dash-cust-nav {
+    display: none;
+  }
+}
