@@ -29,6 +29,8 @@ class RentalOrder {
     this.verifiedBy = data.verified_by || data.verifiedBy || null;
     this.specialRequests = data.special_requests || data.specialRequests || '';
     this.managerNote = data.manager_note || data.managerNote || '';
+    this.carCondition = data.car_condition || data.carCondition || null;
+    this.conditionReason = data.condition_reason || data.conditionReason || null;
     this.pickupRemarks = data.pickup_remarks || data.pickupRemarks || '';
     this.pickupLocation = data.pickup_location || data.pickupLocation || '';
     this.approvedAt = data.approved_at || data.approvedAt || null;
@@ -103,6 +105,8 @@ class RentalOrder {
       verifiedBy: this.verifiedBy,
       specialRequests: this.specialRequests,
       managerNote: this.managerNote,
+      carCondition: this.carCondition,
+      conditionReason: this.conditionReason,
       pickupRemarks: this.pickupRemarks,
       pickupLocation: this.pickupLocation,
       approvedAt: this.approvedAt,
