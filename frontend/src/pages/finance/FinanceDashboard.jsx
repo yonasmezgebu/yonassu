@@ -36,6 +36,7 @@ import FinanceVehicleAssets from './FinanceVehicleAssets';
 import FinanceTractorAssets from './FinanceTractorAssets';
 import CentralAuditLog from '../admin/CentralAuditLog';
 import QuotationExpenses from '../shared/QuotationExpenses';
+import ManagerChat from '../../components/ManagerChat';
 import styles from './FinanceDashboard.module.css';
 
 const FinanceDashboard = () => {
@@ -80,6 +81,8 @@ const FinanceDashboard = () => {
       ] },
     { type: 'divider' },
     { label: 'Audit Log', path: '/finance/audit-log', icon: 'clipboard', color: '#6366f1' },
+    { type: 'divider' },
+    { label: 'Chat', path: '/finance/chat', icon: 'message-circle', color: '#6B8E23' },
   ];
 
   return (
@@ -126,6 +129,9 @@ const FinanceDashboard = () => {
             <Route path="profit-loss" element={<FinanceProfitLoss />} />
             <Route path="balance-sheet" element={<FinanceBalanceSheet />} />
             <Route path="audit-log" element={<CentralAuditLog mode="finance" />} />
+
+            {/* Chat */}
+            <Route path="chat" element={<ManagerChat />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
