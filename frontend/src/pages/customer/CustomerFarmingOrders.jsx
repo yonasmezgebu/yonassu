@@ -4,7 +4,7 @@ import axios from '../../services/apiClient';
 import {
   Tractor, Clock, CheckSquare, PlaySquare, RefreshCw,
   ArrowLeft, Calendar, MapPin, DollarSign, Image as ImageIcon,
-  Activity, Eye, Trash2, XCircle
+  Activity, Eye, Trash2, XCircle, Pencil
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './CustomerFarmingOrders.module.css';
@@ -94,6 +94,10 @@ export default function CustomerFarmingOrders() {
   const [resubmitForm, setResubmitForm]   = useState({ paymentMethod: '', paymentReference: '', account: '' });
   const [resubmitFile, setResubmitFile]   = useState(null);
   const [resubmitSubmitting, setResubmitSubmitting] = useState(false);
+  const [updateOrder, setUpdateOrder] = useState(null);
+  const [updateForm, setUpdateForm]   = useState({ startDate: '', endDate: '', fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '', specialInstructions: '', paymentMethod: '', paymentReference: '', account: '' });
+  const [updateFile, setUpdateFile]   = useState(null);
+  const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const [financeAccounts, setFinanceAccounts] = useState([]);
   const navigate = useNavigate();
 
@@ -105,7 +109,9 @@ export default function CustomerFarmingOrders() {
   const fetchOrders = useCallback(async () => {
     try {
       const res = await axios.get('/agrirent-orders/my-orders');
-      setOrders(res.data || []);
+      const list = res.data || [];
+      setOrders(list);
+      setSelectedOrder(prev => (prev ? (list.find(x => x.id === prev.id) || prev) : prev));
     } catch (err) {
       console.error('Failed to load farming orders', err);
       showNotification('Failed to load orders.', 'error');
@@ -146,6 +152,20 @@ export default function CustomerFarmingOrders() {
   };
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  /* Background refresh — keeps the list and open detail in step with the
+     manager / finance side without the customer refreshing the page. */
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      try {
+        const res = await axios.get('/agrirent-orders/my-orders');
+        const list = res.data || [];
+        setOrders(list);
+        setSelectedOrder(prev => (prev ? (list.find(x => x.id === prev.id) || prev) : prev));
+      } catch (e) { /* silent background refresh */ }
+    }, 20000);
+    return () => clearInterval(timer);
+  }, []);
 
   const openResubmit = async (order) => {
     setResubmitOrder(order);
@@ -205,6 +225,79 @@ export default function CustomerFarmingOrders() {
     }
   };
 
+  const openUpdate = async (order) => {
+    setUpdateOrder(order);
+    setUpdateFile(null);
+    setUpdateForm({
+      startDate: order.start_date ? String(order.start_date).slice(0, 10) : '',
+      endDate: order.end_date ? String(order.end_date).slice(0, 10) : '',
+      fieldLocation: order.field_location || '',
+      fieldSizeHectares: order.field_size_hectares != null ? String(order.field_size_hectares) : '',
+      farmingPurpose: order.farming_purpose || '',
+      specialInstructions: order.special_instructions || '',
+      paymentMethod: order.payment_method || '',
+      paymentReference: order.payment_reference || '',
+      account: '',
+    });
+    try {
+      const res = await axios.get('/finance-bank');
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      setFinanceAccounts(list.filter(a => String(a.status || '').toLowerCase() === 'active'));
+    } catch (err) {
+      setFinanceAccounts([]);
+    }
+  };
+
+  const handleUpdateAccount = (e) => {
+    const val = e.target.value;
+    const acc = financeAccounts.find(a => String(a.id) === String(val));
+    if (!acc) { setUpdateForm(f => ({ ...f, account: val })); return; }
+    setUpdateForm(f => ({ ...f, account: val, paymentMethod: resolveAccountMethod(acc) }));
+  };
+
+  const submitUpdate = async () => {
+    if (!updateOrder) return;
+    if (!updateForm.startDate || !updateForm.endDate) {
+      showNotification('Start and end dates are required.', 'error');
+      return;
+    }
+    const ref = (updateForm.paymentReference || '').trim();
+    if (!ref && !updateFile && !updateOrder.payment_screenshot) {
+      showNotification('Provide a payment reference or upload a screenshot.', 'error');
+      return;
+    }
+    setUpdateSubmitting(true);
+    try {
+      const acc = financeAccounts.find(a => String(a.id) === String(updateForm.account));
+      const fd = new FormData();
+      fd.append('startDate', updateForm.startDate);
+      fd.append('endDate', updateForm.endDate);
+      fd.append('fieldLocation', updateForm.fieldLocation || '');
+      fd.append('fieldSizeHectares', updateForm.fieldSizeHectares || '');
+      fd.append('farmingPurpose', updateForm.farmingPurpose || '');
+      fd.append('specialInstructions', updateForm.specialInstructions || '');
+      fd.append('paymentMethod', updateForm.paymentMethod || updateOrder.payment_method || 'Telebirr');
+      fd.append('paymentReference', ref);
+      if (acc) {
+        fd.append('paymentAccountName', acc.account_name || '');
+        fd.append('paymentAccountNumber', acc.account_number || '');
+        fd.append('paymentProvider', acc.bank_provider || '');
+        fd.append('paymentAccountType', acc.account_type || '');
+      }
+      if (updateFile) fd.append('paymentScreenshot', updateFile);
+      await axios.patch(`/agrirent-orders/my-orders/${updateOrder.id}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      showNotification('Order updated. Finance will review the changes.', 'success');
+      setUpdateOrder(null);
+      await fetchOrders();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to update order.', 'error');
+    } finally {
+      setUpdateSubmitting(false);
+    }
+  };
+
   const handleCancel = async (id) => {
     setConfirmCancelOrder(null);
     try {
@@ -238,6 +331,7 @@ export default function CustomerFarmingOrders() {
     const unpaid     = payKey === 'Pending' && !o.payment_reference && !o.payment_screenshot && String(o.status || '').toLowerCase() !== 'cancelled';
     const r          = o.status === 'active' ? rentalStats(o) : null;
     const tractorImg = getImageUrl(o.tractor_image);
+    const canUpdate  = ['pending', 'approved'].includes(String(o.status || '').toLowerCase()) && payKey !== 'Confirmed';
 
     return (
       <div className={styles.page}>
@@ -274,6 +368,11 @@ export default function CustomerFarmingOrders() {
               <span className={styles.badge} style={{ backgroundColor: payCfg.bg, color: payCfg.color }}>
                 {payCfg.label}
               </span>
+              {canUpdate && (
+                <button className={styles.btnSecondary} onClick={() => openUpdate(o)}>
+                  <Pencil size={15} /> Update Order
+                </button>
+              )}
             </div>
           </div>
 
@@ -520,6 +619,18 @@ export default function CustomerFarmingOrders() {
                 </div>
               )}
 
+              {canUpdate && (
+                <div className={`${styles.card} ${styles.bottomRowCard}`}>
+                  <h2 className={styles.cardTitle}>Manage Order</h2>
+                  <p className={styles.dangerDesc}>
+                    Change the hire dates, field details or payment information while your payment is still being reviewed.
+                  </p>
+                  <button className={styles.btnPrimary} onClick={() => openUpdate(o)}>
+                    Update Order
+                  </button>
+                </div>
+              )}
+
               {['pending', 'approved'].includes(o.status) && (
                 <div className={`${styles.card} ${styles.bottomRowCard}`}>
                   <div className={styles.dangerTitle}>Danger Zone</div>
@@ -632,6 +743,159 @@ export default function CustomerFarmingOrders() {
                   style={{ padding: '0.6rem 1.3rem', borderRadius: 10, border: 'none', background: '#0f766e', color: '#fff', fontWeight: 700, cursor: resubmitSubmitting ? 'wait' : 'pointer', fontSize: '0.85rem', opacity: resubmitSubmitting ? 0.7 : 1 }}
                 >
                   {resubmitSubmitting ? 'Submitting…' : (isRejectedPay(resubmitOrder.payment_status) ? 'Resubmit to Finance' : 'Submit Payment')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Update Order Modal ── */}
+        {updateOrder && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: '1.75rem', maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+              <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>Update Order</h3>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: '#64748b', lineHeight: 1.5 }}>
+                Order <strong>{updateOrder.order_number}</strong>. You can update the booking and payment details until Finance confirms your payment.
+              </p>
+
+              {(updateOrder.finance_notes || updateOrder.notes) && (
+                <div style={{ marginBottom: 14, padding: '0.6rem 0.8rem', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: '0.8rem' }}>
+                  Finance reason: <strong>{updateOrder.finance_notes || updateOrder.notes}</strong>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <label style={{ flex: 1, fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                    Start Date
+                    <input
+                      type="date"
+                      value={updateForm.startDate}
+                      onChange={e => setUpdateForm(f => ({ ...f, startDate: e.target.value }))}
+                      style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                    />
+                  </label>
+                  <label style={{ flex: 1, fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                    End Date
+                    <input
+                      type="date"
+                      value={updateForm.endDate}
+                      onChange={e => setUpdateForm(f => ({ ...f, endDate: e.target.value }))}
+                      style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                    />
+                  </label>
+                </div>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  Field Location
+                  <input
+                    type="text"
+                    value={updateForm.fieldLocation}
+                    onChange={e => setUpdateForm(f => ({ ...f, fieldLocation: e.target.value }))}
+                    placeholder="e.g. Bishoftu, Kebele 03"
+                    style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                  />
+                </label>
+
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <label style={{ flex: 1, fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                    Field Size (hectares)
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={updateForm.fieldSizeHectares}
+                      onChange={e => setUpdateForm(f => ({ ...f, fieldSizeHectares: e.target.value }))}
+                      placeholder="e.g. 5"
+                      style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                    />
+                  </label>
+                  <label style={{ flex: 1, fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                    Farming Purpose
+                    <input
+                      type="text"
+                      value={updateForm.farmingPurpose}
+                      onChange={e => setUpdateForm(f => ({ ...f, farmingPurpose: e.target.value }))}
+                      placeholder="e.g. Ploughing"
+                      style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                    />
+                  </label>
+                </div>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  Special Instructions
+                  <textarea
+                    rows={2}
+                    value={updateForm.specialInstructions}
+                    onChange={e => setUpdateForm(f => ({ ...f, specialInstructions: e.target.value }))}
+                    placeholder="Anything the operator should know"
+                    style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem', fontFamily: 'inherit', resize: 'vertical' }}
+                  />
+                </label>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  Destination Account
+                  <select
+                    value={updateForm.account}
+                    onChange={handleUpdateAccount}
+                    style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem', background: '#fff' }}
+                  >
+                    <option value="">Keep current ({updateOrder.payment_method || 'as before'})</option>
+                    {financeAccounts.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.account_type}{a.bank_provider ? ` · ${a.bank_provider}` : ''}{a.account_number ? ` · ${a.account_number}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  Payment Method
+                  <input
+                    type="text"
+                    value={updateForm.paymentMethod}
+                    onChange={e => setUpdateForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                    placeholder="e.g. Telebirr / CBE Bank"
+                    style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                  />
+                </label>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  Transaction Reference
+                  <input
+                    type="text"
+                    value={updateForm.paymentReference}
+                    onChange={e => setUpdateForm(f => ({ ...f, paymentReference: e.target.value }))}
+                    placeholder="Telebirr / bank transaction number"
+                    style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.55rem 0.7rem', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: '0.85rem' }}
+                  />
+                </label>
+
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                  New Payment Screenshot {updateFile ? '(selected)' : '(optional)'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => setUpdateFile(e.target.files?.[0] || null)}
+                    style={{ display: 'block', width: '100%', marginTop: 5, fontSize: '0.8rem' }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.35rem' }}>
+                <button
+                  onClick={() => { setUpdateOrder(null); setUpdateFile(null); }}
+                  disabled={updateSubmitting}
+                  style={{ padding: '0.6rem 1.3rem', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitUpdate}
+                  disabled={updateSubmitting}
+                  style={{ padding: '0.6rem 1.3rem', borderRadius: 10, border: 'none', background: '#0f766e', color: '#fff', fontWeight: 700, cursor: updateSubmitting ? 'wait' : 'pointer', fontSize: '0.85rem', opacity: updateSubmitting ? 0.7 : 1 }}
+                >
+                  {updateSubmitting ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>
             </div>
