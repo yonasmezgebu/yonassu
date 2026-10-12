@@ -1244,10 +1244,24 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
 
   // 1. sales_invoices sources (retail, pharmacy, printing, car_rental)
   const invSources = ['retail', 'pharmacy', 'printing', 'car_rental'];
+
+  // Exclude dead/cancelled rental orders so cancelled orders never inflate revenue/profit
+  const deadCarRentalOrders = await db('rental_orders')
+    .whereIn('status', ['CANCELLED', 'REJECTED', 'ABANDONED'])
+    .select('id');
+  const deadCarIds = deadCarRentalOrders.map(o => o.id);
+
   const invAgg = await db('sales_invoices')
     .whereIn('source', invSources)
     .andWhereNot('status', 'cancelled')
-    .modify((q) => { applyRange(q, 'created_at'); })
+    .modify((q) => {
+      applyRange(q, 'created_at');
+      if (deadCarIds.length > 0) {
+        q.whereNot(function() {
+          this.where('source', 'car_rental').whereIn('sale_id', deadCarIds);
+        });
+      }
+    })
     .select('source')
     .sum('subtotal as revenue')
     .sum('vat_total as output_vat')
@@ -1273,7 +1287,14 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
     .whereIn('si.source', invSources)
     .andWhereNot('si.status', 'cancelled')
-    .modify((q) => { applyRange(q, 'si.created_at'); })
+    .modify((q) => {
+      applyRange(q, 'si.created_at');
+      if (deadCarIds.length > 0) {
+        q.whereNot(function() {
+          this.where('si.source', 'car_rental').whereIn('si.sale_id', deadCarIds);
+        });
+      }
+    })
     .select('si.source')
     .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cogs'))
     .groupBy('si.source');
@@ -1291,7 +1312,7 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     .modify((q) => { applyRange(q, 'created_at'); })
     .select('total_amount', 'vat_amount');
   sourceResults['agrirent'] = {
-    revenue: fmt2(agriRows.reduce((s, r) => s + parseFloat(r.total_amount || 0), 0)),
+    revenue: fmt2(agriRows.reduce((s, r) => s + (parseFloat(r.total_amount || 0) - parseFloat(r.vat_amount || 0)), 0)),
     outputVat: fmt2(agriRows.reduce((s, r) => s + parseFloat(r.vat_amount || 0), 0)),
     invoiceCount: agriRows.length,
     cogs: 0,
@@ -1428,7 +1449,14 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
 
   const invMonthRows = await db('sales_invoices')
     .andWhereNot('status', 'cancelled')
-    .modify((q) => { applyRange(q, 'created_at'); })
+    .modify((q) => {
+      applyRange(q, 'created_at');
+      if (deadCarIds.length > 0) {
+        q.whereNot(function() {
+          this.where('source', 'car_rental').whereIn('sale_id', deadCarIds);
+        });
+      }
+    })
     .select(db.raw('to_char(created_at, \'YYYY-MM\') as month'))
     .sum('subtotal as revenue').sum('vat_total as output_vat')
     .groupByRaw("to_char(created_at, 'YYYY-MM')")
@@ -1437,7 +1465,14 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const cogsMonthRows = await db('sales_invoice_items as sii')
     .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
     .andWhereNot('si.status', 'cancelled')
-    .modify((q) => { applyRange(q, 'si.created_at'); })
+    .modify((q) => {
+      applyRange(q, 'si.created_at');
+      if (deadCarIds.length > 0) {
+        q.whereNot(function() {
+          this.where('si.source', 'car_rental').whereIn('si.sale_id', deadCarIds);
+        });
+      }
+    })
     .select(db.raw('to_char(si.created_at, \'YYYY-MM\') as month'))
     .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cogs'))
     .groupByRaw("to_char(si.created_at, 'YYYY-MM')");
@@ -1460,7 +1495,14 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
   const topProdRows = await db('sales_invoice_items as sii')
     .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
     .andWhereNot('si.status', 'cancelled')
-    .modify((q) => { applyRange(q, 'si.created_at'); })
+    .modify((q) => {
+      applyRange(q, 'si.created_at');
+      if (deadCarIds.length > 0) {
+        q.whereNot(function() {
+          this.where('si.source', 'car_rental').whereIn('si.sale_id', deadCarIds);
+        });
+      }
+    })
     .select('sii.name', 'si.source')
     .select(db.raw('COALESCE(SUM(sii.qty), 0) as qty'))
     .select(db.raw('COALESCE(SUM(sii.unit_price * sii.qty), 0) as revenue'))
@@ -1475,6 +1517,21 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
     return { name: p.name, source: p.source, qtySold: parseInt(p.qty || 0), revenue: rev, cost: c, profit: fmt2(rev - c), margin: rev > 0 ? fmt2(((rev - c) / rev) * 100) : 0, vat: fmt2(p.vat) };
   });
 
+  /* ── Car Rental Refundable Security Deposits Held ── */
+  const activeRentalOrders = await db('rental_orders as ro')
+    .leftJoin('sales_invoices as si', function() {
+      this.on('si.sale_id', '=', 'ro.id').andOn('si.source', '=', db.raw('?', ['car_rental']));
+    })
+    .whereNotIn('ro.status', ['CANCELLED', 'REJECTED', 'ABANDONED'])
+    .select('ro.security_deposit', 'si.notes');
+
+  const carRentalRefundableDeposit = fmt2(activeRentalOrders.reduce((sum, row) => {
+    let notes = {};
+    try { if (row.notes) notes = JSON.parse(row.notes); } catch (_) {}
+    if (notes.security_deposit_refunded === true) return sum;
+    return sum + parseFloat(row.security_deposit || 0);
+  }, 0));
+
   /* ══════════════════════════════════════════════════════════════════════
      RESPONSE
      ══════════════════════════════════════════════════════════════════════ */
@@ -1488,6 +1545,7 @@ exports.getVatProfitReport = catchAsync(async (req, res) => {
         totalPurchases, hrCosts, netProfit, totalCost, totalProfit: netProfit, margin,
         outputVat: totalOutputVat, inputVat, inputVatFromExpenses, inputVatFromPurchases,
         payableVat, invoiceCount: totalInvoiceCount,
+        carRentalRefundableDeposit,
       },
       bySource,
       byMonth,
