@@ -787,3 +787,83 @@
 .orderBtn:hover {
   background-color: #059669;
 }
+
+.availableBadge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: #10b981;
+  color: #ffffff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.bookedBadge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: #f59e0b;
+  color: #ffffff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.35);
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.maintenanceBadge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: #ef4444;
+  color: #ffffff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.maintenanceBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.maintenanceBtn:hover {
+  background-color: #fecaca;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
