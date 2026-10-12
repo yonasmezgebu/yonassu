@@ -10,6 +10,7 @@ const FINANCE_ROLES = ['Finance Manager', 'Admin', 'CEO'];
 // Public (authenticated customer) — supports screenshot upload
 router.post('/', authenticate, uploads.generic.single('paymentScreenshot'), handleUploadError, ctrl.createOrder);
 router.get('/my-orders', authenticate, ctrl.getMyOrders);
+router.patch('/my-orders/:id', authenticate, uploads.generic.single('paymentScreenshot'), handleUploadError, ctrl.updateMyOrder);
 router.patch('/my-orders/:id/resubmit', authenticate, uploads.generic.single('paymentScreenshot'), handleUploadError, ctrl.resubmitMyOrder);
 router.patch('/my-orders/:id/cancel', authenticate, ctrl.cancelMyOrder);
 router.delete('/my-orders/:id', authenticate, async (req, res) => {
