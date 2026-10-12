@@ -255,9 +255,30 @@ const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetai
 router.get('/live-income', authenticate, async (req, res) => {
   try {
     // 1) Manual income submissions (Pharmacy, AgriRent, Walk-In, etc.)
-    const submissions = await knex('finance_income_submissions')
+    let submissions = await knex('finance_income_submissions')
       .where('status', 'Pending')
       .orderBy('created_at', 'desc');
+
+    // Automatically drop Car Rental submissions whose linked order has since been
+    // cancelled/rejected/abandoned, so cancelled income never sits in Live Income.
+    const cancelledRentalOrders = await knex('rental_orders')
+      .whereIn('status', ['CANCELLED', 'REJECTED', 'ABANDONED'])
+      .select('id', 'order_number');
+    const cancelledRentalIds = new Set(cancelledRentalOrders.map(r => String(r.id)));
+    const cancelledRentalNumbers = new Set(cancelledRentalOrders.map(r => r.order_number));
+    submissions = submissions.filter(s => {
+      if (s.department !== 'Car Rental') return true;
+      let md = null;
+      if (s.manual_details) {
+        try { md = JSON.parse(s.manual_details); } catch (_) {}
+      }
+      if (md && md.order_id != null && cancelledRentalIds.has(String(md.order_id))) return false;
+      const ref = String(s.reference_no || '');
+      for (const num of cancelledRentalNumbers) {
+        if (ref.includes(num)) return false;
+      }
+      return true;
+    });
 
     // 2) Car Rental orders that have payment proof uploaded but not yet approved
     //    These may not have a finance_income_submissions record if they were created
@@ -1564,18 +1585,28 @@ router.get('/book', authenticate, async (req, res) => {
     printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', tender: 'Tender', manual: 'Manual Entry' };
   try {
     // 1. All sales invoices (Retail, Pharmacy, Printing, Car Rental, AgriRent, Manual)
+    const validReceiptSub = knex('sales_receipts as sr2')
+      .select(
+        'sr2.invoice_id',
+        'sr2.id as receipt_id',
+        'sr2.receipt_no',
+        'sr2.amount_paid',
+        'sr2.payment_method'
+      )
+      .whereNotIn('sr2.status', ['cancelled', 'rejected'])
+      .orderBy('sr2.invoice_id')
+      .orderBy('sr2.created_at', 'desc')
+      .distinctOn('sr2.invoice_id')
+      .as('sr');
     const invoices = await knex('sales_invoices as si')
-      .leftJoin('sales_receipts as sr', 'sr.invoice_id', 'si.id')
-      .whereNot('si.status', 'cancelled')
-      .where(function () {
-        this.whereNull('sr.id').orWhereNot('sr.status', 'cancelled');
-      })
+      .leftJoin(validReceiptSub, 'sr.invoice_id', 'si.id')
+      .whereNotIn('si.status', ['cancelled', 'rejected'])
       .orderBy('si.created_at', 'desc')
       .select(
         'si.id', 'si.invoice_no', 'si.source', 'si.sale_type', 'si.sale_id', 'si.customer_name',
         'si.subtotal', 'si.vat_standard', 'si.vat_exempt', 'si.vat_zero_rated',
-        'si.vat_total', 'si.total_amount', 'si.created_at',
-        'sr.id as receipt_id', 'sr.receipt_no', 'sr.amount_paid', 'sr.payment_method'
+        'si.vat_total', 'si.total_amount', 'si.created_at', 'si.notes',
+        'sr.receipt_id', 'sr.receipt_no', 'sr.amount_paid', 'sr.payment_method'
       );
 
     // Aggregate COGS per invoice from items table
@@ -1586,6 +1617,7 @@ router.get('/book', authenticate, async (req, res) => {
       .select(knex.raw('SUM(COALESCE(cost_price, 0) * qty) as cogs_sum'))
       .select(knex.raw('SUM(vat_amount) as vat_sum'))
       .select(knex.raw('SUM(CASE WHEN treatment = \'standard\' THEN (COALESCE(cost_price, 0) * qty * rate) ELSE 0 END) as input_vat_sum'))
+      .select(knex.raw("SUM(CASE WHEN name ILIKE '%security deposit%' THEN subtotal ELSE 0 END) as security_deposit_sum"))
       .groupBy('invoice_id');
     for (const row of itemAgg) {
       cogsByInvoice[row.invoice_id] = {
@@ -1593,6 +1625,7 @@ router.get('/book', authenticate, async (req, res) => {
         cogs: asNum(row.cogs_sum),
         outputVat: asNum(row.vat_sum),
         inputVat: asNum(row.input_vat_sum),
+        securityDeposit: asNum(row.security_deposit_sum),
       };
     }
 
@@ -1620,11 +1653,21 @@ router.get('/book', authenticate, async (req, res) => {
       }
     } catch (_) { /* ignore enrichment errors */ }
 
-    const invoiceRows = invoices.map(inv => {
-      const agg = cogsByInvoice[inv.id] || { selling: 0, cogs: 0, outputVat: 0, inputVat: 0 };
+    let invoiceRows = invoices.map(inv => {
+      const agg = cogsByInvoice[inv.id] || { selling: 0, cogs: 0, outputVat: 0, inputVat: 0, securityDeposit: 0 };
       const totalAmount = asNum(inv.total_amount);
       const amountPaid = asNum(inv.amount_paid);
       const isPaid = !!inv.receipt_id || amountPaid >= totalAmount - 0.01;
+      let securityDepositRefunded = null;
+      let depositRefundedAt = null;
+      let depositRefundedBy = null;
+      if (inv.source === 'car_rental') {
+        let invoiceNotes = {};
+        try { if (inv.notes) invoiceNotes = JSON.parse(inv.notes); } catch (_) {}
+        securityDepositRefunded = invoiceNotes.security_deposit_refunded === true;
+        depositRefundedAt = invoiceNotes.deposit_refunded_at || null;
+        depositRefundedBy = invoiceNotes.deposit_refunded_by || null;
+      }
       return {
         id: inv.id,
         _source_type: 'invoice',
@@ -1634,6 +1677,8 @@ router.get('/book', authenticate, async (req, res) => {
         department_source: SOURCE_LABEL[inv.source] || inv.source,
         invoice_date: inv.created_at,
         due_date: inv.created_at,
+        source: inv.source,
+        sale_id: inv.sale_id,
         selling_price: round2(agg.selling || asNum(inv.subtotal)),
         cogs: round2(agg.cogs),
         gross_profit: round2((agg.selling || asNum(inv.subtotal)) - agg.cogs),
@@ -1650,18 +1695,75 @@ router.get('/book', authenticate, async (req, res) => {
         status: isPaid ? 'Paid' : 'Unpaid',
         payment_method: inv.payment_method || null,
         manual_details: null,
+        security_deposit: inv.source === 'car_rental' ? (agg.securityDeposit || 0) : 0,
+        security_deposit_refunded: securityDepositRefunded,
+        deposit_refunded_at: depositRefundedAt,
+        deposit_refunded_by: depositRefundedBy,
       };
     });
 
+    const isDeadSourceStatus = (s) => {
+      const v = String(s || '').toLowerCase();
+      return v === 'cancelled' || v === 'canceled' || v === 'rejected' || v === 'abandoned' || v === 'void' || v === 'refunded' || v === 'returned';
+    };
+    try {
+      const sourceSaleIds = invoiceRows.reduce((acc, r) => {
+        if (r.source && r.sale_id != null) (acc[r.source] = acc[r.source] || []).push(r.sale_id);
+        return acc;
+      }, {});
+      if (sourceSaleIds.car_rental && sourceSaleIds.car_rental.length) {
+        const orders = await knex('rental_orders')
+          .whereIn('id', sourceSaleIds.car_rental)
+          .select('id', 'status', 'security_deposit');
+        const orderMap = {};
+        for (const o of orders) orderMap[o.id] = o;
+        const liveIds = new Set(orders.filter(o => !isDeadSourceStatus(o.status)).map(o => o.id));
+        invoiceRows = invoiceRows.filter(r => r.source !== 'car_rental' || liveIds.has(r.sale_id));
+        for (const r of invoiceRows) {
+          if (r.source === 'car_rental' && orderMap[r.sale_id]) {
+            if (!r.security_deposit) {
+              r.security_deposit = asNum(orderMap[r.sale_id].security_deposit);
+            }
+          }
+        }
+      }
+      if (sourceSaleIds.agrirent && sourceSaleIds.agrirent.length) {
+        const orders = await knex('agrirent_orders')
+          .whereIn('id', sourceSaleIds.agrirent)
+          .select('id', 'status');
+        const liveIds = new Set(orders.filter(o => !isDeadSourceStatus(o.status)).map(o => o.id));
+        invoiceRows = invoiceRows.filter(r => r.source !== 'agrirent' || liveIds.has(r.sale_id));
+      }
+    } catch (_) { }
+
     // 2. Finance receivables (manual/ledger entries that are NOT already in sales_invoices)
     const invoiceNos = invoiceRows.map(r => r.invoice_no).filter(Boolean);
-    let legacyQuery = knex('finance_receivables').orderBy('invoice_date', 'desc');
+    let legacyQuery = knex('finance_receivables')
+      .whereRaw("LOWER(status) NOT IN ('cancelled', 'rejected', 'abandoned', 'void')");
     if (invoiceNos.length > 0) {
-      legacyQuery = legacyQuery.where(function () {
+      legacyQuery = legacyQuery.andWhere(function () {
         this.whereNull('invoice_no').orWhereNotIn('invoice_no', invoiceNos);
       });
     }
-    const legacyRows = await legacyQuery;
+    let legacyRows = await legacyQuery.orderBy('invoice_date', 'desc');
+
+    const coveredOrders = new Set();
+    try {
+      const covered = invoiceRows.filter(r => (r.source === 'car_rental' || r.source === 'agrirent') && r.sale_id != null);
+      if (covered.length) {
+        const carRows = covered.filter(r => r.source === 'car_rental');
+        const agriRows = covered.filter(r => r.source === 'agrirent');
+        const [rentalOrders, agriOrders] = await Promise.all([
+          carRows.length ? knex('rental_orders').whereIn('id', carRows.map(r => r.sale_id)).select('id', 'order_number') : [],
+          agriRows.length ? knex('agrirent_orders').whereIn('id', agriRows.map(r => r.sale_id)).select('id', 'order_number') : [],
+        ]);
+        rentalOrders.forEach(o => coveredOrders.add(o.order_number));
+        agriOrders.forEach(o => coveredOrders.add(o.order_number));
+      }
+    } catch (_) { }
+    if (coveredOrders.size > 0) {
+      legacyRows = legacyRows.filter(r => !(r.invoice_no && coveredOrders.has(r.invoice_no)));
+    }
 
     // Build a dedup key set from invoiceRows so that legacy rows whose linked sales invoice
     // is already represented in invoiceRows are not shown again with VAT=0.
@@ -1683,6 +1785,18 @@ router.get('/book', authenticate, async (req, res) => {
         const total = asNum(r.total_amount);
         const paid = asNum(r.amount_paid);
         const isPaid = r.status === 'Paid' || paid >= total - 0.01;
+        let securityDepositRefunded = null;
+        let depositRefundedAt = null;
+        let depositRefundedBy = null;
+        let securityDepositAmount = 0;
+        if (r.department_source === 'Car Rental') {
+          let legacyDetails = {};
+          try { if (r.manual_details) legacyDetails = JSON.parse(r.manual_details); } catch (_) {}
+          securityDepositRefunded = legacyDetails.security_deposit_refunded === true;
+          depositRefundedAt = legacyDetails.deposit_refunded_at || null;
+          depositRefundedBy = legacyDetails.deposit_refunded_by || null;
+          securityDepositAmount = asNum(legacyDetails.security_deposit || legacyDetails.securityDeposit || 0);
+        }
         return {
           id: `rec-${r.id}`,
           _source_type: 'receivable',
@@ -1708,6 +1822,10 @@ router.get('/book', authenticate, async (req, res) => {
           status: isPaid ? 'Paid' : (r.status || 'Unpaid'),
           payment_method: null,
           manual_details: r.manual_details,
+          security_deposit: securityDepositAmount,
+          security_deposit_refunded: securityDepositRefunded,
+          deposit_refunded_at: depositRefundedAt,
+          deposit_refunded_by: depositRefundedBy,
         };
       });
 
@@ -1734,6 +1852,19 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
       const receipt = await knex('sales_receipts')
         .where('invoice_id', id).andWhereNot('status', 'cancelled').first();
       const items = await knex('sales_invoice_items').where('invoice_id', id);
+
+      let invoiceNotes = {};
+      try { if (inv.notes) invoiceNotes = JSON.parse(inv.notes); } catch (_) {}
+      const SOURCE_LABEL = { retail: 'Retail & POS', pharmacy: 'Pharmacy',
+        printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', tender: 'Tender', manual: 'Manual Entry' };
+      let manualDetailsObj = receipt ? {
+        paymentMethod: receipt.payment_method,
+        receivedFrom: inv.customer_name || 'Walk-in Customer',
+        amount: receipt ? asNum(receipt.amount_paid) : 0,
+        reference: receipt.payment_reference,
+        crvNumber: receipt.receipt_no,
+        department: SOURCE_LABEL[inv.source] || inv.source,
+      } : null;
 
       let totalCogs = 0, totalSelling = 0, outputVat = 0;
       const enrichedItems = items.map(item => {
@@ -1809,10 +1940,56 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
             .first();
           if (row) { customerPhone = row.customer_phone; customerEmail = row.customer_email; salesManagerName = row.manager_name || salesManagerName; }
         } else if (inv.source === 'car_rental') {
-          const row = await knex('car_rental_orders as cr')
-            .leftJoin('users as u', 'cr.user_id', 'u.id')
-            .where('cr.id', saleId)
-            .select('cr.customer_phone', 'cr.customer_email', 'u.full_name as manager_name')
+          try {
+            const ro = await knex('rental_orders as cr')
+              .leftJoin('users as u', 'cr.customer_id', 'u.id')
+              .leftJoin('cars as c', 'cr.car_id', 'c.id')
+              .where('cr.id', saleId)
+              .select('cr.*', 'c.name as car_name', 'u.full_name as manager_name')
+              .first();
+            if (ro) {
+              customerPhone = ro.customer_phone || customerPhone;
+              customerEmail = ro.customer_email || customerEmail;
+              salesManagerName = ro.manager_name || salesManagerName;
+              if (ro.customer_name && !inv.customer_name) inv.customer_name = ro.customer_name;
+              
+              const carDeposit = ro.security_deposit != null ? asNum(ro.security_deposit) : 5000;
+              const roVehicleName = ro.car_name ? `${ro.car_name} ${ro.car_model || ''}`.trim() : 'Rental Vehicle';
+              const roDates = `${ro.pickup_date ? new Date(ro.pickup_date).toLocaleDateString() : '—'} → ${ro.return_date ? new Date(ro.return_date).toLocaleDateString() : '—'}`;
+
+              manualDetailsObj = {
+                ...(manualDetailsObj || {}),
+                paymentMethod: ro.payment_method || (receipt ? receipt.payment_method : 'Cash'),
+                receivedFrom: ro.customer_name || inv.customer_name || 'Walk-in Customer',
+                amount: ro.total_amount ? asNum(ro.total_amount) : totalAmount,
+                paymentReference: ro.payment_reference || (receipt ? receipt.payment_reference : null),
+                proofImagePath: ro.payment_proof_url || null,
+                department: 'Car Rental',
+                security_deposit_refunded: invoiceNotes.security_deposit_refunded || false,
+                deposit_refunded_at: invoiceNotes.deposit_refunded_at || null,
+                deposit_refunded_by: invoiceNotes.deposit_refunded_by || null,
+                contractDetails: {
+                  carName: roVehicleName,
+                  driverName: ro.driver_name || '—',
+                  driverLicense: ro.driver_license || '—',
+                  dates: roDates,
+                  totalDays: ro.total_days || 1,
+                  dailyRate: ro.daily_rate ? asNum(ro.daily_rate) : 0,
+                  rentalAmount: ro.rental_amount ? asNum(ro.rental_amount) : 0,
+                  securityDeposit: carDeposit,
+                  extensionFee: asNum(ro.extension_fee),
+                  damageFee: asNum(ro.damage_fee),
+                  lateFee: asNum(ro.late_fee),
+                  specialRequests: ro.special_requests || null
+                }
+              };
+            }
+          } catch (_) { /* ignore enrichment errors */ }
+        } else if (inv.source === 'agrirent') {
+          const row = await knex('agrirent_orders as ao')
+            .leftJoin('users as u', 'ao.customer_id', 'u.id')
+            .where('ao.id', saleId)
+            .select('ao.customer_phone', 'ao.customer_email', 'u.full_name as manager_name')
             .first();
           if (row) { customerPhone = row.customer_phone; customerEmail = row.customer_email; salesManagerName = row.manager_name || salesManagerName; }
         } else if (inv.source === 'tender') {
@@ -1848,22 +2025,8 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
       const totalAmount = asNum(inv.total_amount);
       const amountPaid = receipt ? asNum(receipt.amount_paid) : 0;
       const isPaid = !!receipt;
-      const SOURCE_LABEL = { retail: 'Retail & POS', pharmacy: 'Pharmacy',
-        printing: 'Printing', car_rental: 'Car Rental', agrirent: 'AgriRent', tender: 'Tender', manual: 'Manual Entry' };
-
-      // Read cpo_refunded flag from sales_invoices.notes
-      let invoiceNotes = {};
-      try { if (inv.notes) invoiceNotes = JSON.parse(inv.notes); } catch (_) {}
 
       // For tender, build rich manual_details with full bidder + tender info
-      let manualDetailsObj = receipt ? {
-        paymentMethod: receipt.payment_method,
-        receivedFrom: inv.customer_name || 'Walk-in Customer',
-        amount: amountPaid, reference: receipt.payment_reference,
-        crvNumber: receipt.receipt_no,
-        department: SOURCE_LABEL[inv.source] || inv.source,
-      } : null;
-
       if (inv.source === 'tender' && manualDetailsObj) {
         // Enrich with full tender/bidder details from finance_income_submissions
         try {
@@ -1901,6 +2064,7 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
         sales_manager_name: salesManagerName,
         invoice_no: inv.invoice_no, invoice_date: inv.created_at, due_date: inv.created_at,
         department_source: SOURCE_LABEL[inv.source] || inv.source,
+        receipt_no: receipt ? receipt.receipt_no : null,
         total_amount: totalAmount, amount_paid: amountPaid,
         outstanding_balance: isPaid ? 0 : round2(totalAmount - amountPaid),
         status: isPaid ? 'Paid' : 'Unpaid',
@@ -1911,11 +2075,14 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
         vat_zero_rated: asNum(inv.vat_zero_rated), vat_total: asNum(inv.vat_total),
         manual_details: manualDetailsObj ? JSON.stringify(manualDetailsObj) : null,
         cpo_refunded: invoiceNotes.cpo_refunded || false,
+        security_deposit_refunded: invoiceNotes.security_deposit_refunded || false,
+        deposit_refunded_at: invoiceNotes.deposit_refunded_at || null,
+        deposit_refunded_by: invoiceNotes.deposit_refunded_by || null,
       };
 
       return res.json({ success: true, data: {
         receivable,
-        transactions: [{ id: inv.id, receipt_no: receipt ? receipt.receipt_no : inv.invoice_no,
+        transactions: [{ id: inv.id, receipt_no: receipt ? receipt.receipt_no : null,
           sale_type: 'SALE', total_amount: totalAmount,
           payment_method: receipt ? receipt.payment_method : 'Pending',
           worker_name: salesManagerName,
@@ -1956,6 +2123,10 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
         transactions.push({ ...sale, items });
       }
     }
+
+    let recMd = {};
+    try { if (receivable.manual_details) recMd = JSON.parse(receivable.manual_details); } catch (_) {}
+
     // Map legacy receivable to standard format expected by UI
     const mappedReceivable = {
       ...receivable,
@@ -1979,7 +2150,10 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
       vat_exempt: 0,
       vat_zero_rated: 0,
       vat_total: 0,
-      manual_details: receivable.manual_details
+      manual_details: receivable.manual_details,
+      security_deposit_refunded: recMd.security_deposit_refunded || false,
+      deposit_refunded_at: recMd.deposit_refunded_at || null,
+      deposit_refunded_by: recMd.deposit_refunded_by || null,
     };
 
     res.json({ success: true, data: {
@@ -1992,36 +2166,143 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
   }
 });
 
-// ── PATCH /book/:id/mark-refunded — mark CPO tender deposit as refunded ───
+// ── PATCH /book/:id/mark-refunded — mark CPO tender deposit or Car Rental security deposit as refunded ───
 router.patch('/book/:id/mark-refunded', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { refunded } = req.body; // boolean: true = mark refunded, false = unmark
-
-    const inv = await knex('sales_invoices').where('id', id).first();
-    if (!inv) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    if (inv.source !== 'tender') return res.status(400).json({ success: false, message: 'Only tender CPO deposits can be marked as refunded' });
-
-    let notes = {};
-    try { if (inv.notes) notes = JSON.parse(inv.notes); } catch (_) {}
+    const { refunded, type } = req.body; // boolean: true = mark refunded, false = unmark
 
     const isRefunded = refunded !== false; // default true if not explicitly false
-    notes.cpo_refunded = isRefunded;
-    if (isRefunded) {
-      notes.refunded_at = new Date().toISOString();
-      notes.refunded_by = (req.user && (req.user.fullName || req.user.full_name)) || 'Finance Officer';
-    } else {
-      delete notes.refunded_at;
-      delete notes.refunded_by;
+    const officerName = (req.user && (req.user.fullName || req.user.full_name)) || 'Finance Officer';
+    const nowIso = new Date().toISOString();
+
+    let inv = null;
+    if (!String(id).startsWith('rec-')) {
+      inv = await knex('sales_invoices').where('id', id).first();
     }
 
-    await knex('sales_invoices').where('id', id).update({ notes: JSON.stringify(notes), updated_at: knex.fn.now() });
+    if (inv) {
+      if (inv.source !== 'tender' && inv.source !== 'car_rental') {
+        return res.status(400).json({ success: false, message: 'Only tender CPO deposits or Car Rental security deposits can be marked as refunded' });
+      }
 
-    return res.json({ success: true, message: isRefunded ? 'CPO marked as refunded' : 'CPO refund mark removed', cpo_refunded: isRefunded });
+      let notes = {};
+      try { if (inv.notes) notes = JSON.parse(inv.notes); } catch (_) {}
+
+      if (inv.source === 'tender') {
+        notes.cpo_refunded = isRefunded;
+        if (isRefunded) {
+          notes.refunded_at = nowIso;
+          notes.refunded_by = officerName;
+        } else {
+          delete notes.refunded_at;
+          delete notes.refunded_by;
+        }
+
+        await knex('sales_invoices').where('id', id).update({ notes: JSON.stringify(notes), updated_at: knex.fn.now() });
+
+        return res.json({ success: true, message: isRefunded ? 'CPO marked as refunded' : 'CPO refund mark removed', cpo_refunded: isRefunded });
+      }
+
+      if (inv.source === 'car_rental') {
+        notes.security_deposit_refunded = isRefunded;
+        if (isRefunded) {
+          notes.deposit_refunded_at = nowIso;
+          notes.deposit_refunded_by = officerName;
+        } else {
+          delete notes.deposit_refunded_at;
+          delete notes.deposit_refunded_by;
+        }
+
+        await knex('sales_invoices').where('id', id).update({ notes: JSON.stringify(notes), updated_at: knex.fn.now() });
+
+        // Sync with rental_orders if sale_id is set
+        if (inv.sale_id) {
+          try {
+            await knex('rental_orders').where('id', inv.sale_id).update({
+              finance_notes: isRefunded ? `Security deposit refunded by ${officerName} on ${nowIso}` : 'Security deposit refund pending'
+            });
+          } catch (_) {}
+        }
+
+        // Sync with mirrored finance_receivables if exists
+        if (inv.invoice_no) {
+          try {
+            const frRow = await knex('finance_receivables').where('invoice_no', inv.invoice_no).first();
+            if (frRow && frRow.manual_details) {
+              let fmd = JSON.parse(frRow.manual_details);
+              fmd.security_deposit_refunded = isRefunded;
+              if (isRefunded) { fmd.deposit_refunded_at = nowIso; fmd.deposit_refunded_by = officerName; }
+              else { delete fmd.deposit_refunded_at; delete fmd.deposit_refunded_by; }
+              await knex('finance_receivables').where('id', frRow.id).update({ manual_details: JSON.stringify(fmd) });
+            }
+          } catch (_) {}
+        }
+
+        return res.json({
+          success: true,
+          message: isRefunded ? 'Car Rental security deposit marked as refunded' : 'Car Rental security deposit refund mark removed',
+          security_deposit_refunded: isRefunded,
+          deposit_refunded_at: isRefunded ? nowIso : null,
+          deposit_refunded_by: isRefunded ? officerName : null
+        });
+      }
+    }
+
+    // Finance receivable (manual/ledger entry)
+    let legacyId = id;
+    if (String(id).startsWith('rec-')) {
+      legacyId = String(id).replace('rec-', '');
+    }
+    const receivable = await knex('finance_receivables').where('id', legacyId).first();
+    if (!receivable) {
+      return res.status(404).json({ success: false, message: 'Record not found' });
+    }
+
+    if (receivable.department_source !== 'Car Rental') {
+      return res.status(400).json({ success: false, message: 'Only Car Rental security deposits can be marked as refunded for manual records' });
+    }
+
+    let md = {};
+    try { if (receivable.manual_details) md = JSON.parse(receivable.manual_details); } catch (_) {}
+    md.security_deposit_refunded = isRefunded;
+    if (isRefunded) {
+      md.deposit_refunded_at = nowIso;
+      md.deposit_refunded_by = officerName;
+    } else {
+      delete md.deposit_refunded_at;
+      delete md.deposit_refunded_by;
+    }
+
+    await knex('finance_receivables').where('id', legacyId).update({
+      manual_details: JSON.stringify(md),
+      updated_at: knex.fn.now()
+    });
+
+    // If order_id or invoice_no matches rental_orders, sync there as well
+    if (md.order_id || receivable.invoice_no) {
+      try {
+        const query = knex('rental_orders');
+        if (md.order_id) query.where('id', md.order_id);
+        else query.where('order_number', receivable.invoice_no);
+        await query.update({
+          finance_notes: isRefunded ? `Security deposit refunded by ${officerName} on ${nowIso}` : 'Security deposit refund pending'
+        });
+      } catch (_) {}
+    }
+
+    return res.json({
+      success: true,
+      message: isRefunded ? 'Car Rental security deposit marked as refunded' : 'Car Rental security deposit refund mark removed',
+      security_deposit_refunded: isRefunded,
+      deposit_refunded_at: isRefunded ? nowIso : null,
+      deposit_refunded_by: isRefunded ? officerName : null
+    });
   } catch (error) {
-    console.error('Error marking CPO refunded:', error);
+    console.error('Error marking refund status:', error);
     res.status(500).json({ success: false, message: 'Failed to update refund status' });
   }
 });
 
 module.exports = router;
+
