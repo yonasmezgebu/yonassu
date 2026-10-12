@@ -312,6 +312,7 @@ const AgriRentOrders = () => {
   const [spinning, setSpinning] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { variant, id, orderNumber }
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [waitlist, setWaitlist] = useState([]);
   const [waitlistCount, setWaitlistCount] = useState(0);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
@@ -328,7 +329,7 @@ const AgriRentOrders = () => {
     if (!action) return;
 
     const ids = action.variant.startsWith('bulk')
-      ? terminalOrders.map(o => o.id)
+      ? (Array.isArray(action.ids) && action.ids.length ? action.ids : terminalOrders.map(o => o.id))
       : [action.id];
 
     try {
@@ -342,6 +343,33 @@ const AgriRentOrders = () => {
       load(filter);
     } catch (err) {
       toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
+    }
+  };
+
+  // Gather every completed order (across pages) and move them to history at once.
+  const handleMoveCompletedToHistory = async () => {
+    setBulkBusy(true);
+    try {
+      const all = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const res = await axios.get('/agrirent-orders', { params: { status: 'completed', page, limit: 200 } });
+        all.push(...(res.data?.orders || []));
+        totalPages = res.data?.pagination?.totalPages || 1;
+        page += 1;
+      } while (page <= totalPages);
+
+      const ids = all.filter(o => o.status === 'completed').map(o => o.id);
+      if (!ids.length) {
+        toast('No completed orders to move to history.', 'info');
+        return;
+      }
+      setConfirmAction({ variant: 'bulkArchive', ids, count: ids.length });
+    } catch (err) {
+      toast(err?.response?.data?.message || 'Failed to load completed orders.', 'error');
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -570,6 +598,14 @@ const AgriRentOrders = () => {
             title="Refresh"
           >
             <SegmentedSpinner size={17} />
+          </button>
+          <button
+            style={{ ...S.btnRefresh, width: 'auto', padding: '0 16px', gap: 6, opacity: bulkBusy ? 0.6 : 1, cursor: bulkBusy ? 'wait' : 'pointer' }}
+            onClick={handleMoveCompletedToHistory}
+            disabled={bulkBusy}
+            title="Move all completed orders to history"
+          >
+            <Archive size={15} /> Move Completed to History
           </button>
           <button
             style={{ ...S.btnRefresh, width: 'auto', padding: '0 16px', gap: 6 }}
@@ -970,6 +1006,34 @@ const AgriRentOrders = () => {
                 {/* Actions */}
                 <td style={{ ...S.td, textAlign: 'center' }}>
                   <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
+                    {TERMINAL_STATUSES.includes(order.status) && (
+                      <>
+                        <button
+                          onClick={() => setConfirmAction({ variant: 'archive', id: order.id, orderNumber: order.order_number })}
+                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 16px', background: '#6D4C41', color: '#fff', border: '1px solid #4E342E', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 3px 0 rgba(78,52,46,0.5)', transition: 'all 0.12s', whiteSpace: 'nowrap' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#795548'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#6D4C41'; }}
+                          onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
+                          onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(78,52,46,0.5)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                          title="Move completed / cancelled order to history"
+                        >
+                          <Archive size={12} /> To History
+                        </button>
+                        {!order.is_manual && (
+                          <button
+                            onClick={() => setConfirmAction({ variant: 'delete', id: order.id, orderNumber: order.order_number })}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 16px', background: '#C62828', color: '#fff', border: '1px solid #8E0000', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 3px 0 rgba(142,0,0,0.5)', transition: 'all 0.12s', whiteSpace: 'nowrap' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#D32F2F'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#C62828'; }}
+                            onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
+                            onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(142,0,0,0.5)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                            title="Delete completed / cancelled order"
+                          >
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        )}
+                      </>
+                    )}
                     <button
                       onClick={() => setSelectedOrderId(order.id)}
                       style={{
@@ -1004,32 +1068,6 @@ const AgriRentOrders = () => {
                           🚜 Release
                         </button>
                       )}
-                    {TERMINAL_STATUSES.includes(order.status) && !order.is_manual && (
-                      <>
-                        <button
-                          onClick={() => setConfirmAction({ variant: 'archive', id: order.id, orderNumber: order.order_number })}
-                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 16px', background: '#6D4C41', color: '#fff', border: '1px solid #4E342E', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 3px 0 rgba(78,52,46,0.5)', transition: 'all 0.12s', whiteSpace: 'nowrap' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#795548'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = '#6D4C41'; }}
-                          onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
-                          onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(78,52,46,0.5)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                          title="Move completed / cancelled order to history"
-                        >
-                          <Archive size={12} /> To History
-                        </button>
-                        <button
-                          onClick={() => setConfirmAction({ variant: 'delete', id: order.id, orderNumber: order.order_number })}
-                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 16px', background: '#C62828', color: '#fff', border: '1px solid #8E0000', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 3px 0 rgba(142,0,0,0.5)', transition: 'all 0.12s', whiteSpace: 'nowrap' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#D32F2F'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = '#C62828'; }}
-                          onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
-                          onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(142,0,0,0.5)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                          title="Delete completed / cancelled order"
-                        >
-                          <Trash2 size={12} /> Delete
-                        </button>
-                      </>
-                    )}
                   </div>
                 </td>
               </tr>
@@ -1131,7 +1169,7 @@ const AgriRentOrders = () => {
             </div>
             <p style={{ fontSize: 14, color: C.textSec, lineHeight: 1.55, marginBottom: 4 }}>
               {confirmAction.variant.startsWith('bulk') ? (
-                <>This will affect <strong style={{ color: C.darkGray }}>{terminalOrders.length} order(s)</strong> that are completed or cancelled.</>
+                <>This will affect <strong style={{ color: C.darkGray }}>{confirmAction.count ?? terminalOrders.length} order(s)</strong>{confirmAction.count != null ? ' that are completed.' : ' that are completed or cancelled.'}</>
               ) : (
                 <>Order <strong style={{ color: C.darkGray }}>{confirmAction.orderNumber || `#${confirmAction.id}`}</strong> is completed or cancelled.</>
               )}
