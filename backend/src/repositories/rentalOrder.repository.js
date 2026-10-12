@@ -22,8 +22,15 @@ class RentalOrderRepository extends BaseRepository {
         )
         .whereNull('ro.deleted_at')
         .modify((q) => {
-          if (archived) q.whereNotNull('ro.archived_at');
-          else if (!includeArchived) q.whereNull('ro.archived_at');
+          if (archived) {
+            q.where(function() {
+              this.whereNotNull('ro.archived_at')
+                .orWhereIn('ro.status', ['COMPLETED', 'CANCELLED', 'REJECTED']);
+            });
+          } else if (!includeArchived) {
+            q.whereNull('ro.archived_at')
+              .whereNotIn('ro.status', ['COMPLETED', 'CANCELLED', 'REJECTED']);
+          }
         })
         .orderBy('ro.created_at', 'desc');
 
