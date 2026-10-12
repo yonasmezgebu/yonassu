@@ -27,7 +27,7 @@ const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
   const fileRef = useRef(null);
-  const securityDeposit = 5000;
+  const securityDeposit = parseFloat(car?.securityDeposit) || 5000;
 
   useEffect(() => {
     if (authService.isAuthenticated()) setCurrentUser(authService.getCurrentUser());
@@ -372,7 +372,8 @@ ${successData.orderNumber?`<p style="text-align:center;font-family:monospace;let
           --ram-bg: 0 0% 100%;
           --ram-fg: 222.2 84% 4.9%;
           --ram-primary: 142.1 76.2% 36.3%;
-          --ram-primary-fg: 355.7 100% 97.3%;
+          --ram-primary-dark: 142.1 76.2% 30%;
+          --ram-primary-fg: 0 0% 100%;
           --ram-muted: 210 40% 96.1%;
           --ram-muted-fg: 215.4 16.3% 46.9%;
           --ram-border: 214.3 31.8% 91.4%;
@@ -674,23 +675,34 @@ ${successData.orderNumber?`<p style="text-align:center;font-family:monospace;let
           justify-content: center;
           gap: 0.5rem;
           padding: 0.75rem 1.5rem;
-          background-color: hsl(var(--ram-primary));
-          color: hsl(var(--ram-primary-fg));
+          background-color: #16a34a;
+          color: #ffffff !important;
           font-weight: 600;
           font-size: 1rem;
           border-radius: var(--ram-radius-sm);
           border: none;
           cursor: pointer;
-          transition: background-color 0.2s ease, transform 0.1s ease;
+          transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
           font-family: inherit;
+          box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
         }
         .ram-btn-primary:hover:not(:disabled) {
-          background-color: hsl(var(--ram-primary-dark));
+          background-color: #15803d !important;
+          color: #ffffff !important;
           transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
+        }
+        .ram-btn-primary:active:not(:disabled) {
+          background-color: #166534 !important;
+          color: #ffffff !important;
+          transform: translateY(0);
         }
         .ram-btn-primary:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+          background-color: #16a34a !important;
+          color: #ffffff !important;
+          box-shadow: none;
         }
 
         .ram-btn-secondary {
