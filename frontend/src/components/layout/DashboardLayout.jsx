@@ -841,6 +841,11 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const [navSuggestions, setNavSuggestions] = useState([]);
   const [showNavSuggestions, setShowNavSuggestions] = useState(false);
   const [navSelectedIndex, setNavSelectedIndex] = useState(0);
+  // Customer topbar nav dropdowns (Services & Marketplace)
+  const [custServicesOpen, setCustServicesOpen] = useState(false);
+  const [custMarketplaceOpen, setCustMarketplaceOpen] = useState(false);
+  const custServicesRef = useRef(null);
+  const custMarketplaceRef = useRef(null);
   const chatUnreadRef = useRef(0);
   const profileRef = useRef(null);
   const photoInputRef = useRef(null);
@@ -891,6 +896,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   };
 
   const isCeoRoute = location.pathname.startsWith('/ceo');
+  const isCustomerRoute = location.pathname.startsWith('/customer');
   const isPharmacyRoute = location.pathname.startsWith('/pharmacy') && !location.pathname.startsWith('/pharmacy-worker') && !location.pathname.startsWith('/pharmacy/store');
   const isPurchaseRoute = location.pathname.startsWith('/purchase');
   const isFinanceRoute = location.pathname.startsWith('/finance');
@@ -2424,9 +2430,89 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
             )}
           </div>
           
-          <div className="dash-topbar-center" style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, maxWidth: '600px', margin: '0 2rem' }}>
-            <div className="dash-search" style={{ flex: 1, position: 'relative' }}>
-              <span className="dash-search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#047857', display: 'flex' }}>
+          <div className="dash-topbar-center" style={{ display: 'flex', alignItems: 'center', gap: isCustomerRoute ? '10px' : '16px', flex: 1, maxWidth: isCustomerRoute ? '820px' : '600px', margin: '0 2rem' }}>
+            {/* ── Customer-only: Services & Marketplace links ── */}
+            {isCustomerRoute && (
+              <nav className="dash-cust-nav">
+                {/* Services dropdown */}
+                <div className="dash-cust-dropdown-wrap" ref={custServicesRef}>
+                  <button
+                    className={`dash-cust-link-btn${custServicesOpen ? ' open' : ''}${location.pathname.startsWith('/services') || location.pathname === '/fleet-gallery' ? ' active' : ''}`}
+                    onMouseEnter={() => { setCustServicesOpen(true); setCustMarketplaceOpen(false); }}
+                    onMouseLeave={() => setCustServicesOpen(false)}
+                    onClick={() => { setCustServicesOpen(p => !p); setCustMarketplaceOpen(false); }}
+                    aria-haspopup="true"
+                    aria-expanded={custServicesOpen}
+                  >
+                    <Layers size={13} />
+                    Services
+                    <ChevronDown size={12} className="chevron" />
+                  </button>
+                  {custServicesOpen && (
+                    <div
+                      className="dash-cust-menu"
+                      onMouseEnter={() => setCustServicesOpen(true)}
+                      onMouseLeave={() => setCustServicesOpen(false)}
+                    >
+                      <Link to="/services/printing" className="dash-cust-menu-item" onClick={() => setCustServicesOpen(false)}>
+                        <Printer size={13} /> Commercial Printing
+                      </Link>
+                      <Link to="/services/pharmacy" className="dash-cust-menu-item" onClick={() => setCustServicesOpen(false)}>
+                        <Pill size={13} /> Pharmacy &amp; Health
+                      </Link>
+                      <Link to="/fleet-gallery" className="dash-cust-menu-item" onClick={() => setCustServicesOpen(false)}>
+                        <Car size={13} /> Car Rental
+                      </Link>
+                      <Link to="/services/farming" className="dash-cust-menu-item" onClick={() => setCustServicesOpen(false)}>
+                        <Sprout size={13} /> AgriRent
+                      </Link>
+                      <Link to="/services/retail" className="dash-cust-menu-item" onClick={() => setCustServicesOpen(false)}>
+                        <Package size={13} /> Retail Store
+                      </Link>
+                      <div className="dash-cust-menu-divider" />
+                      <Link to="/services" className="dash-cust-menu-item bold" onClick={() => setCustServicesOpen(false)}>
+                        All Services →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+                {/* Marketplace dropdown */}
+                <div className="dash-cust-dropdown-wrap" ref={custMarketplaceRef}>
+                  <button
+                    className={`dash-cust-link-btn${custMarketplaceOpen ? ' open' : ''}${location.pathname.startsWith('/tenders') ? ' active' : ''}`}
+                    onMouseEnter={() => { setCustMarketplaceOpen(true); setCustServicesOpen(false); }}
+                    onMouseLeave={() => setCustMarketplaceOpen(false)}
+                    onClick={() => { setCustMarketplaceOpen(p => !p); setCustServicesOpen(false); }}
+                    aria-haspopup="true"
+                    aria-expanded={custMarketplaceOpen}
+                  >
+                    <ShoppingCart size={13} />
+                    Marketplace
+                    <ChevronDown size={12} className="chevron" />
+                  </button>
+                  {custMarketplaceOpen && (
+                    <div
+                      className="dash-cust-menu"
+                      onMouseEnter={() => setCustMarketplaceOpen(true)}
+                      onMouseLeave={() => setCustMarketplaceOpen(false)}
+                    >
+                      <Link to="/tenders/smart-bids" className="dash-cust-menu-item" onClick={() => setCustMarketplaceOpen(false)}>
+                        <TrendingUp size={13} /> Compete &amp; Sell
+                      </Link>
+                      <Link to="/tenders/buy" className="dash-cust-menu-item" onClick={() => setCustMarketplaceOpen(false)}>
+                        <Receipt size={13} /> Compete &amp; Buy
+                      </Link>
+                      <div className="dash-cust-menu-divider" />
+                      <Link to="/tenders" className="dash-cust-menu-item bold" onClick={() => setCustMarketplaceOpen(false)}>
+                        Browse All Tenders →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </nav>
+            )}
+            <div className="dash-search" style={{ flex: isCustomerRoute ? '0 1 230px' : 1, position: 'relative' }}>
+              <span className="dash-search-icon" style={{ position: 'absolute', left: isCustomerRoute ? '12px' : '16px', top: '50%', transform: 'translateY(-50%)', color: '#047857', display: 'flex' }}>
                 {_apiLoading ? (
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ animation: 'dash-search-spin 0.8s linear infinite' }}>
                     <circle cx="9" cy="9" r="7" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeDasharray="35 10" />
@@ -2600,11 +2686,11 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                 }}
                 style={{
                   width: '100%',
-                  padding: '12px 20px 12px 46px',
+                  padding: isCustomerRoute ? '8px 14px 8px 36px' : '12px 20px 12px 46px',
                   borderRadius: '30px',
                   border: '1px solid #e2e8f0',
                   background: '#f8fafc',
-                  fontSize: '0.95rem',
+                  fontSize: isCustomerRoute ? '0.85rem' : '0.95rem',
                   color: '#1e293b',
                   outline: 'none',
                   transition: 'all 0.25s ease',
