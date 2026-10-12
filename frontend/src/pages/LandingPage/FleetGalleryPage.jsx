@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight,
   Shield, FileText, Info, Phone, Mail, CreditCard, ChevronDown, ChevronUp, 
   MapPin, Key, Calendar, FileBadge, Wallet, HelpCircle, Bell,
-  Car, Image as ImageIcon, Building2, RefreshCw, ShieldAlert, LogOut
+  Car, Image as ImageIcon, Building2, RefreshCw, ShieldAlert, LogOut, Wrench
 } from 'lucide-react';
 import { PublicNav } from './ServicesPage';
 import RentalAgreementModal from './RentalAgreementModal';
@@ -22,6 +22,59 @@ const getImageUrl = (path) => {
   const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
   const safePath = path.startsWith('/') ? path : `/${path}`;
   return `${baseUrl}${safePath}`;
+};
+
+const getCarStatus = (availability) => {
+  const av = (availability || '').trim().toLowerCase();
+  if (av === 'maintenance' || av === 'in maintenance') return 'Maintenance';
+  if (av === 'booked' || av === 'rented' || av === 'out') return 'Booked';
+  return 'Available';
+};
+
+const renderCarStatusBadge = (availability) => {
+  const status = getCarStatus(availability);
+  if (status === 'Available') {
+    return (
+      <span className={styles.availableBadge}>
+        <CheckCircle2 size={12} strokeWidth={2.5} /> Available
+      </span>
+    );
+  }
+  if (status === 'Booked') {
+    return (
+      <span className={styles.bookedBadge}>
+        <Clock size={12} strokeWidth={2.5} /> Booked
+      </span>
+    );
+  }
+  return (
+    <span className={styles.maintenanceBadge}>
+      <Wrench size={12} strokeWidth={2.5} /> Maintenance
+    </span>
+  );
+};
+
+const renderModalStatusBadge = (availability) => {
+  const status = getCarStatus(availability);
+  if (status === 'Available') {
+    return (
+      <span style={{ background: '#DCFCE7', color: '#16A34A', padding: '2px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <CheckCircle2 size={12} strokeWidth={2.5} /> Available
+      </span>
+    );
+  }
+  if (status === 'Booked') {
+    return (
+      <span style={{ background: '#FEF3C7', color: '#B45309', padding: '2px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <Clock size={12} strokeWidth={2.5} /> Booked
+      </span>
+    );
+  }
+  return (
+    <span style={{ background: '#FEE2E2', color: '#B91C1C', padding: '2px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <Wrench size={12} strokeWidth={2.5} /> Maintenance
+    </span>
+  );
 };
 
 const FleetGalleryPage = () => {
@@ -304,72 +357,77 @@ const FleetGalleryPage = () => {
       ) : (
         <div className={styles.galleryContainer}>
           <div className={styles.productsGrid}>
-            {cars.map((car) => (
-              <div key={car.id} className={styles.productCard}>
-                {/* Image */}
-                <div className={styles.productImageWrapper}>
-                  {car.image1 ? (
-                    <img src={getImageUrl(car.image1)} alt={car.name} className={styles.productImage} />
-                  ) : (
-                    <div className={styles.productPlaceholder}><ImageIcon size={60} /></div>
-                  )}
-                  {car.availability !== 'Available' && (
-                    <span className={styles.outOfStockBadge}>{car.availability}</span>
-                  )}
-                </div>
-
-                {/* Card Body */}
-                <div className={styles.productInfo} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {/* Name */}
-                  <h3 className={styles.productName} style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 17, letterSpacing: '0.01em', lineHeight: 1.3, marginBottom: 8 }}>
-                    {car.name}
-                  </h3>
-
-                  {/* Spec row */}
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-                    {car.fuelType && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5D4037', fontStyle: 'italic', letterSpacing: '0.02em' }}>
-                        <Fuel size={11} /> {car.fuelType}
-                      </span>
-                    )}
-                    {car.transmission && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5D4037', fontStyle: 'italic', letterSpacing: '0.02em' }}>
-                        <Settings2 size={11} /> {car.transmission}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Price and Category Row */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
-                    <div>
-                      <div className={styles.cardPrice} style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 800, letterSpacing: '0.03em' }}>
-                        ETB {Number(car.dailyRate).toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: 10, color: '#6D4C41', fontStyle: 'italic', letterSpacing: '0.04em', marginTop: 2 }}>per day</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F5F5', padding: '6px 10px', borderRadius: 8 }}>
-                      <Car size={12} color="#2E8B57" />
-                      <span style={{ fontSize: 10, color: '#2E8B57', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                        {car.carType || 'Car'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <div className={styles.cardActions} style={{ marginTop: 'auto' }}>
-                    {car.availability === 'Available' ? (
-                      <button className={styles.orderBtn} onClick={() => handleReserve(car)}>
-                        Reserve Machine
-                      </button>
+            {cars.map((car) => {
+              const carStatus = getCarStatus(car.availability);
+              return (
+                <div key={car.id} className={styles.productCard}>
+                  {/* Image */}
+                  <div className={styles.productImageWrapper}>
+                    {car.image1 ? (
+                      <img src={getImageUrl(car.image1)} alt={car.name} className={styles.productImage} />
                     ) : (
-                      <button className={styles.notifyBtn} onClick={() => handleNotify(car)} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                        <Bell size={18} /> Contact When Available
-                      </button>
+                      <div className={styles.productPlaceholder}><ImageIcon size={60} /></div>
                     )}
+                    {renderCarStatusBadge(car.availability)}
+                  </div>
+
+                  {/* Card Body */}
+                  <div className={styles.productInfo} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {/* Name */}
+                    <h3 className={styles.productName} style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 17, letterSpacing: '0.01em', lineHeight: 1.3, marginBottom: 8 }}>
+                      {car.name}
+                    </h3>
+
+                    {/* Spec row */}
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+                      {car.fuelType && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5D4037', fontStyle: 'italic', letterSpacing: '0.02em' }}>
+                          <Fuel size={11} /> {car.fuelType}
+                        </span>
+                      )}
+                      {car.transmission && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5D4037', fontStyle: 'italic', letterSpacing: '0.02em' }}>
+                          <Settings2 size={11} /> {car.transmission}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Price and Category Row */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
+                      <div>
+                        <div className={styles.cardPrice} style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 800, letterSpacing: '0.03em' }}>
+                          ETB {Number(car.dailyRate).toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#6D4C41', fontStyle: 'italic', letterSpacing: '0.04em', marginTop: 2 }}>per day</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F5F5', padding: '6px 10px', borderRadius: 8 }}>
+                        <Car size={12} color="#2E8B57" />
+                        <span style={{ fontSize: 10, color: '#2E8B57', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                          {car.carType || 'Car'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className={styles.cardActions} style={{ marginTop: 'auto' }}>
+                      {carStatus === 'Available' ? (
+                        <button className={styles.orderBtn} onClick={() => handleReserve(car)}>
+                          Reserve Machine
+                        </button>
+                      ) : carStatus === 'Booked' ? (
+                        <button className={styles.notifyBtn} onClick={() => handleNotify(car)} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                          <Bell size={18} /> Contact When Available
+                        </button>
+                      ) : (
+                        <button className={styles.maintenanceBtn} onClick={() => handleNotify(car)} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                          <Wrench size={18} /> Under Maintenance · Notify Me
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -799,7 +857,10 @@ const FleetGalleryPage = () => {
             
             <div className={styles.modalCarInfo}>
               <strong>{selectedCarForNotify.name}</strong>
-              <div>Status: {selectedCarForNotify.availability}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Status:</span>
+                {renderModalStatusBadge(selectedCarForNotify.availability)}
+              </div>
               <div>Rate: ETB {Number(selectedCarForNotify.dailyRate).toLocaleString()}/day</div>
             </div>
 
