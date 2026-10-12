@@ -177,6 +177,23 @@ const maybeAutoRelease = async (order) => {
   }
 };
 
+const digitsOnly = (v) => String(v || '').replace(/\D/g, '');
+
+const findRegisteredAgriRentCustomer = async (email, phone) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) return null;
+  const account = await db('users')
+    .whereRaw('lower(email) = ?', [normalizedEmail])
+    .whereNull('deleted_at')
+    .first();
+  if (!account) return null;
+  const wanted = digitsOnly(phone);
+  const stored = digitsOnly(account.phone);
+  if (!wanted || !stored) return null;
+  const matches = wanted === stored || (wanted.length >= 9 && stored.length >= 9 && wanted.slice(-9) === stored.slice(-9));
+  return matches ? account : null;
+};
+
 // ── PUBLIC: Customer submits an online order ─────────────────────────────────
 exports.createOrder = async (req, res) => {
   try {
@@ -356,6 +373,11 @@ exports.createManualOrder = async (req, res) => {
 
     if (!customerName || !customerPhone) {
       return res.status(400).json({ status: 'error', message: 'Customer name and phone are required' });
+    }
+
+    const customerAccount = await findRegisteredAgriRentCustomer(customerEmail, customerPhone);
+    if (!customerAccount) {
+      return res.status(400).json({ status: 'error', message: 'User not found with this account. Please create an account first.' });
     }
 
     const isScheduleLater = scheduleLater === true || scheduleLater === 'true' || (!startDate && !endDate);
@@ -770,6 +792,194 @@ exports.resubmitMyOrder = async (req, res) => {
   }
 };
 
+// ── HELPER: Upsert the Finance "live income" row for an AgriRent order ───────
+// Keeps Finance's Revenue Live Income in step with the customer's order so the
+// updated amount / reference / proof is visible without any manual resync.
+const upsertAgrirentFinanceSubmission = async ({ orderId, orderNumber, totalAmount, memberName, paymentMethod, reference, proofImagePath, destAcct }) => {
+  const submissions = await db('finance_income_submissions')
+    .where({ department: 'AgriRent' })
+    .orderBy('created_at', 'desc');
+
+  let target = null;
+  for (const s of submissions) {
+    let md;
+    try { md = typeof s.manual_details === 'string' ? JSON.parse(s.manual_details) : (s.manual_details || {}); } catch (e) { md = {}; }
+    if (String(md.order_id) === String(orderId)) { target = { row: s, md }; break; }
+  }
+
+  const prior = (target && target.md) || {};
+  const manualDetails = JSON.stringify({
+    order_id: orderId,
+    paymentMethod: paymentMethod || 'Telebirr',
+    paymentReference: reference || null,
+    proofImagePath: proofImagePath,
+    amount: totalAmount,
+    receivedFrom: memberName,
+    bankName: destAcct.bankName || prior.bankName || null,
+    accountNumber: destAcct.accountNumber || prior.accountNumber || null,
+    telebirrNumber: destAcct.telebirrNumber || prior.telebirrNumber || null,
+    paymentAccount: destAcct.paymentAccount || prior.paymentAccount || null
+  });
+
+  if (target) {
+    await db('finance_income_submissions').where({ id: target.row.id }).update({
+      status: 'Pending',
+      rejection_reason: null,
+      reference_no: reference || target.row.reference_no || 'SCREENSHOT_UPLOADED',
+      description: `AgriRent Order ${orderNumber} - ${memberName}`,
+      amount: totalAmount,
+      manual_details: manualDetails,
+      updated_at: new Date()
+    });
+    return target.row.id;
+  }
+
+  const [id] = await db('finance_income_submissions').insert({
+    department: 'AgriRent',
+    submitted_by: memberName,
+    amount: totalAmount,
+    reference_no: reference || 'SCREENSHOT_UPLOADED',
+    description: `AgriRent Order ${orderNumber} - ${memberName}`,
+    status: 'Pending',
+    manual_details: manualDetails,
+    created_at: new Date(),
+    updated_at: new Date()
+  });
+  return id;
+};
+
+// ── CUSTOMER: Update order details & payment before it is approved ───────────
+// A customer may change the hire dates, field details, instructions and payment
+// information for as long as Finance has not confirmed the payment. The linked
+// Finance income row is kept in step so the correction shows up on both sides.
+exports.updateMyOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      startDate, endDate, fieldLocation, fieldSizeHectares,
+      farmingPurpose, specialInstructions, paymentMethod, paymentReference,
+      paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType
+    } = req.body;
+
+    const order = await db('agrirent_orders')
+      .where({ id })
+      .where(function () {
+        this.where('customer_id', req.user.id)
+          .orWhere('customer_email', req.user.email || '');
+      })
+      .first();
+
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+
+    const st = String(order.status || '').toLowerCase();
+    if (['cancelled', 'completed', 'active'].includes(st)) {
+      return res.status(400).json({ status: 'error', message: 'This order can no longer be updated.' });
+    }
+
+    if (isPaidStatus(order.payment_status)) {
+      return res.status(400).json({ status: 'error', message: 'Payment has already been approved — this order can no longer be updated.' });
+    }
+
+    const newStart = startDate || order.start_date;
+    const newEnd = endDate || order.end_date;
+    if (!newStart || !newEnd) {
+      return res.status(400).json({ status: 'error', message: 'Start and end dates are required' });
+    }
+
+    const start = new Date(newStart);
+    const end = new Date(newEnd);
+    if (end < start) {
+      return res.status(400).json({ status: 'error', message: 'End date must be on or after the start date' });
+    }
+
+    const totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+
+    let dailyRate = parseFloat(order.daily_rate || 0);
+    if (!dailyRate && order.tractor_id) {
+      const tractor = await db('tractors').where({ id: order.tractor_id }).first();
+      if (tractor) dailyRate = parseFloat(tractor.dailyRate || tractor.daily_rate || 0);
+    }
+
+    const vatCalc = await vatConfigService.computeVatForItem('agrirent', order.tractor_id || null, dailyRate * totalDays);
+    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+    const subtotal = dailyRate * totalDays;
+    const totalAmount = subtotal + vatAmount;
+
+    let paymentScreenshot = order.payment_screenshot || null;
+    if (req.file) {
+      paymentScreenshot = `/uploads/temp/${req.file.filename}`;
+    } else if (String(req.body.removeScreenshot || '') === 'true') {
+      paymentScreenshot = null;
+    }
+
+    const reference = paymentReference !== undefined ? paymentReference : order.payment_reference;
+    if (!reference && !paymentScreenshot) {
+      return res.status(400).json({ status: 'error', message: 'Either a payment reference or a screenshot is required' });
+    }
+
+    const destAcct = buildDestinationAccount({ paymentAccountName, paymentAccountNumber, paymentProvider, paymentAccountType });
+    const memberName = order.customer_name || req.user.fullName || req.user.full_name || 'Customer';
+
+    await db('agrirent_orders').where({ id }).update({
+      start_date: newStart,
+      end_date: newEnd,
+      total_days: totalDays,
+      daily_rate: dailyRate,
+      subtotal,
+      vat_amount: vatAmount,
+      total_amount: totalAmount,
+      field_location: fieldLocation !== undefined ? (fieldLocation || null) : order.field_location,
+      field_size_hectares: fieldSizeHectares !== undefined ? (fieldSizeHectares || null) : order.field_size_hectares,
+      farming_purpose: farmingPurpose !== undefined ? (farmingPurpose || null) : order.farming_purpose,
+      special_instructions: specialInstructions !== undefined ? (specialInstructions || null) : order.special_instructions,
+      payment_method: paymentMethod || order.payment_method || 'Telebirr',
+      payment_reference: reference || null,
+      payment_screenshot: paymentScreenshot,
+      payment_status: 'Pending',
+      finance_notes: null,
+      updated_at: new Date()
+    });
+
+    try {
+      await upsertAgrirentFinanceSubmission({
+        orderId: id,
+        orderNumber: order.order_number,
+        totalAmount,
+        memberName,
+        paymentMethod: paymentMethod || order.payment_method || 'Telebirr',
+        reference: reference || null,
+        proofImagePath: paymentScreenshot,
+        destAcct
+      });
+      sendFinanceNotification({
+        title: 'Income Updated',
+        message: `AgriRent order ${order.order_number} was updated by the customer and needs verification (${memberName}).`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list',
+        related_entity_id: id
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+    } catch (err) {
+      logger.error('Failed to update AgriRent finance live income:', err.message);
+    }
+
+    try {
+      await notificationRepository.create({
+        roleTarget: 'Car Renting Manager',
+        title: 'AgriRent Order Updated',
+        message: `Order ${order.order_number} was updated by ${memberName} and is awaiting payment approval.`
+      });
+    } catch (e) { /* non-fatal */ }
+
+    const updated = await db('agrirent_orders').where({ id }).first();
+    res.status(200).json({ status: 'success', message: 'Order updated', data: updated });
+  } catch (error) {
+    logger.error('Error updating agrirent order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to update order' });
+  }
+};
+
 // ── CUSTOMER: Cancel an order that is not yet confirmed / active ──────────────
 // Drop any Pending Finance income submissions linked to this order so a
 // cancelled order no longer appears in Finance's Revenue Live Income list.
@@ -1078,9 +1288,6 @@ exports.archiveOrder = async (req, res) => {
     const { id } = req.params;
     const order = await db('agrirent_orders').where({ id }).whereNull('deleted_at').first();
     if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
-    if (order.is_manual) {
-      return res.status(400).json({ status: 'error', message: 'Manual orders stay in the rental list and are not moved to history' });
-    }
     if (!AGRI_TERMINAL_STATUSES.includes(order.status)) {
       return res.status(400).json({ status: 'error', message: 'Only completed or cancelled orders can be moved to history' });
     }
@@ -1107,7 +1314,6 @@ exports.bulkArchiveOrders = async (req, res) => {
     }
     const orders = await db('agrirent_orders').whereIn('id', ids).whereNull('deleted_at');
     const invalid = orders
-      .filter(o => !o.is_manual)
       .filter(o => !AGRI_TERMINAL_STATUSES.includes(o.status));
     if (invalid.length > 0) {
       return res.status(400).json({
@@ -1116,7 +1322,7 @@ exports.bulkArchiveOrders = async (req, res) => {
         invalidIds: invalid.map(o => o.id)
       });
     }
-    const archiveIds = orders.filter(o => !o.is_manual).map(o => o.id);
+    const archiveIds = orders.map(o => o.id);
     const moved = await db('agrirent_orders')
       .whereIn('id', archiveIds)
       .update({ archived_at: db.fn.now(), updated_at: new Date() });
