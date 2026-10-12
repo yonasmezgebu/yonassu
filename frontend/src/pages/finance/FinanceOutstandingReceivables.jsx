@@ -6,7 +6,7 @@ import { triggerNotification } from '../../utils/ceoNotifications';
 import {
   TrendingUp, Download, Search, CheckCircle2, AlertCircle,
   Calendar, Building, DollarSign, Filter, RefreshCw, Layers, FileText,
-  ArrowLeft, Printer, User, Phone, Package, CreditCard, Hash, Smartphone, Eye, X, Receipt
+  ArrowLeft, Printer, User, Phone, Package, CreditCard, Hash, Smartphone, Eye, X, Receipt, Mail
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
@@ -65,9 +65,15 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
   const [cpoRefunded, setCpoRefunded] = useState(false);
   const [refundedAt, setRefundedAt] = useState(null);
   const [refundedBy, setRefundedBy] = useState(null);
+
+  // Car Rental security deposit states (strictly for Car Rental department)
+  const [carDepositRefunded, setCarDepositRefunded] = useState(false);
+  const [carDepositRefundedAt, setCarDepositRefundedAt] = useState(null);
+  const [carDepositRefundedBy, setCarDepositRefundedBy] = useState(null);
+  const [confirmCarRefundModal, setConfirmCarRefundModal] = useState(false);
+
   const { toasts, show: showToast, remove: removeToast } = useToast();
   const printRef = useRef(null);
-
 
   const [confirmRefundModal, setConfirmRefundModal] = useState(false);
 
@@ -80,11 +86,25 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
         if (data?.receivable?.cpo_refunded !== undefined) {
            setCpoRefunded(data.receivable.cpo_refunded);
         }
+        if (data?.receivable?.security_deposit_refunded !== undefined) {
+           setCarDepositRefunded(Boolean(data.receivable.security_deposit_refunded));
+        }
+        if (data?.receivable?.deposit_refunded_at) {
+           setCarDepositRefundedAt(data.receivable.deposit_refunded_at);
+        }
+        if (data?.receivable?.deposit_refunded_by) {
+           setCarDepositRefundedBy(data.receivable.deposit_refunded_by);
+        }
         if (data?.receivable?.manual_details) {
            try {
              const md = JSON.parse(data.receivable.manual_details);
              if (md.refunded_at) setRefundedAt(md.refunded_at);
              if (md.refunded_by) setRefundedBy(md.refunded_by);
+             if (md.security_deposit_refunded !== undefined) {
+               setCarDepositRefunded(Boolean(md.security_deposit_refunded));
+             }
+             if (md.deposit_refunded_at) setCarDepositRefundedAt(md.deposit_refunded_at);
+             if (md.deposit_refunded_by) setCarDepositRefundedBy(md.deposit_refunded_by);
            } catch(e) {}
         }
       } catch (e) {
@@ -120,6 +140,41 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
 
   const handleToggleRefund = (currentStatus) => {
     setConfirmRefundModal(true);
+  };
+
+  // Car Rental security deposit toggle actions
+  const confirmCarRefundAction = async () => {
+    setConfirmCarRefundModal(false);
+    setMarkingRefund(true);
+    const currentStatus = carDepositRefunded;
+    try {
+      const res = await apiClient.patch(`/finance-receivables/book/${receivableId}/mark-refunded`, {
+        refunded: !currentStatus,
+        type: 'car_rental'
+      });
+      if (res.success) {
+        const nextStatus = !currentStatus;
+        setCarDepositRefunded(nextStatus);
+        if (nextStatus) {
+          setCarDepositRefundedAt(res.deposit_refunded_at || new Date().toISOString());
+          setCarDepositRefundedBy(res.deposit_refunded_by || 'Finance Officer');
+        } else {
+          setCarDepositRefundedAt(null);
+          setCarDepositRefundedBy(null);
+        }
+        showToast(res.message || (nextStatus ? 'Security deposit marked as refunded' : 'Refund mark removed'), 'success');
+      } else {
+        showToast(res.message || 'Failed to update refund status', 'error');
+      }
+    } catch (e) {
+      showToast(e.message || 'An error occurred', 'error');
+    } finally {
+      setMarkingRefund(false);
+    }
+  };
+
+  const handleToggleCarRefund = () => {
+    setConfirmCarRefundModal(true);
   };
 
 
@@ -159,6 +214,19 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
   if (receivable.manual_details) {
     try { manualDetails = JSON.parse(receivable.manual_details); } catch (e) {}
   }
+
+  // Strictly check if record belongs to Car Rental department
+  const isCarRental = receivable?.department_source === 'Car Rental' ||
+    (manualDetails?.department === 'Car Rental') ||
+    Boolean(manualDetails?.contractDetails?.carName);
+
+  const carDepositAmount = manualDetails?.contractDetails?.securityDeposit != null
+    ? parseFloat(manualDetails.contractDetails.securityDeposit)
+    : 5000;
+
+  const contactTxn = (transactions && (transactions.find(t => t.recipient_phone || t.pp_recipient_phone || t.customer_email) || transactions[0])) || {};
+  const customerPhone = receivable.customer_phone || contactTxn.pp_recipient_phone || contactTxn.recipient_phone || manualDetails?.bidderPhone || manualDetails?.telebirrNumber || '—';
+  const customerEmail = receivable.customer_email || contactTxn.customer_email || manualDetails?.bidderEmail || '—';
 
   let runningTotal = [];
   if (transactions && transactions.length > 0) {
@@ -208,8 +276,19 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
             </div>
           </div>
 
-          <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1.5, color: '#2563EB', marginBottom: 18, textAlign: 'center', borderBottom: '1px solid #E5E7EB', paddingBottom: 12 }}>
-            {receivable.department_source} Department — Recorded Income
+          <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1.5, color: '#2563EB', marginBottom: 18, textAlign: 'center', borderBottom: '1px solid #E5E7EB', paddingBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span>{receivable.department_source} Department — Recorded Income</span>
+            {isCarRental && (
+              carDepositRefunded ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' }}>
+                  <CheckCircle2 size={12} /> DEPOSIT REFUNDED
+                </span>
+              ) : (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' }}>
+                  ⏳ DEPOSIT NOT REFUNDED
+                </span>
+              )
+            )}
           </div>
 
           <div className="ror-meta-grid">
@@ -218,6 +297,8 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
               { label: 'Record Date', value: fmtD(receivable.invoice_date), icon: <Calendar size={13} /> },
               { label: 'Total Settled', value: `ETB ${fmt(receivable.amount_paid)}`, icon: <CheckCircle2 size={13} />, highlight: receivable.status === 'Paid' },
               { label: 'Total Amount', value: `ETB ${fmt(receivable.total_amount)}`, icon: <DollarSign size={13} />, highlight: true },
+              { label: 'Customer Phone', value: customerPhone, icon: <Phone size={13} /> },
+              { label: 'Customer Email', value: customerEmail, icon: <Mail size={13} /> },
             ].map(({ label, value, icon, highlight }) => (
               <div key={label} style={{ background: highlight ? '#DCFCE7' : '#F5F6FA', padding: '14px 16px', border: '1px solid #E5E7EB', borderRadius: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#9CA3AF', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 5 }}>
@@ -234,6 +315,10 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
               {[
                 { label: 'Source / Reference', value: receivable.department_source || 'N/A' },
                 { label: 'Date', value: fmtD(receivable.invoice_date) },
+                ...(isCarRental ? [{
+                  label: 'Security Deposit',
+                  value: carDepositRefunded ? `ETB ${fmt(carDepositAmount)} (Refunded ✓)` : `ETB ${fmt(carDepositAmount)} (Not Refunded ⏳)`
+                }] : []),
                 { label: 'Selling Price', value: `ETB ${fmt(receivable.selling_price || receivable.subtotal || receivable.total_amount)}` },
                 { label: 'COGS', value: `ETB ${fmt(receivable.cogs || 0)}` },
                 { label: 'Input VAT', value: `ETB ${fmt(rowInputVat)}` },
@@ -252,7 +337,7 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
         </div>
 
         {/* ── Receipt Data & Additional Info ── */}
-        {(isReceipt || (transactions && transactions.length > 0)) && (
+        {isReceipt && (
           <div className="ror-card" style={{ marginBottom: 16 }}>
              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
               <Receipt size={16} color="#16A34A" /> Receipt Data & Items
@@ -374,7 +459,7 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                           {idx + 1}
                         </div>
                         <div>
-                          <div style={{ fontFamily: 'monospace', fontWeight: 600, color: '#2563EB', fontSize: 14 }}>{txn.receipt_no}</div>
+                          <div style={{ fontFamily: 'monospace', fontWeight: 600, color: '#2563EB', fontSize: 14 }}>{txn.receipt_no || receivable.invoice_no}</div>
                           <div style={{ fontSize: 11, color: '#6B7280' }}>{fmtDateTime(txn.created_at)}</div>
                         </div>
                         <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 10px', fontSize: 12, fontWeight: 500, color: typeColor, border: '1px solid', borderColor: typeColor, background: `${typeColor}18`, borderRadius: 999 }}>
@@ -457,6 +542,77 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* ── Car Rental Security Deposit Refund Markup Card (ONLY FOR DEPARTMENT CAR RENTAL) ── */}
+        {isCarRental && (
+          <div className="ror-card" style={{
+            marginBottom: 16,
+            border: `1.5px solid ${carDepositRefunded ? '#16A34A' : '#F59E0B'}`,
+            background: carDepositRefunded ? '#F0FDF4' : '#FFFBEB'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: carDepositRefunded ? '#16A34A' : '#B45309', textTransform: 'uppercase', letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 7 }}>
+                🚗 Car Rental — Security Deposit Refund Status
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {carDepositRefunded ? (
+                  <>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#16A34A', color: 'white', padding: '5px 12px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                      <CheckCircle2 size={13} /> REFUNDED
+                    </span>
+                    <button onClick={handleToggleCarRefund} disabled={markingRefund} style={{ border: 'none', background: 'none', color: '#6B7280', fontSize: 11, textDecoration: 'underline', cursor: 'pointer', padding: '2px 4px' }}>
+                      {markingRefund ? 'Wait...' : 'Undo'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D', padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      ⏳ NOT REFUNDED
+                    </span>
+                    <button
+                      onClick={handleToggleCarRefund}
+                      disabled={markingRefund}
+                      style={{ background: '#16A34A', border: '1px solid #15803D', color: 'white', padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                    >
+                      {markingRefund ? <SegmentedSpinner size={12} /> : null} Mark as Refunded
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, fontSize: 13 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Refundable Deposit Amount</div>
+                <div style={{ fontWeight: 800, color: '#16A34A', fontSize: 16 }}>ETB {fmt(carDepositAmount)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Refund Status</div>
+                <div style={{ fontWeight: 700, color: carDepositRefunded ? '#16A34A' : '#D97706' }}>
+                  {carDepositRefunded ? '✓ Deposit Refund Settled' : '⚠️ Deposit Held / Pending Refund'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Vehicle</div>
+                <div style={{ fontWeight: 700, color: '#111827' }}>{manualDetails?.contractDetails?.carName || 'Rental Vehicle'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Customer / Driver</div>
+                <div style={{ fontWeight: 700, color: '#111827' }}>{manualDetails?.contractDetails?.driverName || receivable?.customer_name || '—'}</div>
+              </div>
+            </div>
+
+            {carDepositRefunded ? (
+              <div style={{ marginTop: 14, padding: '10px 14px', background: '#DCFCE7', border: '1px solid #16A34A', borderRadius: 6, fontSize: 12, color: '#14532D', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <CheckCircle2 size={14} /> Security Deposit Refunded {carDepositRefundedAt && `on ${fmtD(carDepositRefundedAt)}`} {carDepositRefundedBy && `by ${carDepositRefundedBy}`}
+              </div>
+            ) : (
+              <div style={{ marginTop: 14, padding: '10px 14px', background: '#FEF3C7', border: '1px solid #D97706', borderRadius: 6, fontSize: 12, color: '#92400E', fontWeight: 600 }}>
+                ⚠️ This is a refundable car rental security deposit (ETB {fmt(carDepositAmount)}). Return upon vehicle return inspection and mark as refunded when returned to customer.
+              </div>
+            )}
           </div>
         )}
 
@@ -592,7 +748,18 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                     <div><strong style={{ color: '#6B7280' }}>Duration:</strong> <span style={{ color: '#111827', fontWeight: 600 }}>{manualDetails.contractDetails.totalDays} Days ({manualDetails.contractDetails.dates})</span></div>
                     <div><strong style={{ color: '#6B7280' }}>Daily Rate:</strong> <span style={{ color: '#111827', fontWeight: 600 }}>ETB {Number(manualDetails.contractDetails.dailyRate || 0).toLocaleString()}</span></div>
                     <div><strong style={{ color: '#6B7280' }}>Rental Total:</strong> <span style={{ color: '#111827', fontWeight: 600 }}>ETB {Number(manualDetails.contractDetails.rentalAmount || 0).toLocaleString()}</span></div>
-                    <div><strong style={{ color: '#6B7280' }}>Deposit:</strong> <span style={{ color: '#111827', fontWeight: 600 }}>ETB {Number(manualDetails.contractDetails.securityDeposit || 0).toLocaleString()}</span></div>
+                    <div>
+                      <strong style={{ color: '#6B7280' }}>Deposit:</strong> <span style={{ color: '#111827', fontWeight: 600 }}>ETB {Number(manualDetails.contractDetails.securityDeposit || carDepositAmount || 5000).toLocaleString()}</span>
+                      {carDepositRefunded ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, marginLeft: 8 }}>
+                          <CheckCircle2 size={10} /> REFUNDED
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, marginLeft: 8 }}>
+                          ⏳ NOT REFUNDED
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
@@ -714,6 +881,43 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
         </div>
       )}
 
+      {/* ── Car Rental Security Deposit Refund Confirmation Modal ── */}
+      {confirmCarRefundModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 420, width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', animation: 'rorSlideIn 0.2s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ padding: 10, background: carDepositRefunded ? '#FEF2F2' : '#F0FDF4', color: carDepositRefunded ? '#EF4444' : '#16A34A', borderRadius: '50%' }}>
+                <AlertCircle size={24} />
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>
+                {carDepositRefunded ? 'Remove Deposit Refund Mark' : 'Confirm Security Deposit Refund'}
+              </div>
+            </div>
+            
+            <p style={{ color: '#4B5563', fontSize: 14, lineHeight: 1.5, marginBottom: 24 }}>
+              {carDepositRefunded 
+                ? 'Are you sure you want to remove the "Refunded" mark from this Car Rental security deposit? It will be marked as not refunded / pending again.'
+                : `Are you sure you want to mark this Car Rental security deposit as refunded? This confirms that the guarantee deposit (ETB ${fmt(carDepositAmount)}) has been returned to the customer.`}
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button 
+                onClick={() => setConfirmCarRefundModal(false)}
+                style={{ padding: '8px 16px', background: 'white', border: '1px solid #D1D5DB', borderRadius: 6, color: '#374151', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmCarRefundAction}
+                style={{ padding: '8px 16px', background: carDepositRefunded ? '#EF4444' : '#16A34A', border: 'none', borderRadius: 6, color: 'white', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+              >
+                {carDepositRefunded ? 'Remove Mark' : 'Mark as Refunded'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
@@ -735,6 +939,7 @@ const FinanceOutstandingReceivables = () => {
   // Filters
   const [deptFilter, setDeptFilter] = useState('All');
   const [agingFilter, setAgingFilter] = useState('All');
+  const [depositFilter, setDepositFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Pagination
@@ -766,7 +971,7 @@ const FinanceOutstandingReceivables = () => {
   useEffect(() => {
     setCurrentPage(1);
     setPageInput('1');
-  }, [deptFilter, agingFilter, searchQuery]);
+  }, [deptFilter, agingFilter, searchQuery, depositFilter]);
 
   // Process data
   const today = new Date();
@@ -792,9 +997,15 @@ const FinanceOutstandingReceivables = () => {
       if (agingFilter === '>90') matchAging = inv.daysOverdue > 90;
       const matchSearch = (inv.invoice_no || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (inv.customer_name || '').toLowerCase().includes(searchQuery.toLowerCase());
-      return matchDept && matchAging && matchSearch;
+      let matchDeposit = true;
+      if (depositFilter !== 'All') {
+        const isCarRentalDept = inv.department_source === 'Car Rental';
+        const refunded = inv.security_deposit_refunded === true;
+        matchDeposit = isCarRentalDept && (depositFilter === 'refunded' ? refunded : !refunded);
+      }
+      return matchDept && matchAging && matchSearch && matchDeposit;
     });
-  }, [processed, deptFilter, agingFilter, searchQuery]);
+  }, [processed, deptFilter, agingFilter, searchQuery, depositFilter]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -930,8 +1141,19 @@ const FinanceOutstandingReceivables = () => {
                   </select>
                 </div>
 
+                <div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    <DollarSign size={13} /> Car Rental Deposit
+                  </label>
+                  <select value={depositFilter} onChange={e => setDepositFilter(e.target.value)} className="ror-input">
+                    <option value="All">All Records</option>
+                    <option value="pending">Pending Refund (Held)</option>
+                    <option value="refunded">Refunded</option>
+                  </select>
+                </div>
+
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button onClick={() => { setDeptFilter('All'); setAgingFilter('All'); setSearchQuery(''); }} className="ror-btn-clear">
+                  <button onClick={() => { setDeptFilter('All'); setAgingFilter('All'); setDepositFilter('All'); setSearchQuery(''); }} className="ror-btn-clear">
                     Clear Filters
                   </button>
                 </div>
@@ -1041,18 +1263,20 @@ const FinanceOutstandingReceivables = () => {
                                 >
                                   <Eye size={13} /> Detail
                                 </button>
-                                <button
-                                  onClick={() => navigate('/finance/invoices', { state: { selectedSaleId: inv.sale_id || inv.id } })}
-                                  style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                                    background: '#7C3AED', color: 'white',
-                                    border: 'none', borderRadius: 6,
-                                    padding: '4px 10px', fontSize: 12, fontWeight: 600,
-                                    cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit'
-                                  }}
-                                >
-                                  <Receipt size={12} /> Receipt
-                                </button>
+                                {isPaid && (
+                                  <button
+                                    onClick={() => navigate('/finance/invoices', { state: { selectedSaleId: inv.sale_id || inv.id } })}
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                                      background: '#7C3AED', color: 'white',
+                                      border: 'none', borderRadius: 6,
+                                      padding: '4px 10px', fontSize: 12, fontWeight: 600,
+                                      cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit'
+                                    }}
+                                  >
+                                    <Receipt size={12} /> Receipt
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1224,7 +1448,7 @@ const FinanceOutstandingReceivables = () => {
 
         .ror-filter-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr 1fr auto;
+          grid-template-columns: 1fr 1fr 1fr 1fr auto;
           gap: 16px;
           align-items: end;
         }
