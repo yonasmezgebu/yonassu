@@ -10,6 +10,8 @@ class CarModel {
     this.description = data.description || '';
     this.availability = data.availability || 'Available';
     this.asset_value = data.asset_value !== undefined ? data.asset_value : null;
+    const rawDeposit = data.security_deposit !== undefined ? data.security_deposit : data.securityDeposit;
+    this.securityDeposit = rawDeposit === undefined || rawDeposit === null || rawDeposit === '' ? null : rawDeposit;
     this.image1 = data.image1 || null;
     this.image2 = data.image2 || null;
     this.image3 = data.image3 || null;
@@ -60,6 +62,7 @@ class CarModel {
       description: this.description,
       availability: this.availability,
       asset_value: this.asset_value,
+      securityDeposit: this.securityDeposit,
       image1: this.image1,
       image2: this.image2,
       image3: this.image3,
@@ -83,7 +86,8 @@ class CarModel {
       fuelType: data.fuelType,
       carType: data.carType,
       description: data.description,
-      availability: data.availability
+      availability: data.availability,
+      securityDeposit: data.securityDeposit !== undefined ? data.securityDeposit : data.security_deposit
     });
   }
 }
