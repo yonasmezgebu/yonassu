@@ -236,7 +236,7 @@ exports.createMaintenance = catchAsync(async (req, res) => {
           title: 'New Fleet Maintenance Request',
           message: `A maintenance request for asset "${asset_name}" requires your approval before going to Finance.`,
           type: 'approval',
-          link: '/ceo/agri-and-car-rental'
+          link: '/ceo/approvals/agri-and-car-rental'
       });
   } catch(e) { console.error('Failed to notify CEO', e); }
 
@@ -287,6 +287,29 @@ exports.ceoApproveMaintenance = catchAsync(async (req, res) => {
   res.json({ status: 'success', data: updated });
 });
 
+exports.ceoRejectMaintenance = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body || {};
+  const record = await Maintenance.findById(id);
+  if(!record) throw new AppError('Record not found', 404);
+  if(record.status !== 'PENDING_CEO') throw new AppError('Record is not pending CEO approval', 400);
+
+  const updated = await Maintenance.updateStatus(id, 'REJECTED');
+  carRentalAudit.log(req, 'Maintenance Rejected by CEO', `MNT #${id}`, record, updated);
+
+  try {
+    await notificationRepository.create({
+      roleTarget: 'Car Renting Manager',
+      title: 'Maintenance Request Rejected',
+      message: `CEO rejected the maintenance request for "${record.asset_name}".${reason ? ` Reason: ${reason}` : ''}`,
+      type: 'error',
+      link: '/car-renting/manager/maintenance'
+    });
+  } catch(e) { console.error('Failed to notify Car Manager', e); }
+
+  res.json({ status: 'success', data: updated });
+});
+
 exports.financeApproveMaintenance = catchAsync(async (req, res) => {
   const { id } = req.params;
   const record = await Maintenance.findById(id);
@@ -332,7 +355,7 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
     date, paidTo, amount, paymentMethod, description, referenceNo,
     preparedBy, checkedBy, receiverName,
     preparedSignature, checkedSignature, receiverSignature,
-    bankDetails, telebirrDetails
+    bankDetails, telebirrDetails, accountId, accountName
   } = req.body;
 
   const amountETB = parseFloat(amount) || parseFloat((record.estimated_cost_cents / 100).toFixed(2));
@@ -379,6 +402,8 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
       prepared_signature: preparedSignature || null,
       checked_signature:  checkedSignature || null,
       receiver_signature: receiverSignature || null,
+      account_id:         accountId ? Number(accountId) : null,
+      account_name:       accountName || null,
       status:             'completed',
       source:             'car_rental',
       source_id:          record.id,
@@ -407,7 +432,11 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
       reference: evNumber,
       description: description || `Maintenance Payment: ${record.asset_name}`,
       receipts: 0,
-      payments: amountETB
+      payments: amountETB,
+      payment_method: paymentMethod || 'Cash',
+      account_id: accountId ? Number(accountId) : null,
+      account_name: accountName || null,
+      source: 'Car Rental'
     });
   } catch (e) { console.error('finance_cashbook insert error:', e); }
 
@@ -589,7 +618,7 @@ exports.createFuelService = catchAsync(async (req, res) => {
       title: `New ${data.request_type} Request`,
       message: `${data.asset_name} needs ${data.request_type}. Pending your approval.`,
       type: 'approval',
-      link: '/ceo/agri-and-car-rental'
+      link: '/ceo/approvals/agri-and-car-rental'
     });
   } catch(e) { console.error('Failed to notify CEO', e); }
 
@@ -629,6 +658,29 @@ exports.ceoApproveFuelService = catchAsync(async (req, res) => {
         related_entity_id: record.id
     }, req.app?.get('io'));
   } catch(e) { console.error('Failed to notify CEO', e); }
+
+  res.json({ status: 'success', data: updated });
+});
+
+exports.ceoRejectFuelService = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body || {};
+  const record = await FuelService.findById(id);
+  if(!record) throw new AppError('Record not found', 404);
+  if(record.status !== 'PENDING_CEO') throw new AppError('Record is not pending CEO approval', 400);
+
+  const updated = await FuelService.updateStatus(id, 'REJECTED');
+  carRentalAudit.log(req, `${record.request_type === 'Fuel' ? 'Fuel' : 'Service'} Rejected by CEO`, `FS #${id}`, record, updated);
+
+  try {
+    await notificationRepository.create({
+      roleTarget: 'Car Renting Manager',
+      title: `${record.request_type} Request Rejected`,
+      message: `CEO rejected the ${record.request_type.toLowerCase()} request for "${record.asset_name}".${reason ? ` Reason: ${reason}` : ''}`,
+      type: 'error',
+      link: '/car-renting/manager/utilization'
+    });
+  } catch(e) { console.error('Failed to notify Car Manager', e); }
 
   res.json({ status: 'success', data: updated });
 });
@@ -675,7 +727,7 @@ exports.financePayFuelService = catchAsync(async (req, res) => {
     date, paidTo, amount, paymentMethod, description, referenceNo,
     preparedBy, checkedBy, receiverName,
     preparedSignature, checkedSignature, receiverSignature,
-    bankDetails, telebirrDetails
+    bankDetails, telebirrDetails, accountId, accountName
   } = req.body;
 
   const amountETB = parseFloat(amount) || parseFloat((record.estimated_cost_cents / 100).toFixed(2));
@@ -720,6 +772,8 @@ exports.financePayFuelService = catchAsync(async (req, res) => {
       prepared_signature: preparedSignature || null,
       checked_signature:  checkedSignature || null,
       receiver_signature: receiverSignature || null,
+      account_id:         accountId ? Number(accountId) : null,
+      account_name:       accountName || null,
       status:             'completed',
       source:             'car_rental',
       source_id:          record.id,
@@ -747,7 +801,11 @@ exports.financePayFuelService = catchAsync(async (req, res) => {
       reference:   evNumber,
       description: description || `${record.request_type} Payment: ${record.asset_name}`,
       receipts:    0,
-      payments:    amountETB
+      payments:    amountETB,
+      payment_method: paymentMethod || 'Cash',
+      account_id:  accountId ? Number(accountId) : null,
+      account_name: accountName || null,
+      source:      'Car Rental'
     });
   } catch(e) { console.error('Failed to update cashbook:', e); }
 
