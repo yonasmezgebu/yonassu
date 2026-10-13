@@ -26,6 +26,8 @@ exports.createCRV = catchAsync(async (req, res) => {
     referenceNo,
     bankDetails,
     telebirrDetails,
+    accountId,
+    accountName,
     preparedBy,
     checkedBy,
     receiverName,
@@ -51,6 +53,8 @@ exports.createCRV = catchAsync(async (req, res) => {
     referenceNo,
     bankDetails,
     telebirrDetails: method === 'Telebirr' ? telebirrDetails : undefined,
+    accountId,
+    accountName,
     department: 'Manual CRV',
     extraCrvFields: {
       prepared_by: preparedBy || null,
@@ -104,6 +108,8 @@ exports.createEV = catchAsync(async (req, res) => {
     referenceNo,
     bankDetails,
     telebirrDetails,
+    accountId,
+    accountName,
     preparedBy,
     checkedBy,
     receiverName,
@@ -135,6 +141,8 @@ exports.createEV = catchAsync(async (req, res) => {
     prepared_signature: preparedSignature || null,
     checked_signature: checkedSignature || null,
     receiver_signature: receiverSignature || null,
+    account_id: accountId ? Number(accountId) : null,
+    account_name: accountName || null,
     status: 'pending_ceo',
     source: 'manual',
   };
@@ -241,9 +249,20 @@ exports.finalizeEV = catchAsync(async (req, res) => {
   await db('finance_evs').where({ id }).update({ status: 'completed' });
 
   // Record in Cashbook only when finalized (single consistent rule), attributed
-  // to the same finance account the payment was made from.
-  const method = normalizePaymentMethod(ev.payment_method);
-  const account = await resolveLedgerAccount(db, method, { bankName: ev.bank_name, accountNumber: ev.account_number });
+  // to the exact finance account the payment was made from.
+  let method = normalizePaymentMethod(ev.payment_method);
+  let account = null;
+  if (ev.account_id) {
+    account = await db('finance_accounts').where({ id: ev.account_id }).first();
+    if (account) {
+      if (account.account_type === 'Bank') method = 'Bank';
+      else if (account.account_type === 'Mobile Wallet') method = 'Telebirr';
+      else if (account.account_type === 'Cash') method = 'Cash';
+    }
+  }
+  if (!account) {
+    account = await resolveLedgerAccount(db, method, { bankName: ev.bank_name, accountNumber: ev.account_number });
+  }
   await db('finance_cashbook').insert({
     date: ev.date,
     type: 'EV',
