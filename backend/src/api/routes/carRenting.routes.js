@@ -21,6 +21,7 @@ router.post('/maintenance', authenticate, authorizeRoles(managerRoles), carRenti
 router.get('/maintenance', authenticate, authorizeRoles(managerRoles), carRentingController.getMaintenance);
 router.get('/maintenance/finance', authenticate, authorizeRoles(['Finance Manager', 'Admin', 'CEO']), carRentingController.getFinanceMaintenance);
 router.patch('/maintenance/:id/ceo-approve', authenticate, authorizeRoles(['CEO', 'Admin']), carRentingController.ceoApproveMaintenance);
+router.patch('/maintenance/:id/ceo-reject', authenticate, authorizeRoles(['CEO', 'Admin']), carRentingController.ceoRejectMaintenance);
 router.patch('/maintenance/:id/finance-approve', authenticate, authorizeRoles(['Finance Manager', 'Admin', 'CEO']), carRentingController.financeApproveMaintenance);
 router.patch('/maintenance/:id/finance-pay', authenticate, authorizeRoles(['Finance Manager', 'Admin', 'CEO']), carRentingController.financePayMaintenance);
 router.patch('/maintenance/:id/complete', authenticate, authorizeRoles(managerRoles), carRentingController.completeMaintenance);
@@ -29,6 +30,7 @@ router.patch('/maintenance/:id/complete', authenticate, authorizeRoles(managerRo
 router.post('/fuel-service', authenticate, authorizeRoles(managerRoles), carRentingController.createFuelService);
 router.get('/fuel-service', authenticate, authorizeRoles([...managerRoles, 'Finance Manager', 'CEO', 'Admin']), carRentingController.getFuelServices);
 router.patch('/fuel-service/:id/ceo-approve', authenticate, authorizeRoles(['CEO', 'Admin']), carRentingController.ceoApproveFuelService);
+router.patch('/fuel-service/:id/ceo-reject', authenticate, authorizeRoles(['CEO', 'Admin']), carRentingController.ceoRejectFuelService);
 router.patch('/fuel-service/:id/finance-approve', authenticate, authorizeRoles(['Finance Manager', 'Admin', 'CEO']), carRentingController.financeApproveFuelService);
 router.patch('/fuel-service/:id/finance-pay', authenticate, authorizeRoles(['Finance Manager', 'Admin', 'CEO']), carRentingController.financePayFuelService);
 router.patch('/fuel-service/:id/complete', authenticate, authorizeRoles(managerRoles), carRentingController.completeFuelService);
