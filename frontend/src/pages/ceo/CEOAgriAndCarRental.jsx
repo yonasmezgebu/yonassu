@@ -4,6 +4,7 @@ import { ArrowLeft, RefreshCw, Car, Tractor, CheckCircle, Clock, Wrench, Activit
 import apiClient from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import CEOGeneralProcurementApprovals from './CEOGeneralProcurementApprovals';
+import CEOCarRentalMaintenanceApprovals from './CEOCarRentalMaintenanceApprovals';
 
 /* ─── Enterprise Global Styles ─── */
 const GlobalStyles = () => (
@@ -201,6 +202,7 @@ export default function CEOAgriAndCarRental({ isApprovalMode = false }) {
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [timeString, setTimeString] = useState('');
+  const [approvalTab, setApprovalTab] = useState('procurement');
 
   useEffect(() => {
     const updateTime = () => setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
@@ -263,7 +265,31 @@ export default function CEOAgriAndCarRental({ isApprovalMode = false }) {
           <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Administration / Approvals Hub / Agri & Car Rental Approvals</span>
         </div>
         
-        <CEOGeneralProcurementApprovals />
+        {/* Sub-tabs */}
+        <div style={{ display: 'flex', gap: 12, padding: '16px 24px 0 24px', background: '#F9FAFB', flexWrap: 'wrap' }}>
+          {[
+            { id: 'procurement', label: 'Procurement Requests' },
+            { id: 'maintenance', label: 'Maintenance & Fuel/Service' },
+          ].map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setApprovalTab(t.id)}
+              className="car-btn"
+              style={{
+                background: approvalTab === t.id ? 'var(--color-primary)' : '#FFFFFF',
+                color: approvalTab === t.id ? '#FFFFFF' : 'var(--color-text-primary)',
+                borderColor: approvalTab === t.id ? 'var(--color-primary)' : 'var(--color-border)',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {approvalTab === 'procurement'
+          ? <CEOGeneralProcurementApprovals />
+          : <CEOCarRentalMaintenanceApprovals />}
       </div>
     );
   }
