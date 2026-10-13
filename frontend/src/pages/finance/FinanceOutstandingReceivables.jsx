@@ -224,6 +224,17 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
     ? parseFloat(manualDetails.contractDetails.securityDeposit)
     : 5000;
 
+  // Return inspection / damage & penalty details (from the rental order completion)
+  const carContract      = manualDetails?.contractDetails || {};
+  const carCondition     = String(carContract.carCondition || '').toLowerCase();
+  const carDamaged       = carCondition === 'damaged';
+  const carDamageFee     = parseFloat(carContract.damageFee || 0);
+  const carFuelFee       = parseFloat(carContract.fuelFee || 0);
+  const carLateFee       = parseFloat(carContract.lateFee || 0);
+  const carRefundAmount  = parseFloat(carContract.refundAmount || 0);
+  const carAdditionalOwed = parseFloat(carContract.additionalOwed || 0);
+  const carHasConditionInfo = carCondition !== '' || carDamageFee > 0 || carFuelFee > 0 || carLateFee > 0;
+
   const contactTxn = (transactions && (transactions.find(t => t.recipient_phone || t.pp_recipient_phone || t.customer_email) || transactions[0])) || {};
   const customerPhone = receivable.customer_phone || contactTxn.pp_recipient_phone || contactTxn.recipient_phone || manualDetails?.bidderPhone || manualDetails?.telebirrNumber || '—';
   const customerEmail = receivable.customer_email || contactTxn.customer_email || manualDetails?.bidderEmail || '—';
@@ -571,6 +582,11 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D', padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                       ⏳ NOT REFUNDED
                     </span>
+                    {carDamaged && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5', padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        <AlertCircle size={12} /> DAMAGED · ETB {fmt(carDamageFee)}
+                      </span>
+                    )}
                     <button
                       onClick={handleToggleCarRefund}
                       disabled={markingRefund}
@@ -587,6 +603,9 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Refundable Deposit Amount</div>
                 <div style={{ fontWeight: 800, color: '#16A34A', fontSize: 16 }}>ETB {fmt(carDepositAmount)}</div>
+                {carDamaged && (
+                  <div style={{ fontSize: 11, color: '#B91C1C', marginTop: 2 }}>− Penalty ETB {fmt(carDamageFee)} → Refund ETB {fmt(carRefundAmount)}</div>
+                )}
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 3 }}>Refund Status</div>
@@ -603,6 +622,34 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                 <div style={{ fontWeight: 700, color: '#111827' }}>{manualDetails?.contractDetails?.driverName || receivable?.customer_name || '—'}</div>
               </div>
             </div>
+
+            {carHasConditionInfo && (
+              <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 8,
+                background: carDamaged ? '#FEF2F2' : '#F0FDF4',
+                border: `1.5px solid ${carDamaged ? '#FCA5A5' : '#86EFAC'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em', color: carDamaged ? '#B91C1C' : '#15803D', marginBottom: 8 }}>
+                  {carDamaged ? <AlertCircle size={14} /> : <CheckCircle2 size={14} />}
+                  Vehicle Return Inspection — {carDamaged ? 'DAMAGED' : 'Returned in Fine Condition'}
+                </div>
+                {carDamaged && (
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>
+                    <span style={{ color: '#6B7280', fontWeight: 600 }}>Damage Penalty Deducted: </span>
+                    <span style={{ fontWeight: 800, color: '#B91C1C' }}>ETB {fmt(carDamageFee)}</span>
+                  </div>
+                )}
+                {carDamaged && carContract.conditionReason && (
+                  <div style={{ fontSize: 12, color: '#7F1D1D', marginBottom: 6 }}>
+                    <span style={{ color: '#6B7280', fontWeight: 600 }}>Reason: </span>{carContract.conditionReason}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 12 }}>
+                  {carFuelFee > 0 && <span style={{ color: '#6B7280' }}>Fuel Fee: <strong style={{ color: '#B45309' }}>ETB {fmt(carFuelFee)}</strong></span>}
+                  {carLateFee > 0 && <span style={{ color: '#6B7280' }}>Late Fee: <strong style={{ color: '#B45309' }}>ETB {fmt(carLateFee)}</strong></span>}
+                  <span style={{ color: '#6B7280' }}>Net Refund to Customer: <strong style={{ color: '#16A34A' }}>ETB {fmt(carRefundAmount)}</strong></span>
+                  {carAdditionalOwed > 0 && <span style={{ color: '#6B7280' }}>Additional Owed by Customer: <strong style={{ color: '#B91C1C' }}>ETB {fmt(carAdditionalOwed)}</strong></span>}
+                </div>
+              </div>
+            )}
 
             {carDepositRefunded ? (
               <div style={{ marginTop: 14, padding: '10px 14px', background: '#DCFCE7', border: '1px solid #16A34A', borderRadius: 6, fontSize: 12, color: '#14532D', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -893,11 +940,41 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                 {carDepositRefunded ? 'Remove Deposit Refund Mark' : 'Confirm Security Deposit Refund'}
               </div>
             </div>
+
+            {carHasConditionInfo && (
+              <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 8,
+                background: carDamaged ? '#FEF2F2' : '#F0FDF4',
+                border: `1px solid ${carDamaged ? '#FCA5A5' : '#86EFAC'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', color: carDamaged ? '#B91C1C' : '#15803D', marginBottom: 6 }}>
+                  {carDamaged ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
+                  Rental Manager Return Inspection: {carDamaged ? 'Car Damaged' : 'Car Fine'}
+                </div>
+                {carDamaged ? (
+                  <div style={{ fontSize: 13, color: '#111827' }}>
+                    <div>
+                      Damage Penalty: <strong style={{ color: '#B91C1C' }}>ETB {fmt(carDamageFee)}</strong>
+                      {carFuelFee > 0 && <span style={{ color: '#6B7280' }}> · Fuel ETB {fmt(carFuelFee)}</span>}
+                      {carLateFee > 0 && <span style={{ color: '#6B7280' }}> · Late ETB {fmt(carLateFee)}</span>}
+                    </div>
+                    {carContract.conditionReason && (
+                      <div style={{ fontSize: 12, color: '#7F1D1D', marginTop: 3 }}>Reason: {carContract.conditionReason}</div>
+                    )}
+                    <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6 }}>
+                      Refund due = Deposit ETB {fmt(carDepositAmount)} − Penalty ETB {fmt(carDamageFee)} = <strong style={{ color: '#16A34A' }}>ETB {fmt(carRefundAmount)}</strong>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 13, color: '#166534' }}>
+                    No damage penalty. Full deposit of <strong>ETB {fmt(carDepositAmount)}</strong> is refundable.
+                  </div>
+                )}
+              </div>
+            )}
             
             <p style={{ color: '#4B5563', fontSize: 14, lineHeight: 1.5, marginBottom: 24 }}>
               {carDepositRefunded 
                 ? 'Are you sure you want to remove the "Refunded" mark from this Car Rental security deposit? It will be marked as not refunded / pending again.'
-                : `Are you sure you want to mark this Car Rental security deposit as refunded? This confirms that the guarantee deposit (ETB ${fmt(carDepositAmount)}) has been returned to the customer.`}
+                : `Are you sure you want to mark this Car Rental security deposit as refunded? This confirms that ${carDamaged ? `the refund of ETB ${fmt(carRefundAmount)} (after the ETB ${fmt(carDamageFee)} damage penalty)` : `the guarantee deposit (ETB ${fmt(carDepositAmount)})`} has been returned to the customer.`}
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
