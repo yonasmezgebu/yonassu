@@ -7,6 +7,8 @@ import styles from './FinanceHome.module.css';
 /* ─── Formatters ──────────────────────────────────────────────── */
 const fmt = (n) =>
   'ETB ' + Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = (n) =>
+  Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT - Tabular Redesign
@@ -27,6 +29,9 @@ const FinanceHome = () => {
   const [equitySummary, setEquitySummary] = useState(null);
   const [profitSummary, setProfitSummary] = useState(null);
   const [liabSummary, setLiabSummary] = useState(null);
+  const [arDashboard,  setArDashboard]  = useState(null);
+  const [arList,       setArList]       = useState([]);
+  const [liabList,     setLiabList]     = useState([]);
   const [refreshing,   setRefreshing]   = useState(false);
 
   /* ── Load data — mirrors the CFO/CEO Finance Command Center so the
@@ -34,7 +39,7 @@ const FinanceHome = () => {
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes] =
+      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes, arRes, arListRes, liabListRes] =
         await Promise.allSettled([
           api.get('/finance-cash/cashbook'),
           api.get('/finance-cash/crv'),
@@ -47,6 +52,9 @@ const FinanceHome = () => {
           api.get('/finance-equity/dashboard'),
           api.get('/finance/vat-profit-report?period=all'),
           api.get('/liabilities-v2/dashboard'),
+          api.get('/erp-receivables/dashboard'),
+          api.get('/erp-receivables'),
+          api.get('/liabilities-v2'),
         ]);
       if (cbRes.status      === 'fulfilled') setCashbook(cbRes.value?.data || []);
       if (crvRes.status     === 'fulfilled') setCrvs(crvRes.value?.data || []);
@@ -71,6 +79,18 @@ const FinanceHome = () => {
       if (liabRes.status    === 'fulfilled') {
         const ld = liabRes.value?.data || liabRes.value;
         setLiabSummary(ld?.data || ld || null);
+      }
+      if (arRes.status      === 'fulfilled') {
+        const ad = arRes.value?.data || arRes.value;
+        setArDashboard(ad?.data || ad || null);
+      }
+      if (arListRes.status  === 'fulfilled') {
+        const al = arListRes.value?.data;
+        setArList(Array.isArray(al) ? al : []);
+      }
+      if (liabListRes.status === 'fulfilled') {
+        const ll = liabListRes.value?.data;
+        setLiabList(Array.isArray(ll) ? ll : []);
       }
     } catch (err) {
       console.error('Finance dashboard load error:', err);
@@ -106,11 +126,35 @@ const FinanceHome = () => {
     ? accountBalance
     : parseFloat(bankSummary?.netBalance || bankSummary?.total_balance || bankSummary?.balance || 0);
 
-  // CFO/CEO computes settled & outstanding straight from paid_amount||settled
-  // (receivables book). Matches the Command Center exactly.
-  const totalReceivable    = rcvList.reduce((s, r) => s + parseFloat(r.total_amount || r.amount || 0), 0);
-  const settledReceivable  = rcvList.reduce((s, r) => s + parseFloat(r.paid_amount || r.settled || 0), 0);
-  const outstandingBalance = totalReceivable - settledReceivable;
+  // Accounts Receivable figures come from the Revenue → Accounts Receivable
+  // ledger (/erp-receivables/dashboard) — the true customer balances. The
+  // revenue book's collected amounts already sit in Bank/Cash, so they are
+  // NOT read here (avoids double counting).
+  const arTotalInvoiced  = parseFloat(arDashboard?.totalInvoiced    || 0);
+  const arTotalCollected = parseFloat(arDashboard?.totalCollected   || 0);
+  const arReceivables    = parseFloat(arDashboard?.totalReceivables || 0);
+
+  const arListItems = Array.isArray(arList) ? arList : [];
+  const dateOnly = v => v ? String(v).slice(0, 10) : '—';
+  const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+  const daysUntil = v => {
+    if (!v) return null;
+    const d = new Date(`${String(v).slice(0, 10)}T00:00:00`);
+    d.setHours(0, 0, 0, 0);
+    return Math.round((d - todayMid) / 86400000);
+  };
+  const dueSoonList = arListItems
+    .filter(r => parseFloat(r.balance) > 0 && r.status !== 'Received')
+    .map(r => ({ ...r, _d: daysUntil(r.due_date) }))
+    .filter(r => r._d !== null && r._d >= 0 && r._d <= 3)
+    .sort((a, b) => a._d - b._d);
+
+  const liabListItems = Array.isArray(liabList) ? liabList : [];
+  const liabDueSoonList = liabListItems
+    .filter(r => parseFloat(r.balance) > 0 && r.status !== 'Paid')
+    .map(r => ({ ...r, _d: daysUntil(r.due_date) }))
+    .filter(r => r._d !== null && r._d >= 0 && r._d <= 3)
+    .sort((a, b) => a._d - b._d);
 
   const unreconCount = reconList.filter(r => r.status !== 'reconciled' && r.status !== 'completed').length;
   const firstName    = user?.fullName?.split(' ')[0] || user?.name?.split(' ')[0] || 'Manager';
@@ -170,18 +214,35 @@ const FinanceHome = () => {
   const crvBankedIn = bankList.reduce((s, b) => s + parseFloat(b.totalIn || 0), 0);
   const unbankedCRV = Math.max(0, crvTotal - crvBankedIn);
 
-  /* ── SYSTEM BALANCE — exact same formula as Command Center ───── */
+  /* ── SYSTEM BALANCE — Bank/Cash already include gross profit, collected
+        tax and the car-rental refundable deposit, so those are NOT added
+        here (avoids double counting). They are shown as separate
+        display-only records below. ─────────────────────────────────────── */
   const systemBalance =
     parseFloat(bankBalance || 0) +
-    parseFloat(settledReceivable || 0) +
-    parseFloat(equityNetIn || 0) +
-    parseFloat(grossProfit || 0) +
-    parseFloat(outputVat || 0) +
-    parseFloat(carRentalDeposit || 0) -
+    parseFloat(equityNetIn || 0) -
     parseFloat(expenseOut || 0) +
     parseFloat(unbankedCRV || 0) +
     parseFloat(assetGrand || 0) -
     parseFloat(totalOwed || 0);
+
+  /* ── Department profit / tax breakdown (from Revenue Book) ───── */
+  const deptOrder = ['Retail & POS', 'Pharmacy', 'Printing', 'Car Rental', 'AgriRent', 'Tender', 'Manual Entry'];
+  const deptMap = {};
+  rcvList.forEach(r => {
+    const key = r.department_source || 'Other';
+    if (!deptMap[key]) deptMap[key] = { selling: 0, cogs: 0, profit: 0 };
+    deptMap[key].selling += parseFloat(r.selling_price || 0);
+    deptMap[key].cogs    += parseFloat(r.cogs          || 0);
+    deptMap[key].profit  += parseFloat(r.gross_profit  || 0);
+  });
+  const deptRows = Object.entries(deptMap)
+    .filter(([, v]) => v.selling !== 0 || v.cogs !== 0 || v.profit !== 0)
+    .sort((a, b) => {
+      const ia = deptOrder.indexOf(a[0]);
+      const ib = deptOrder.indexOf(b[0]);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
 
   return (
     <div className={styles.page}>
@@ -215,10 +276,7 @@ const FinanceHome = () => {
                     { label: 'Bank Accounts (Cash in Bank)', val: bankBalance, nav: '/finance/bank-accounts' },
                     { label: 'Unbanked Cash (CRV on Hand)', val: unbankedCRV, nav: '/finance/crv' },
                     { label: 'Net Owner Flow (Equity)', val: equityNetIn, nav: '/finance/equity' },
-                    { label: 'Collected / Paid So Far (Accounts Receivable)', val: settledReceivable, nav: '/finance/accounts-receivable' },
-                    { label: 'Gross Profit (Revenue − COGS)', val: grossProfit, nav: '/finance/outstanding-ar' },
-                    { label: 'Output VAT (Tax Collected)', val: outputVat, nav: '/finance/outstanding-ar' },
-                    { label: 'Car Rental Refundable Deposit (Held)', val: carRentalDeposit, nav: '/finance/outstanding-ar' },
+                    { label: 'Outstanding Receivable (Customer Loans)', val: arReceivables, nav: '/finance/accounts-receivable' },
                     { label: 'Paid Out (Expenses)', val: -expenseOut, nav: '/finance/ev' },
                     { label: 'Total Assets (Non-Cash)', val: assetGrand, nav: '/finance/overview' },
                     { label: 'Total Liabilities (Owed)', val: -totalOwed, nav: '/finance/liabilities' }
@@ -227,15 +285,16 @@ const FinanceHome = () => {
                   return (
                     <>
                       {rows.map((r, i) => {
-                        runningTotal += parseFloat(r.val || 0);
+                        if (!r.noAdd) runningTotal += parseFloat(r.val || 0);
+                        const dim = r.noAdd ? { fontStyle: 'italic', color: '#6B7280' } : null;
                         return (
                           <tr key={i}
                             onClick={() => r.nav && navigate(r.nav)}
                             style={{ cursor: 'pointer' }}
                             className={styles.navRow}>
-                            <td>{r.label}</td>
-                            <td className={styles.alignRight}>{fmt(r.val)}</td>
-                            <td className={styles.alignRight} style={{ fontWeight: 600, color: '#059669' }}>{fmt(runningTotal)}</td>
+                            <td style={dim}>{r.label}</td>
+                            <td className={styles.alignRight} style={dim}>{fmt(r.val)}</td>
+                            <td className={styles.alignRight} style={{ fontWeight: 600, color: '#059669', ...(r.noAdd ? { fontStyle: 'italic', opacity: 0.7 } : {}) }}>{fmt(runningTotal)}</td>
                           </tr>
                         );
                       })}
@@ -244,6 +303,29 @@ const FinanceHome = () => {
                         <td className={styles.alignRight}></td>
                         <td className={styles.alignRight} style={{ color: '#FFFFFF', fontSize: '1.1rem', fontWeight: 800, padding: '10px 12px' }}>{fmt(runningTotal)}</td>
                       </tr>
+                      {/* Separate records below the System Balance — NOT added into it
+                         (their value is already reflected in Bank/Cash above). */}
+                      {[
+                        { label: 'Collected Tax (Output VAT)', val: outputVat, nav: '/finance/outstanding-ar' },
+                        { label: 'Car Rental Refundable Deposit (Held)', val: carRentalDeposit, nav: '/finance/outstanding-ar' },
+                        ...deptRows.map(([dept, v]) => ({
+                          label: `${dept} Profit (Selling ${num(v.selling)} − COGS ${num(v.cogs)})`,
+                          val: v.profit, nav: '/finance/outstanding-ar',
+                        })),
+                        { label: 'Gross Profit (All Departments)', val: grossProfit, nav: '/finance/outstanding-ar', strong: true }
+                      ].map((r, i) => {
+                        const dim = { fontStyle: 'italic', color: '#6B7280', ...(r.strong ? { fontWeight: 700 } : {}) };
+                        return (
+                          <tr key={`info-${i}`}
+                            onClick={() => r.nav && navigate(r.nav)}
+                            style={{ cursor: 'pointer' }}
+                            className={styles.navRow}>
+                            <td style={dim}>{r.label}</td>
+                            <td className={styles.alignRight} style={dim}>{fmt(r.val)}</td>
+                            <td className={styles.alignRight} style={{ fontWeight: 600, color: '#059669', fontStyle: 'italic', opacity: 0.7 }}>{fmt(runningTotal)}</td>
+                          </tr>
+                        );
+                      })}
                     </>
                   );
                 })()}
@@ -266,15 +348,15 @@ const FinanceHome = () => {
               <tbody>
                 <tr className={styles.navRow} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Total Invoiced (All Records)</td>
-                  <td className={styles.alignRight}>{fmt(totalReceivable)}</td>
+                  <td className={styles.alignRight}>{fmt(arTotalInvoiced)}</td>
                 </tr>
                 <tr className={styles.navRow} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Collected / Paid So Far</td>
-                  <td className={styles.alignRight}>{fmt(settledReceivable)}</td>
+                  <td className={styles.alignRight}>{fmt(arTotalCollected)}</td>
                 </tr>
                 <tr className={`${styles.totalRow} ${styles.navRow}`} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Still Outstanding (Not Yet Received)</td>
-                  <td className={styles.alignRight}>{fmt(outstandingBalance)}</td>
+                  <td className={styles.alignRight}>{fmt(arReceivables)}</td>
                 </tr>
               </tbody>
             </table>
@@ -383,6 +465,80 @@ const FinanceHome = () => {
             </table>
           </div>
         </div>
+
+        {dueSoonList.length > 0 && (
+          <div className={styles.tableCard} style={{ border: '1px solid #FCA5A5' }}>
+            <h3 className={styles.sectionTitle} style={{ padding: '1.5rem 1.5rem 0', color: '#B91C1C', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 999, background: '#DC2626', color: '#FFFFFF', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>!</span>
+              Due Soon — Collect Now ({dueSoonList.length})
+            </h3>
+            <div className={styles.tableWrapper}>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Customer</th>
+                    <th className={styles.alignRight}>Balance</th>
+                    <th className={styles.alignRight}>Due Date</th>
+                    <th className={styles.alignRight}>Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dueSoonList.map((r, i) => (
+                    <tr key={i} className={styles.navRow} onClick={() => navigate('/finance/accounts-receivable')}>
+                      <td>{r.invoice_number}</td>
+                      <td>{r.customer_name}</td>
+                      <td className={styles.alignRight}>{fmt(r.balance)}</td>
+                      <td className={styles.alignRight}>{dateOnly(r.due_date)}</td>
+                      <td className={styles.alignRight}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#B91C1C', fontWeight: 700, fontSize: 12, padding: '3px 10px', borderRadius: 999, border: '1px solid #FCA5A5' }}>
+                          {r._d === 0 ? 'Due today' : `Due in ${r._d}d`}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {liabDueSoonList.length > 0 && (
+          <div className={styles.tableCard} style={{ border: '1px solid #FCA5A5' }}>
+            <h3 className={styles.sectionTitle} style={{ padding: '1.5rem 1.5rem 0', color: '#B91C1C', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 999, background: '#DC2626', color: '#FFFFFF', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>!</span>
+              Due Soon — Pay Now ({liabDueSoonList.length})
+            </h3>
+            <div className={styles.tableWrapper}>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Reference</th>
+                    <th>Party</th>
+                    <th className={styles.alignRight}>Balance</th>
+                    <th className={styles.alignRight}>Due Date</th>
+                    <th className={styles.alignRight}>Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {liabDueSoonList.map((r, i) => (
+                    <tr key={i} className={styles.navRow} onClick={() => navigate('/finance/liabilities')}>
+                      <td>{r.reference_no || '—'}</td>
+                      <td>{r.party_name || '—'}</td>
+                      <td className={styles.alignRight}>{fmt(r.balance)}</td>
+                      <td className={styles.alignRight}>{dateOnly(r.due_date)}</td>
+                      <td className={styles.alignRight}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#B91C1C', fontWeight: 700, fontSize: 12, padding: '3px 10px', borderRadius: 999, border: '1px solid #FCA5A5' }}>
+                          {r._d === 0 ? 'Due today' : `Due in ${r._d}d`}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
