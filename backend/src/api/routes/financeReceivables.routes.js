@@ -1979,7 +1979,13 @@ router.get('/book/:id/detail', authenticate, async (req, res) => {
                   securityDeposit: carDeposit,
                   extensionFee: asNum(ro.extension_fee),
                   damageFee: asNum(ro.damage_fee),
+                  fuelFee: asNum(ro.fuel_fee),
                   lateFee: asNum(ro.late_fee),
+                  refundAmount: asNum(ro.refund_amount),
+                  additionalOwed: asNum(ro.additional_owed),
+                  carCondition: ro.car_condition || null,
+                  conditionReason: ro.condition_reason || null,
+                  managerNote: ro.manager_note || null,
                   specialRequests: ro.special_requests || null
                 }
               };
