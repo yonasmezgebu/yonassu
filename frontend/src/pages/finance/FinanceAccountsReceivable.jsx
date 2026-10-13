@@ -186,6 +186,16 @@ const CSS = `
   .ar-badge.received { background: var(--color-success-bg); color: var(--color-success); }
   .ar-badge.overdue  { background: var(--color-danger-bg); color: var(--color-danger); }
 
+  /* Due-soon red flag (raised ~3 days before the due date) */
+  .ar-flag {
+    display: inline-flex; align-items: center; gap: 3px; margin-left: 6px;
+    padding: 1px 8px; border-radius: 999px;
+    background: var(--color-danger-bg); color: var(--color-danger);
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    animation: ar-flag-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes ar-flag-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
   /* ── Modal ──────────────────────────────────── */
   .ar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; justify-content: center; align-items: flex-start; z-index: 1000; padding: 16px; overflow-y: auto; }
   .ar-modal { background: var(--color-bg-card); width: 100%; max-width: 540px; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.25); margin: auto; overflow: hidden; }
@@ -259,16 +269,30 @@ const Badge = ({ status }) => {
 const fmt = n => `ETB ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Shared invoice form JSX
-const InvFormFields = ({ invForm, setInvForm }) => (
+const InvFormFields = ({ invForm, setInvForm, isEdit = false }) => (
   <>
+    <div className="ar-form-grid">
+      <div className="ar-form-group">
+        <label className="ar-label">Customer Name *</label>
+        <input required className="ar-input" placeholder="e.g. Kebede Store" value={invForm.customer_name} onChange={e => setInvForm(f => ({ ...f, customer_name: e.target.value }))} />
+      </div>
+      <div className="ar-form-group">
+        <label className="ar-label">Phone Number *</label>
+        <input required type="tel" className="ar-input" placeholder="e.g. 0912345678" value={invForm.phone} onChange={e => setInvForm(f => ({ ...f, phone: e.target.value }))} />
+      </div>
+    </div>
     <div className="ar-form-group">
-      <label className="ar-label">Customer Name *</label>
-      <input required className="ar-input" placeholder="e.g. Kebede Store" value={invForm.customer_name} onChange={e => setInvForm(f => ({ ...f, customer_name: e.target.value }))} />
+      <label className="ar-label">Email (optional)</label>
+      <input type="email" className="ar-input" placeholder="e.g. customer@email.com" value={invForm.email} onChange={e => setInvForm(f => ({ ...f, email: e.target.value }))} />
     </div>
     <div className="ar-form-grid">
       <div className="ar-form-group">
-        <label className="ar-label">Invoice No. *</label>
-        <input required className="ar-input" placeholder="INV-101" value={invForm.invoice_number} onChange={e => setInvForm(f => ({ ...f, invoice_number: e.target.value }))} />
+        <label className="ar-label">Invoice No.{isEdit ? ' *' : ''}</label>
+        {isEdit ? (
+          <input required className="ar-input" placeholder="INV-101" value={invForm.invoice_number} onChange={e => setInvForm(f => ({ ...f, invoice_number: e.target.value }))} />
+        ) : (
+          <input readOnly disabled className="ar-input" value="Auto-generated on save" />
+        )}
       </div>
       <div className="ar-form-group">
         <label className="ar-label">Amount (ETB) *</label>
@@ -315,9 +339,12 @@ export default function FinanceAccountsReceivable() {
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4500);
   }, []);
 
+  // Finance accounts money can be deposited into (loaded from Finance → Bank Accounts)
+  const [accounts, setAccounts] = useState([]);
+
   // Empty forms
-  const emptyInv = { customer_name: '', invoice_number: '', invoice_date: '', due_date: '', amount: '', description: '' };
-  const emptyPay = { payment_date: new Date().toISOString().split('T')[0], amount: '', payment_method: 'Cash', notes: '' };
+  const emptyInv = { customer_name: '', invoice_number: '', invoice_date: '', due_date: '', amount: '', description: '', phone: '', email: '' };
+  const emptyPay = { payment_date: new Date().toISOString().split('T')[0], amount: '', account_id: '', notes: '' };
   const [invForm, setInvForm] = useState(emptyInv);
   const [payForm, setPayForm] = useState(emptyPay);
 
@@ -325,14 +352,16 @@ export default function FinanceAccountsReceivable() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [dashRes, listRes] = await Promise.all([
+      const [dashRes, listRes, accRes] = await Promise.all([
         apiClient.get('/erp-receivables/dashboard'),
         apiClient.get('/erp-receivables'),
+        apiClient.get('/finance-bank'),
       ]);
       const d = dashRes?.data || dashRes || {};
       const l = listRes?.data || listRes || [];
       setDashboard(d.data || d);
       setReceivables(Array.isArray(l.data) ? l.data : Array.isArray(l) ? l : []);
+      setAccounts(Array.isArray(accRes?.data) ? accRes.data : []);
     } catch {
       push('Failed to load receivables data', 'error');
     } finally {
@@ -381,6 +410,8 @@ export default function FinanceAccountsReceivable() {
       due_date:       item.due_date       ? item.due_date.split('T')[0]     : '',
       amount:         item.amount         || '',
       description:    item.description    || '',
+      phone:          item.phone          || '',
+      email:          item.email          || '',
     });
     setEditItem(item);
   };
@@ -424,6 +455,13 @@ export default function FinanceAccountsReceivable() {
   });
 
   const dateStr = v => v ? v.split('T')[0] : '—';
+  const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+  const daysUntil = v => {
+    if (!v) return null;
+    const d = new Date(`${String(v).slice(0, 10)}T00:00:00`);
+    d.setHours(0, 0, 0, 0);
+    return Math.round((d - todayMid) / 86400000);
+  };
 
   return (
     <div className="ar-wrap">
@@ -517,7 +555,19 @@ export default function FinanceAccountsReceivable() {
                     <td className="ar-td due" style={{ color: parseFloat(item.balance) > 0 ? G.error : G.forest }}>
                       {fmt(item.balance)}
                     </td>
-                    <td className="ar-td">{dateStr(item.due_date)}</td>
+                    <td className="ar-td">
+                      {dateStr(item.due_date)}
+                      {(() => {
+                        const d = daysUntil(item.due_date);
+                        const show = parseFloat(item.balance) > 0 && item.status !== 'Received' && d !== null && d >= 0 && d <= 3;
+                        if (!show) return null;
+                        return (
+                          <span className="ar-flag" title="Due soon — collect this receivable">
+                            <AlertCircle size={11} /> {d === 0 ? 'Due today' : `Due in ${d}d`}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="ar-td"><Badge status={item.status} /></td>
                     <td className="ar-td">
                       <div className="ar-td-actions" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -581,7 +631,7 @@ export default function FinanceAccountsReceivable() {
                 </div>
               )}
               <form onSubmit={handleEdit}>
-                <InvFormFields invForm={invForm} setInvForm={setInvForm} />
+                <InvFormFields invForm={invForm} setInvForm={setInvForm} isEdit />
                 <div className="ar-form-footer">
                   <button type="button" className="ar-btn outline" onClick={() => setEditItem(null)}>Cancel</button>
                   <button type="submit" className="ar-btn edit" disabled={submitting}>{submitting ? 'Updating…' : 'Update Invoice'}</button>
@@ -617,12 +667,14 @@ export default function FinanceAccountsReceivable() {
                     <input required type="date" className="ar-input" value={payForm.payment_date} onChange={e => setPayForm(f => ({ ...f, payment_date: e.target.value }))} />
                   </div>
                   <div className="ar-form-group">
-                    <label className="ar-label">Payment Method *</label>
-                    <select required className="ar-select" value={payForm.payment_method} onChange={e => setPayForm(f => ({ ...f, payment_method: e.target.value }))}>
-                      <option value="Cash">Cash</option>
-                      <option value="Bank Transfer">Bank Transfer</option>
-                      <option value="Mobile Money">Mobile Money</option>
-                      <option value="Check">Check</option>
+                    <label className="ar-label">Deposit To Finance Account *</label>
+                    <select required className="ar-select" value={payForm.account_id} onChange={e => setPayForm(f => ({ ...f, account_id: e.target.value }))}>
+                      <option value="">Select account…</option>
+                      {accounts.filter(a => a.status === 'Active').map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.account_name}{a.account_number ? ` — ${a.account_number}` : ''} ({a.account_type})
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
