@@ -420,6 +420,13 @@ const CSS = `
   .ll-balance-strip .val { font-size: 24px; font-weight: 700; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
   .ll-balance-strip .meta { font-size: 13px; color: var(--color-text-secondary); font-weight: 400; }
 
+  /* ── Payment allocation rows ── */
+  .ll-pay-row { display: grid; grid-template-columns: 1fr 130px auto; gap: 8px; align-items: center; }
+  .ll-pay-row .ll-btn { height: 36px; width: 36px; padding: 0; justify-content: center; }
+  .ll-pay-hint { font-size: 11.5px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .ll-pay-hint.err { color: #B91C1C; }
+  .ll-pay-hint.ok { color: #15803D; }
+
   /* ── Form Fields (12) ── */
   .ll-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .ll-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
@@ -512,6 +519,22 @@ const CSS = `
     .ll-action-bar { justify-content: stretch; }
     .ll-action-bar .ll-btn { width: 100%; justify-content: center; }
   }
+
+  .ll-flag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #B91C1C;
+    background: #FEE2E2;
+    border: 1px solid #FCA5A5;
+    white-space: nowrap;
+    animation: ll-flagpulse 1.4s ease-in-out infinite;
+  }
+  @keyframes ll-flagpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
 `;
 
 /* ─── Sub-components ────────────────────────────────────────────── */
@@ -543,6 +566,16 @@ export default function FinanceLiabilities() {
   const [form, setForm] = useState({});
   const [payForm, setPayForm] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  /* Finance accounts money can be paid from (loaded from Finance → Bank Accounts) */
+  const [accounts, setAccounts] = useState([]);
+  const loadAccounts = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/finance-bank');
+      setAccounts(Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+    } catch { /* non-fatal */ }
+  }, []);
+  useEffect(() => { loadAccounts(); }, [loadAccounts]);
 
   /* Toast */
   const push = (msg, type = 'success') => {
@@ -579,6 +612,33 @@ export default function FinanceLiabilities() {
   const handleInput = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
   const handlePayInput = e => setPayForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
+  const openPay = (r) => {
+    setPayItem(r);
+    setPayForm({
+      payment_date: new Date().toISOString().split('T')[0],
+      amount: '',
+      notes: '',
+      allocations: [{ account_id: '', amount: '' }],
+    });
+  };
+  const setAlloc = (idx, key, val) =>
+    setPayForm(f => ({ ...f, allocations: (f.allocations || []).map((a, i) => i === idx ? { ...a, [key]: val } : a) }));
+  const addAlloc = () =>
+    setPayForm(f => ({ ...f, allocations: [...(f.allocations || []), { account_id: '', amount: '' }] }));
+  const removeAlloc = (idx) =>
+    setPayForm(f => ({ ...f, allocations: (f.allocations || []).filter((_, i) => i !== idx) }));
+
+  /* Derived values for the payment allocation editor */
+  const accBalance = (id) => {
+    const a = accounts.find(x => String(x.id) === String(id));
+    return a ? parseFloat(a.netBalance || 0) : 0;
+  };
+  const payRows = payForm.allocations || [];
+  const payWant = parseFloat(payForm.amount) || 0;
+  const payTotal = payRows.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+  const payOver = payRows.some(a => a.account_id && (parseFloat(a.amount) || 0) > accBalance(a.account_id) + 0.005);
+  const payComplete = payRows.length > 0 && payRows.every(a => a.account_id && parseFloat(a.amount) > 0) && Math.abs(payTotal - payWant) < 0.005 && !payOver;
+
   const submitAdd = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -598,15 +658,30 @@ export default function FinanceLiabilities() {
 
   const submitPay = async (e) => {
     e.preventDefault();
+    const rows = (payForm.allocations || []).filter(a => a.account_id && parseFloat(a.amount) > 0);
+    const total = rows.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+    const want = parseFloat(payForm.amount) || 0;
+    if (rows.length !== (payForm.allocations || []).length || Math.abs(total - want) > 0.005) {
+      push('Allocate the full amount across finance account(s) before confirming.', 'error');
+      return;
+    }
     setSubmitting(true);
     try {
-      await apiClient.post('/liabilities-v2/' + payItem.id + '/pay', payForm);
+      const payload = {
+        payment_date: payForm.payment_date,
+        notes: payForm.notes,
+        amount: want,
+        allocations: rows.map(a => ({ account_id: Number(a.account_id), amount: parseFloat(a.amount) })),
+      };
+      await apiClient.post('/liabilities-v2/' + payItem.id + '/pay', payload);
       push('Payment recorded successfully.');
       setPayItem(null);
       setPayForm({});
       load();
+      loadAccounts();
     } catch (err) {
       push(err?.message || 'Payment failed.', 'error');
+      loadAccounts();
     } finally {
       setSubmitting(false);
     }
@@ -661,7 +736,7 @@ export default function FinanceLiabilities() {
       f.principal_amount = r.amount;
       f.loan_date = f.issue_date || f.created_at;
     } else if (tab === 'tax') {
-      f.tax_type = r.party_name || r.tax_type;
+      f.tax_type = r.tax_type || r.party_name;
       f.tax_ref = r.reference_no;
       f.period = r.tax_period;
       f.amount_due = r.amount;
@@ -693,6 +768,17 @@ export default function FinanceLiabilities() {
 
   /* ── Table col helpers ── */
   const dateStr = (v) => (v ? v.split('T')[0] : '—');
+  const todayMid = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+  const daysUntil = (v) => {
+    if (!v) return null;
+    const d = new Date(String(v).split('T')[0] + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return null;
+    return Math.round((d - todayMid) / 86400000);
+  };
+  const isDueSoon = (r) => {
+    const d = daysUntil(r.due_date);
+    return parseFloat(r.balance) > 0 && r.status !== 'Paid' && d !== null && d >= 0 && d <= 3;
+  };
 
   return (
     <div className="ll-wrap">
@@ -849,13 +935,20 @@ export default function FinanceLiabilities() {
                           <td className={`ll-td ${parseFloat(r.balance) > 0 ? 'balance-due' : 'balance-ok'}`}>
                             {fmt(r.balance)}
                           </td>
-                          <td className="ll-td">{dateStr(r.due_date)}</td>
+                          <td className="ll-td">
+                            {dateStr(r.due_date)}
+                            {isDueSoon(r) && (
+                              <span className="ll-flag">
+                                {daysUntil(r.due_date) === 0 ? 'DUE TODAY' : `DUE IN ${daysUntil(r.due_date)}D`}
+                              </span>
+                            )}
+                          </td>
                           <td className="ll-td"><StatusBadge status={r.status} /></td>
                           <td className="ll-td">
                             <div className="ll-td-actions">
                               
                               {r.status !== 'Paid' && (
-                                <button className="ll-btn pay-btn" onClick={() => setPayItem(r)}>
+                                <button className="ll-btn pay-btn" onClick={() => openPay(r)}>
                                   Pay
                                 </button>
                               )}
@@ -902,8 +995,8 @@ export default function FinanceLiabilities() {
                     </div>
                     <div className="ll-form-grid">
                       <div className="ll-form-group">
-                        <label className="ll-label">Invoice No. *</label>
-                        <input required className="ll-input" name="invoice_number" placeholder="INV-001" onChange={handleInput} />
+                        <label className="ll-label">Invoice No.</label>
+                        <input className="ll-input" name="invoice_number" placeholder="Auto-generated if left blank" onChange={handleInput} />
                       </div>
                       <div className="ll-form-group">
                         <label className="ll-label">Amount (ETB) *</label>
@@ -932,8 +1025,8 @@ export default function FinanceLiabilities() {
                     </div>
                     <div className="ll-form-grid">
                       <div className="ll-form-group">
-                        <label className="ll-label">Loan Reference No. *</label>
-                        <input required className="ll-input" name="loan_no" placeholder="LN-001" onChange={handleInput} />
+                        <label className="ll-label">Loan Reference No.</label>
+                        <input className="ll-input" name="loan_no" placeholder="Auto-generated if left blank" onChange={handleInput} />
                       </div>
                       <div className="ll-form-group">
                         <label className="ll-label">Principal Amount (ETB) *</label>
@@ -972,8 +1065,8 @@ export default function FinanceLiabilities() {
                         <input required className="ll-input" name="tax_type" placeholder="e.g. VAT, Income Tax" onChange={handleInput} />
                       </div>
                       <div className="ll-form-group">
-                        <label className="ll-label">Tax Reference No. *</label>
-                        <input required className="ll-input" name="tax_ref" placeholder="TAX-001" onChange={handleInput} />
+                        <label className="ll-label">Tax Reference No.</label>
+                        <input className="ll-input" name="tax_ref" placeholder="Auto-generated if left blank" onChange={handleInput} />
                       </div>
                     </div>
                     <div className="ll-form-grid">
@@ -1012,8 +1105,8 @@ export default function FinanceLiabilities() {
                     </div>
                     <div className="ll-form-grid">
                       <div className="ll-form-group">
-                        <label className="ll-label">Reference No. *</label>
-                        <input required className="ll-input" name="reference_no" placeholder="REF-001" onChange={handleInput} />
+                        <label className="ll-label">Reference No.</label>
+                        <input className="ll-input" name="reference_no" placeholder="Auto-generated if left blank" onChange={handleInput} />
                       </div>
                       <div className="ll-form-group">
                         <label className="ll-label">Amount (ETB) *</label>
@@ -1032,6 +1125,20 @@ export default function FinanceLiabilities() {
                   <label className="ll-label">Description / Notes</label>
                   <input className="ll-input" name="description" placeholder="Optional notes…" onChange={handleInput} />
                 </div>
+
+                {/* Phone / Email */}
+                {addModal !== 'tax' && (
+                  <div className="ll-form-grid">
+                    <div className="ll-form-group">
+                      <label className="ll-label">Phone Number *</label>
+                      <input required type="tel" className="ll-input" name="phone" placeholder="e.g. 0912345678" onChange={handleInput} />
+                    </div>
+                    <div className="ll-form-group">
+                      <label className="ll-label">Email (optional)</label>
+                      <input type="email" className="ll-input" name="email" placeholder="e.g. name@email.com" onChange={handleInput} />
+                    </div>
+                  </div>
+                )}
 
                 <div className="ll-form-footer">
                   <button type="button" className="ll-btn outline" onClick={closeAdd}>Cancel</button>
@@ -1201,6 +1308,20 @@ export default function FinanceLiabilities() {
                   <input className="ll-input" name="description" value={form.description || ''} onChange={handleInput} />
                 </div>
 
+                {/* Phone / Email */}
+                {tab !== 'tax' && (
+                  <div className="ll-form-grid">
+                    <div className="ll-form-group">
+                      <label className="ll-label">Phone Number *</label>
+                      <input required type="tel" className="ll-input" name="phone" value={form.phone || ''} onChange={handleInput} />
+                    </div>
+                    <div className="ll-form-group">
+                      <label className="ll-label">Email (optional)</label>
+                      <input type="email" className="ll-input" name="email" value={form.email || ''} onChange={handleInput} />
+                    </div>
+                  </div>
+                )}
+
                 <div className="ll-form-footer">
                   <button type="button" className="ll-btn outline" onClick={closeEdit}>Cancel</button>
                   <button type="submit" className="ll-btn" disabled={submitting}>
@@ -1244,38 +1365,72 @@ export default function FinanceLiabilities() {
                     className="ll-input"
                     name="amount"
                     placeholder="0.00"
+                    value={payForm.amount || ''}
                     onChange={handlePayInput}
                   />
                 </div>
-                <div className="ll-form-grid">
-                  <div className="ll-form-group">
-                    <label className="ll-label">Payment Date</label>
-                    <input
-                      type="date"
-                      className="ll-input"
-                      name="payment_date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                      onChange={handlePayInput}
-                    />
-                  </div>
-                  <div className="ll-form-group">
-                    <label className="ll-label">Payment Method</label>
-                    <select className="ll-select" name="payment_method" onChange={handlePayInput}>
-                      <option value="Cash">Cash</option>
-                      <option value="Bank Transfer">Bank Transfer</option>
-                      <option value="Check">Check</option>
-                      <option value="Mobile Money">Mobile Money</option>
-                    </select>
+                <div className="ll-form-group">
+                  <label className="ll-label">Payment Date</label>
+                  <input
+                    type="date"
+                    className="ll-input"
+                    name="payment_date"
+                    value={payForm.payment_date || ''}
+                    onChange={handlePayInput}
+                  />
+                </div>
+
+                <div className="ll-form-group">
+                  <label className="ll-label">Pay From Finance Account(s) *</label>
+                  {payRows.map((row, idx) => {
+                    const acc = accounts.find(a => String(a.id) === String(row.account_id));
+                    const avail = acc ? parseFloat(acc.netBalance || 0) : 0;
+                    const rowAmt = parseFloat(row.amount) || 0;
+                    const over = !!acc && rowAmt > avail + 0.005;
+                    return (
+                      <div key={idx} style={{ marginBottom: 8 }}>
+                        <div className="ll-pay-row">
+                          <select required className="ll-select" value={row.account_id} onChange={e => setAlloc(idx, 'account_id', e.target.value)}>
+                            <option value="">Select account…</option>
+                            {accounts.filter(a => a.status === 'Active').map(a => (
+                              <option key={a.id} value={a.id}>
+                                {a.account_name}{a.account_number ? ` — ${a.account_number}` : ''} ({a.account_type}) · ETB {fmt(a.netBalance || 0)}
+                              </option>
+                            ))}
+                          </select>
+                          <input required type="number" step="0.01" min="0.01" className="ll-input" placeholder="0.00" value={row.amount} onChange={e => setAlloc(idx, 'amount', e.target.value)} />
+                          {payRows.length > 1
+                            ? <button type="button" className="ll-btn del-btn" title="Remove" onClick={() => removeAlloc(idx)}><Trash2 size={13} /></button>
+                            : <span />}
+                        </div>
+                        {acc && (
+                          <div className={`ll-pay-hint${over ? ' err' : ''}`}>
+                            {over
+                              ? `Insufficient — ${acc.account_name} has ETB ${fmt(avail)}`
+                              : `Available in ${acc.account_name}: ETB ${fmt(avail)}`}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button type="button" className="ll-btn outline" style={{ alignSelf: 'flex-start' }} onClick={addAlloc}>
+                    + Add Another Account
+                  </button>
+                  <div className={`ll-pay-hint${payComplete ? ' ok' : (payTotal > 0 ? ' err' : '')}`} style={{ marginTop: 10 }}>
+                    {payWant > 0
+                      ? `Allocated ETB ${fmt(payTotal)} · ${payTotal === payWant ? 'Fully allocated' : (payTotal < payWant ? `Remaining ETB ${fmt(payWant - payTotal)}` : `Over by ETB ${fmt(payTotal - payWant)}`)}`
+                      : `Allocated ETB ${fmt(payTotal)}`}
                   </div>
                 </div>
+
                 <div className="ll-form-group">
                   <label className="ll-label">Notes</label>
-                  <input className="ll-input" name="notes" placeholder="Optional notes…" onChange={handlePayInput} />
+                  <input className="ll-input" name="notes" placeholder="Optional notes…" value={payForm.notes || ''} onChange={handlePayInput} />
                 </div>
 
                 <div className="ll-form-footer">
                   <button type="button" className="ll-btn outline" onClick={closePay}>Cancel</button>
-                  <button type="submit" className="ll-btn" style={{ background: C.emerald, borderColor: C.emerald }} disabled={submitting}>
+                  <button type="submit" className="ll-btn" style={{ background: C.emerald, borderColor: C.emerald }} disabled={submitting || !payComplete}>
                     {submitting ? 'Processing…' : 'Confirm Payment'}
                   </button>
                 </div>
