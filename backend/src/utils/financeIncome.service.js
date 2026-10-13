@@ -105,13 +105,28 @@ const recordIncomeToLedger = async ({
   department = 'Manual CRV',
   extraCrvFields = {},
   extraReceivableDetails = {},
+  accountId = null,
+  accountName = null,
 }) => {
   const conn = trx || db;
-  const method = normalizePaymentMethod(paymentMethod);
+  let method = normalizePaymentMethod(paymentMethod);
   const today = new Date().toISOString().slice(0, 10);
   const pmtDate = date || today;
 
-  const account = await resolveLedgerAccount(conn, method, bankDetails, telebirrDetails);
+  // When the caller picks an exact finance account, attribute the income to it
+  // (and derive the payment method from its type) instead of inferring it.
+  let account = null;
+  if (accountId) {
+    account = await conn('finance_accounts').where({ id: accountId }).first();
+    if (account) {
+      if (account.account_type === 'Bank') method = 'Bank';
+      else if (account.account_type === 'Mobile Wallet') method = 'Telebirr';
+      else if (account.account_type === 'Cash') method = 'Cash';
+    }
+  }
+  if (!account) {
+    account = await resolveLedgerAccount(conn, method, bankDetails, telebirrDetails);
+  }
 
   const last = await conn('finance_crvs').orderBy('id', 'desc').first();
   const seq = (last && last.id ? last.id : 0) + 1;
@@ -123,6 +138,8 @@ const recordIncomeToLedger = async ({
     received_from: receivedFrom || 'Unknown',
     amount: parseFloat(amount || 0),
     payment_method: method,
+    account_id: account ? account.id : null,
+    account_name: accountName || (account ? account.account_name : null),
     description: description || 'Income',
     reference_no: referenceNo || null,
   };
