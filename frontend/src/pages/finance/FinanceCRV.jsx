@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CreditCard, CheckCircle, Printer, DollarSign, User, FileText, History,
-  Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2, Eye, X,
+  Banknote, Calendar, RefreshCw, PenTool, Trash2, Eye, X,
   BookOpen
 } from 'lucide-react';
 import api from '../../services/apiClient';
@@ -301,6 +301,7 @@ const FinanceCRV = () => {
   const [amount, setAmount]         = useState('');
   const [amountWords, setAmountWords] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [financeAccountId, setFinanceAccountId] = useState('');
   const [description, setDescription] = useState('');
   const [referenceNo, setReferenceNo] = useState(() => 'REF-' + Math.floor(100000 + Math.random() * 900000));
 
@@ -336,6 +337,22 @@ const FinanceCRV = () => {
   useEffect(() => {
     api.get('/finance-bank').then(res => setCompanyAccounts(res.data?.data || res.data || [])).catch(console.error);
   }, []);
+
+  const applyFinanceAccount = (id) => {
+    setFinanceAccountId(id);
+    const acc = companyAccounts.find(a => String(a.id) === String(id));
+    if (!acc) { setPaymentMethod(''); return; }
+    const method = acc.account_type === 'Bank' ? 'Bank' : acc.account_type === 'Mobile Wallet' ? 'Telebirr' : 'Cash';
+    setPaymentMethod(method);
+    if (method === 'Bank') {
+      setBankName(acc.bank_provider || '');
+      setAccountHolder('Sutana Enterprise');
+      setAccountNumber(acc.account_number || '');
+    } else if (method === 'Telebirr') {
+      setTelebirrNumber(acc.account_number || '');
+      setTelebirrName(acc.account_name || 'Sutana Enterprise');
+    }
+  };
   const [crvLoading, setCrvLoading] = useState(false);
   const [printTarget, setPrintTarget] = useState(null);
   const [detailCrv, setDetailCrv]     = useState(null);
@@ -390,6 +407,8 @@ const FinanceCRV = () => {
       const payload = {
         date, receivedFrom, amount: parseFloat(amount),
         paymentMethod, description, referenceNo,
+        accountId:       financeAccountId ? Number(financeAccountId) : null,
+        accountName:     (companyAccounts.find(a => String(a.id) === String(financeAccountId)) || {}).account_name || null,
         bankDetails:     paymentMethod === 'Bank'     ? { bankName, accountHolder, accountNumber, chequeNo } : null,
         telebirrDetails: paymentMethod === 'Telebirr' ? { telebirrNumber, fullName: telebirrName }          : null,
         preparedBy, receiverName,
@@ -410,6 +429,7 @@ const FinanceCRV = () => {
     setSubmitted(null);
     setAmount(''); setAmountWords(''); setReferenceNo('');
     setReceivedFrom(''); setDescription('');
+    setPaymentMethod('Cash'); setFinanceAccountId('');
     setBankName(''); setAccountHolder(''); setAccountNumber(''); setChequeNo('');
     setTelebirrNumber(''); setTelebirrName('');
     setReceiverName('');
@@ -860,18 +880,18 @@ const FinanceCRV = () => {
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}><Banknote size={16} color="#64748b" /> Payment Method</h3>
           </div>
           <div style={{ padding: 28 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: paymentMethod !== 'Cash' ? 20 : 0 }}>
-              {[{ type: 'Cash', icon: Banknote }, { type: 'Bank', icon: Building }, { type: 'Telebirr', icon: Smartphone }].map(({ type, icon: Icon }) => (
-                <div key={type} onClick={() => setPaymentMethod(type)} style={{
-                  padding: 18, border: `2px solid ${paymentMethod === type ? '#22c55e' : '#e2e8f0'}`,
-                  borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 14,
-                  background: paymentMethod === type ? '#f0fdf4' : 'white',
-                  color: paymentMethod === type ? '#166534' : '#64748b',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, transition: 'all .2s'
-                }}>
-                  <Icon size={26} color={paymentMethod === type ? '#22c55e' : '#94a3b8'} /> {type}
-                </div>
-              ))}
+            <div style={{ marginBottom: paymentMethod && paymentMethod !== 'Cash' ? 20 : 0 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 7 }}>Deposit To Finance Account *</label>
+              <select required value={financeAccountId} onChange={e => applyFinanceAccount(e.target.value)}
+                onFocus={e => (e.target.style.borderColor = '#22c55e')} onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+                style={{ width: '100%', padding: '10px 14px', border: '2px solid #e2e8f0', borderRadius: 9, outline: 'none', fontSize: 14, background: 'white' }}>
+                <option value="">Select Finance Account...</option>
+                {companyAccounts.filter(a => a.status === 'Active').map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.account_name} — {a.account_number || '—'} ({a.account_type}){a.netBalance != null ? ` • ETB ${Number(a.netBalance).toLocaleString()}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {paymentMethod === 'Bank' && (
