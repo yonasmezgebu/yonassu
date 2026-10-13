@@ -14,6 +14,9 @@ import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 const fmt = (n) =>
   'ETB ' + Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const num = (n) =>
+  Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const fmtShort = (n) => {
   const v = Number(n || 0);
   if (v >= 1_000_000) return 'ETB ' + (v / 1_000_000).toFixed(1) + 'M';
@@ -642,6 +645,9 @@ const CEOFinance = () => {
   const [equitySummary, setEquitySummary] = useState(null);
   const [profitSummary, setProfitSummary] = useState(null);
   const [liabSummary,   setLiabSummary]   = useState(null);
+  const [arDashboard,   setArDashboard]   = useState(null);
+  const [arList,        setArList]        = useState([]);
+  const [liabList,      setLiabList]      = useState([]);
 
   /* ── EV Approvals State ── */
   const [pendingEvs,    setPendingEvs]    = useState([]);
@@ -675,7 +681,7 @@ const CEOFinance = () => {
   const loadRealFinance = async () => {
     setRefreshing(true);
     try {
-      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes] =
+      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes, arRes, arListRes, liabListRes] =
         await Promise.allSettled([
           api.get('/finance-cash/cashbook'),
           api.get('/finance-cash/crv'),
@@ -688,6 +694,9 @@ const CEOFinance = () => {
           api.get('/finance-equity/dashboard'),
           api.get('/finance/vat-profit-report?period=all'),
           api.get('/liabilities-v2/dashboard'),
+          api.get('/erp-receivables/dashboard'),
+          api.get('/erp-receivables'),
+          api.get('/liabilities-v2'),
         ]);
       if (cbRes.status      === 'fulfilled') setCashbook(cbRes.value?.data || []);
       if (crvRes.status     === 'fulfilled') setCrvs(crvRes.value?.data || []);
@@ -711,6 +720,18 @@ const CEOFinance = () => {
       if (liabRes.status    === 'fulfilled') {
         const ld = liabRes.value?.data || liabRes.value;
         setLiabSummary(ld?.data || ld || null);
+      }
+      if (arRes.status      === 'fulfilled') {
+        const ad = arRes.value?.data || arRes.value;
+        setArDashboard(ad?.data || ad || null);
+      }
+      if (arListRes.status  === 'fulfilled') {
+        const al = arListRes.value?.data;
+        setArList(Array.isArray(al) ? al : []);
+      }
+      if (liabListRes.status === 'fulfilled') {
+        const ll = liabListRes.value?.data;
+        setLiabList(Array.isArray(ll) ? ll : []);
       }
     } catch (_) { /* silent */ }
     setRefreshing(false);
@@ -862,6 +883,35 @@ const CEOFinance = () => {
 
   const totalOwed  = parseFloat(liabSummary?.totalOwed ?? liabSummary?.totalLiabilities ?? 0);
 
+  /* Accounts Receivable figures come from the Revenue → Accounts Receivable
+     ledger (/erp-receivables/dashboard) — identical to the Finance overview. */
+  const arTotalInvoiced  = parseFloat(arDashboard?.totalInvoiced    || 0);
+  const arTotalCollected = parseFloat(arDashboard?.totalCollected   || 0);
+  const arReceivables    = parseFloat(arDashboard?.totalReceivables || 0);
+
+  /* ── Due-soon alerts (mirrors the Finance overview) ── */
+  const arListItems = Array.isArray(arList) ? arList : [];
+  const dateOnly = v => v ? String(v).slice(0, 10) : '—';
+  const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+  const daysUntil = v => {
+    if (!v) return null;
+    const d = new Date(`${String(v).slice(0, 10)}T00:00:00`);
+    d.setHours(0, 0, 0, 0);
+    return Math.round((d - todayMid) / 86400000);
+  };
+  const dueSoonList = arListItems
+    .filter(r => parseFloat(r.balance) > 0 && r.status !== 'Received')
+    .map(r => ({ ...r, _d: daysUntil(r.due_date) }))
+    .filter(r => r._d !== null && r._d >= 0 && r._d <= 3)
+    .sort((a, b) => a._d - b._d);
+
+  const liabListItems = Array.isArray(liabList) ? liabList : [];
+  const liabDueSoonList = liabListItems
+    .filter(r => parseFloat(r.balance) > 0 && r.status !== 'Paid')
+    .map(r => ({ ...r, _d: daysUntil(r.due_date) }))
+    .filter(r => r._d !== null && r._d >= 0 && r._d <= 3)
+    .sort((a, b) => a._d - b._d);
+
   const bankBookedRefs = new Set(
     evList.filter(e => (e.payment_method || '').toLowerCase().includes('bank')).map(e => e.ev_number)
   );
@@ -873,16 +923,31 @@ const CEOFinance = () => {
   const crvBankedIn = bankList.reduce((s, b) => s + parseFloat(b.totalIn || 0), 0);
   const unbankedCRV = Math.max(0, crvTotal - crvBankedIn);
 
-  /* ── System balance formula (identical to FinanceHome) ── */
+  /* ── Department profit / tax breakdown (from Revenue Book) ── */
+  const deptOrder = ['Retail & POS', 'Pharmacy', 'Printing', 'Car Rental', 'AgriRent', 'Tender', 'Manual Entry'];
+  const deptMap = {};
+  rcvList.forEach(r => {
+    const key = r.department_source || 'Other';
+    if (!deptMap[key]) deptMap[key] = { selling: 0, cogs: 0, profit: 0 };
+    deptMap[key].selling += parseFloat(r.selling_price || 0);
+    deptMap[key].cogs    += parseFloat(r.cogs          || 0);
+    deptMap[key].profit  += parseFloat(r.gross_profit  || 0);
+  });
+  const deptRows = Object.entries(deptMap)
+    .filter(([, v]) => v.selling !== 0 || v.cogs !== 0 || v.profit !== 0)
+    .sort((a, b) => {
+      const ia = deptOrder.indexOf(a[0]);
+      const ib = deptOrder.indexOf(b[0]);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+
+  /* ── System balance (identical to the Finance overview running total) ── */
   const systemBalance =
     parseFloat(bankBalance    || 0) +
-    parseFloat(settledReceivable || 0) +
-    parseFloat(equityNetIn    || 0) +
-    parseFloat(grossProfit    || 0) +
-    parseFloat(outputVat      || 0) +
-    parseFloat(carRentalDeposit || 0) -
-    parseFloat(expenseOut     || 0) +
     parseFloat(unbankedCRV    || 0) +
+    parseFloat(equityNetIn    || 0) +
+    parseFloat(arReceivables  || 0) -
+    parseFloat(expenseOut     || 0) +
     parseFloat(assetGrand     || 0) -
     parseFloat(totalOwed      || 0);
 
@@ -930,8 +995,8 @@ const CEOFinance = () => {
             <div className="ceof-kpi-strip">
               {[
                 { label: 'Bank Balance',       value: fmt(bankBalance),       color: '#2563EB' },
-                { label: 'Total Receivable',   value: fmt(totalReceivable),   color: '#0284C7' },
-                { label: 'Settled',            value: fmt(settledReceivable), color: '#16A34A' },
+                { label: 'Total Receivable',   value: fmt(arTotalInvoiced),   color: '#0284C7' },
+                { label: 'Settled',            value: fmt(arTotalCollected),  color: '#16A34A' },
                 { label: 'Net Profit',         value: fmt(netProfit),         color: netProfit >= 0 ? '#16A34A' : '#DC2626' },
                 { label: 'Total Assets',       value: fmt(assetGrand),        color: '#D97706' },
                 { label: 'Total Liabilities',  value: fmt(totalOwed),         color: '#DC2626' },
@@ -967,16 +1032,22 @@ const CEOFinance = () => {
                     <tbody>
                       {(() => {
                         const rows = [
-                          { label: 'Bank Accounts (Cash in Bank)',              val: bankBalance,       nav: null },
-                          { label: 'Unbanked Cash (CRV on Hand)',               val: unbankedCRV,       nav: null },
-                          { label: 'Net Owner Flow (Equity)',                   val: equityNetIn,       nav: null },
-                          { label: 'Collected / Paid So Far (Accts Receivable)',val: settledReceivable, nav: null },
-                          { label: 'Gross Profit (Revenue − COGS)',             val: grossProfit,       nav: null },
-                          { label: 'Output VAT (Tax Collected)',                val: outputVat,         nav: null },
-                          { label: 'Car Rental Refundable Deposit (Held)',      val: carRentalDeposit,  nav: null },
-                          { label: 'Paid Out (Expenses)',                       val: -expenseOut,       nav: null },
-                          { label: 'Total Assets (Non-Cash)',                   val: assetGrand,        nav: null },
-                          { label: 'Total Liabilities (Owed)',                  val: -totalOwed,        nav: null },
+                          { label: 'Bank Accounts (Cash in Bank)',            val: bankBalance,   nav: null },
+                          { label: 'Unbanked Cash (CRV on Hand)',             val: unbankedCRV,   nav: null },
+                          { label: 'Net Owner Flow (Equity)',                 val: equityNetIn,   nav: null },
+                          { label: 'Outstanding Receivable (Customer Loans)', val: arReceivables, nav: null },
+                          { label: 'Paid Out (Expenses)',                     val: -expenseOut,   nav: null },
+                          { label: 'Total Assets (Non-Cash)',                 val: assetGrand,    nav: null },
+                          { label: 'Total Liabilities (Owed)',                val: -totalOwed,    nav: null },
+                        ];
+                        const infoRows = [
+                          { label: 'Collected Tax (Output VAT)',           val: outputVat },
+                          { label: 'Car Rental Refundable Deposit (Held)', val: carRentalDeposit },
+                          ...deptRows.map(([dept, v]) => ({
+                            label: `${dept} Profit (Selling ${num(v.selling)} − COGS ${num(v.cogs)})`,
+                            val: v.profit,
+                          })),
+                          { label: 'Gross Profit (All Departments)',       val: grossProfit, strong: true },
                         ];
                         let running = 0;
                         return (
@@ -1008,6 +1079,15 @@ const CEOFinance = () => {
                                 {fmt(running)}
                               </td>
                             </tr>
+                            {infoRows.map((r, i) => (
+                              <tr key={`info-${i}`} className="ceof-nav-row">
+                                <td style={{ fontStyle: 'italic', color: '#6B7280', ...(r.strong ? { fontWeight: 700 } : {}) }}>{r.label}</td>
+                                <td className="ceof-right" style={{ fontStyle: 'italic', color: '#6B7280', ...(r.strong ? { fontWeight: 700 } : {}) }}>{fmt(r.val)}</td>
+                                <td className="ceof-right">
+                                  <span className="ceof-cumulative" style={{ fontStyle: 'italic', opacity: 0.7 }}>{fmt(running)}</span>
+                                </td>
+                              </tr>
+                            ))}
                           </>
                         );
                       })()}
@@ -1035,16 +1115,16 @@ const CEOFinance = () => {
                     <tbody>
                       <tr className="ceof-nav-row">
                         <td>Total Invoiced (All Records)</td>
-                        <td className="ceof-right">{fmt(totalReceivable)}</td>
+                        <td className="ceof-right">{fmt(arTotalInvoiced)}</td>
                       </tr>
                       <tr className="ceof-nav-row">
                         <td>Collected / Paid So Far</td>
-                        <td className="ceof-right" style={{ color: '#16A34A', fontWeight: 600 }}>{fmt(settledReceivable)}</td>
+                        <td className="ceof-right" style={{ color: '#16A34A', fontWeight: 600 }}>{fmt(arTotalCollected)}</td>
                       </tr>
                       <tr className="ceof-total-row ceof-nav-row">
                         <td>Still Outstanding (Not Yet Received)</td>
-                        <td className="ceof-right" style={{ color: outstandingBalance > 0 ? '#DC2626' : '#16A34A' }}>
-                          {fmt(outstandingBalance)}
+                        <td className="ceof-right" style={{ color: arReceivables > 0 ? '#DC2626' : '#16A34A' }}>
+                          {fmt(arReceivables)}
                         </td>
                       </tr>
                     </tbody>
@@ -1200,6 +1280,82 @@ const CEOFinance = () => {
                   </table>
                 </div>
               </div>
+
+              {/* Due Soon — Collect Now (Accounts Receivable) */}
+              {dueSoonList.length > 0 && (
+                <div className="ceof-table-card" style={{ border: '1px solid #FCA5A5' }}>
+                  <h3 className="ceof-card-title" style={{ padding: '1.25rem 1.5rem 0', color: '#B91C1C', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 999, background: '#DC2626', color: '#FFFFFF', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>!</span>
+                    Due Soon — Collect Now ({dueSoonList.length})
+                  </h3>
+                  <div className="ceof-table-wrap">
+                    <table className="ceof-table">
+                      <thead>
+                        <tr>
+                          <th>Invoice</th>
+                          <th>Customer</th>
+                          <th className="ceof-right">Balance</th>
+                          <th className="ceof-right">Due Date</th>
+                          <th className="ceof-right">Flag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dueSoonList.map((r, i) => (
+                          <tr key={i}>
+                            <td>{r.invoice_number}</td>
+                            <td>{r.customer_name}</td>
+                            <td className="ceof-right">{fmt(r.balance)}</td>
+                            <td className="ceof-right">{dateOnly(r.due_date)}</td>
+                            <td className="ceof-right">
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#B91C1C', fontWeight: 700, fontSize: 12, padding: '3px 10px', borderRadius: 999, border: '1px solid #FCA5A5' }}>
+                                {r._d === 0 ? 'Due today' : `Due in ${r._d}d`}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Due Soon — Pay Now (Liabilities) */}
+              {liabDueSoonList.length > 0 && (
+                <div className="ceof-table-card" style={{ border: '1px solid #FCA5A5' }}>
+                  <h3 className="ceof-card-title" style={{ padding: '1.25rem 1.5rem 0', color: '#B91C1C', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 999, background: '#DC2626', color: '#FFFFFF', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>!</span>
+                    Due Soon — Pay Now ({liabDueSoonList.length})
+                  </h3>
+                  <div className="ceof-table-wrap">
+                    <table className="ceof-table">
+                      <thead>
+                        <tr>
+                          <th>Reference</th>
+                          <th>Party</th>
+                          <th className="ceof-right">Balance</th>
+                          <th className="ceof-right">Due Date</th>
+                          <th className="ceof-right">Flag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {liabDueSoonList.map((r, i) => (
+                          <tr key={i}>
+                            <td>{r.reference_no || '—'}</td>
+                            <td>{r.party_name || '—'}</td>
+                            <td className="ceof-right">{fmt(r.balance)}</td>
+                            <td className="ceof-right">{dateOnly(r.due_date)}</td>
+                            <td className="ceof-right">
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#B91C1C', fontWeight: 700, fontSize: 12, padding: '3px 10px', borderRadius: 999, border: '1px solid #FCA5A5' }}>
+                                {r._d === 0 ? 'Due today' : `Due in ${r._d}d`}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
             </div>{/* end ceof-grid */}
           </div>
